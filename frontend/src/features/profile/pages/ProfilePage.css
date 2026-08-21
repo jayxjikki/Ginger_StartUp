@@ -318,7 +318,8 @@
   flex: 0 0 45%;
 }
 
-/* Blog carousel specific tweaks */
-.blog-carousel .carousel-item {
+/* Blog & Achievement carousel specific tweaks */
+.blog-carousel .carousel-item,
+.achievement-carousel .carousel-item {
   flex: 0 0 100%;
 }

@@ -319,7 +319,7 @@ const ProfilePage: React.FC = () => {
                 </Card>
               )}
 
-              <div className="carousel-container mb-8">
+              <div className="carousel-container achievement-carousel mb-8">
                 {achievements.length > 0 ? achievements.map((ach) => (
                   <Card key={ach.id} variant="glass" padding="md" className="achievement-card flex items-center gap-4 carousel-item">
                     <div className="achievement-icon text-ginger text-2xl p-3 bg-black/20 rounded-full min-w-max">
