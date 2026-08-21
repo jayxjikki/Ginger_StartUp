@@ -43,7 +43,9 @@ const ProfilePage: React.FC = () => {
     socialLinks, 
     stats, 
     isLoading, 
-    fetchProfileData 
+    fetchProfileData,
+    createPost,
+    createAchievement
   } = useProfileStore();
 
   // New Feature States
@@ -51,8 +53,48 @@ const ProfilePage: React.FC = () => {
   const [showAddAchievement, setShowAddAchievement] = useState(false);
   const [showAddBlog, setShowAddBlog] = useState(false);
 
-  const handleUploadSuccess = (url: string) => {
-    console.log('Successfully uploaded to Cloudinary:', url);
+  // Post form state
+  const [postTitle, setPostTitle] = useState('');
+  const [postContent, setPostContent] = useState('');
+  const [postImage, setPostImage] = useState('');
+
+  // Achievement form state
+  const [achTitle, setAchTitle] = useState('');
+  const [achDesc, setAchDesc] = useState('');
+  const [achImage, setAchImage] = useState('');
+
+  const handlePublishPost = async () => {
+    if (!postTitle || !postContent) return;
+    try {
+      await createPost({
+        title: postTitle,
+        content: postContent,
+        image_url: postImage,
+      });
+      setShowAddBlog(false);
+      setPostTitle('');
+      setPostContent('');
+      setPostImage('');
+    } catch (err) {
+      console.error('Failed to publish post', err);
+    }
+  };
+
+  const handleSaveAchievement = async () => {
+    if (!achTitle) return;
+    try {
+      await createAchievement({
+        title: achTitle,
+        description: achDesc,
+        icon_url: achImage,
+      });
+      setShowAddAchievement(false);
+      setAchTitle('');
+      setAchDesc('');
+      setAchImage('');
+    } catch (err) {
+      console.error('Failed to save achievement', err);
+    }
   };
 
   const handleUploadError = (error: Error) => {
@@ -199,14 +241,24 @@ const ProfilePage: React.FC = () => {
                 <Card variant="default" padding="lg" className="mb-6">
                   <h6 className="mb-4">Add New Achievement</h6>
                   <div className="flex flex-col gap-4">
-                    <Input label="Achievement Title" placeholder="e.g. YouTube Silver Play Button" />
-                    <Input label="Description (Optional)" placeholder="Short description" />
+                    <Input 
+                      label="Achievement Title" 
+                      placeholder="e.g. YouTube Silver Play Button" 
+                      value={achTitle}
+                      onChange={(e) => setAchTitle(e.target.value)}
+                    />
+                    <Input 
+                      label="Description (Optional)" 
+                      placeholder="Short description" 
+                      value={achDesc}
+                      onChange={(e) => setAchDesc(e.target.value)}
+                    />
                     <ImageUpload 
                       label="Achievement Badge / Certificate (Cloudinary)" 
-                      onUploadSuccess={handleUploadSuccess}
+                      onUploadSuccess={(url) => setAchImage(url)}
                       onUploadError={handleUploadError}
                     />
-                    <Button fullWidth onClick={() => setShowAddAchievement(false)}>Save Achievement</Button>
+                    <Button fullWidth onClick={handleSaveAchievement}>Save Achievement</Button>
                   </div>
                 </Card>
               )}
@@ -265,19 +317,26 @@ const ProfilePage: React.FC = () => {
                 <Card variant="glass" padding="lg" className="mb-6">
                   <h6 className="mb-4">Create Blog Post</h6>
                   <div className="flex flex-col gap-4">
-                    <Input label="Post Title" placeholder="What's on your mind?" />
+                    <Input 
+                      label="Post Title" 
+                      placeholder="What's on your mind?" 
+                      value={postTitle}
+                      onChange={(e) => setPostTitle(e.target.value)}
+                    />
                     <Textarea 
                       label="Content"
                       placeholder="Write your post content here..."
                       rows={4}
                       style={{ resize: 'vertical' }}
+                      value={postContent}
+                      onChange={(e) => setPostContent(e.target.value)}
                     />
                     <ImageUpload 
                       label="Cover Image (Cloudinary)" 
-                      onUploadSuccess={handleUploadSuccess}
+                      onUploadSuccess={(url) => setPostImage(url)}
                       onUploadError={handleUploadError}
                     />
-                    <Button fullWidth onClick={() => setShowAddBlog(false)}>Publish Post</Button>
+                    <Button fullWidth onClick={handlePublishPost}>Publish Post</Button>
                   </div>
                 </Card>
               )}
