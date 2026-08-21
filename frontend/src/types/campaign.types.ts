@@ -58,6 +58,17 @@ export interface PayoutTier {
 
 export type RewardType = 'cash' | 'discount' | 'gift' | 'refund';
 
+export interface SlideshowItem {
+  id: string;
+  title: string;
+  subtitle: string;
+  image_url: string;
+  badge_text: string;
+  badge_icon: string;
+  theme_color: string;
+  order_index: number;
+}
+
 export interface Submission {
   id: string;
   campaign_id: string;

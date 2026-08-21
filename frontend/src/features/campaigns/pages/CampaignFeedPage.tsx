@@ -1,271 +1,300 @@
 // ═══════════════════════════════════════════════════════════
-// GINGER — Campaign Feed Page ("Clipping" Tab)
-// Browse, filter, and discover campaigns
+// GINGER — Home Menu (Campaigns)
 // ═══════════════════════════════════════════════════════════
 
-import React, { useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiSearch, FiSliders, FiMapPin, FiClock, FiUsers, FiTrendingUp } from 'react-icons/fi';
 import { useCampaignStore } from '../../../store/campaignStore';
-import Card from '../../../components/ui/Card';
-import Badge from '../../../components/ui/Badge';
-import Avatar from '../../../components/ui/Avatar';
-import { SkeletonCard } from '../../../components/ui/Skeleton';
 import { formatCurrency, formatCount, formatTimeLeft } from '../../../utils/formatters';
-import type { Campaign, CampaignSortOption } from '../../../types/campaign.types';
 import './CampaignFeedPage.css';
 
-const sortOptions: { id: CampaignSortOption; label: string; icon: React.ReactNode }[] = [
-  { id: 'newest', label: 'Newest', icon: <FiClock /> },
-  { id: 'highest_pool', label: 'Top Prize', icon: <FiTrendingUp /> },
-  { id: 'ending_soon', label: 'Ending Soon', icon: <FiClock /> },
-  { id: 'most_submissions', label: 'Popular', icon: <FiUsers /> },
-];
+const HomeMenuPage: React.FC = () => {
+  const slideshowRef = useRef<HTMLDivElement>(null);
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const navigate = useNavigate();
 
-const CampaignFeedPage: React.FC = () => {
   const {
     filteredCampaigns,
+    slideshows,
     filters,
     setFilters,
     isLoading,
     fetchCampaigns,
   } = useCampaignStore();
-  const navigate = useNavigate();
 
   useEffect(() => {
     fetchCampaigns();
   }, [fetchCampaigns]);
 
+  // Slideshow Logic
+  useEffect(() => {
+    const container = slideshowRef.current;
+    if (!container || slideshows.length === 0) return;
+
+    let autoSlideInterval: ReturnType<typeof setInterval>;
+
+    const nextSlide = () => {
+      setCurrentSlide((prev) => {
+        const next = (prev + 1) % slideshows.length;
+        container.scrollTo({ left: container.clientWidth * next, behavior: 'smooth' });
+        return next;
+      });
+    };
+
+    const startAutoSlide = () => {
+      autoSlideInterval = setInterval(nextSlide, 4000);
+    };
+
+    const stopAutoSlide = () => {
+      if (autoSlideInterval) clearInterval(autoSlideInterval);
+    };
+
+    startAutoSlide();
+
+    // Intersection observer for manual scroll updates
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const index = Array.from(container.children).indexOf(entry.target);
+            if (index !== -1) setCurrentSlide(index);
+          }
+        });
+      },
+      { root: container, threshold: 0.5 }
+    );
+
+    Array.from(container.children).forEach((slide) => observer.observe(slide));
+
+    container.addEventListener('mouseenter', stopAutoSlide);
+    container.addEventListener('mouseleave', startAutoSlide);
+    container.addEventListener('touchstart', stopAutoSlide, { passive: true });
+    container.addEventListener('touchend', startAutoSlide, { passive: true });
+
+    return () => {
+      stopAutoSlide();
+      observer.disconnect();
+      container.removeEventListener('mouseenter', stopAutoSlide);
+      container.removeEventListener('mouseleave', startAutoSlide);
+      container.removeEventListener('touchstart', stopAutoSlide);
+      container.removeEventListener('touchend', startAutoSlide);
+    };
+  }, [slideshows.length]);
+
+  const handleIndicatorClick = (index: number) => {
+    if (slideshowRef.current) {
+      slideshowRef.current.scrollTo({
+        left: slideshowRef.current.clientWidth * index,
+        behavior: 'smooth',
+      });
+      setCurrentSlide(index);
+    }
+  };
+
   const getCampaignTypeColor = (type: string) => {
     switch (type) {
-      case 'pool': return 'ginger';
-      case 'discount': return 'success';
-      case 'hybrid': return 'accent';
-      default: return 'default';
+      case 'pool': return 'blue';
+      case 'discount': return 'emerald';
+      case 'hybrid': return 'purple';
+      default: return 'blue';
+    }
+  };
+
+  const getCampaignTypeIcon = (type: string) => {
+    switch (type) {
+      case 'pool': return 'monetization_on';
+      case 'discount': return 'sell';
+      case 'hybrid': return 'bolt';
+      default: return 'monetization_on';
     }
   };
 
   const getCampaignTypeLabel = (type: string) => {
     switch (type) {
-      case 'pool': return '💰 Prize Pool';
-      case 'discount': return '🏷️ Discount';
-      case 'hybrid': return '⚡ Hybrid';
+      case 'pool': return 'Prize Pool';
+      case 'discount': return 'Discount';
+      case 'hybrid': return 'Hybrid';
       default: return type;
     }
   };
 
   return (
-    <div className="page-content">
-      <div className="container campaign-feed">
-        {/* Header */}
-        <motion.div
-          className="feed-header"
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ type: 'spring' as const, stiffness: 300, damping: 30 }}
-        >
-          <div>
-            <h3>Campaigns</h3>
-            <p className="text-secondary text-sm">Create videos & earn money</p>
-          </div>
-        </motion.div>
+    <div className="home-menu-page">
+      {/* Header Section */}
+      <header className="home-header">
+        <div>
+          <h1 className="home-title">Campaigns</h1>
+          <p className="home-subtitle">Create videos & earn money</p>
+        </div>
+      </header>
 
-        {/* Search Bar */}
-        <motion.div
-          className="feed-search"
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.05, type: 'spring' as const, stiffness: 300, damping: 30 }}
-        >
+      {/* Main Content */}
+      <main className="home-main">
+        {/* Search & Filter */}
+        <div className="search-container">
           <div className="search-bar">
-            <FiSearch className="search-icon" />
+            <span className="material-symbols-outlined text-secondary">search</span>
             <input
-              type="text"
+              className="search-input"
               placeholder="Search campaigns, keywords..."
+              type="text"
               value={filters.search}
               onChange={(e) => setFilters({ search: e.target.value })}
-              className="search-input"
-              id="campaign-search"
             />
-            <button className="search-filter-btn" aria-label="Filters">
-              <FiSliders />
-            </button>
           </div>
-        </motion.div>
+          <button className="filter-btn">
+            <span className="material-symbols-outlined">tune</span>
+          </button>
+        </div>
 
-        {/* Sort Pills */}
-        <motion.div
-          className="sort-pills"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.1 }}
-        >
-          {sortOptions.map((option) => (
-            <button
-              key={option.id}
-              className={`sort-pill ${filters.sortBy === option.id ? 'active' : ''}`}
-              onClick={() => setFilters({ sortBy: option.id })}
-            >
-              {option.icon}
-              {option.label}
-            </button>
-          ))}
-        </motion.div>
+        {/* Filter Chips */}
+        <div className="filter-chips">
+          <button 
+            className={`filter-chip ${filters.sortBy === 'newest' ? 'active' : ''}`}
+            onClick={() => setFilters({ sortBy: 'newest' })}
+          >
+            Newest
+          </button>
+          <button 
+            className={`filter-chip ${filters.sortBy === 'highest_pool' ? 'active' : ''}`}
+            onClick={() => setFilters({ sortBy: 'highest_pool' })}
+          >
+            Top Prize
+          </button>
+          <button 
+            className={`filter-chip ${filters.sortBy === 'ending_soon' ? 'active' : ''}`}
+            onClick={() => setFilters({ sortBy: 'ending_soon' })}
+          >
+            Ending Soon
+          </button>
+          <button 
+            className={`filter-chip ${filters.sortBy === 'most_submissions' ? 'active' : ''}`}
+            onClick={() => setFilters({ sortBy: 'most_submissions' })}
+          >
+            Popular
+          </button>
+        </div>
+
+        {/* Slideshow Section */}
+        {slideshows.length > 0 && (
+          <div className="slideshow-wrapper">
+            <div className="slideshow-container" ref={slideshowRef}>
+              {slideshows.map((slide) => (
+                <div className="slide" key={slide.id}>
+                  <div className={`slide-gradient ${slide.theme_color}`}></div>
+                  <img
+                    alt={slide.title}
+                    className="slide-img"
+                    src={slide.image_url}
+                  />
+                  <div className="slide-content">
+                    <span className={`slide-badge ${slide.theme_color}`}>
+                      <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>
+                        {slide.badge_icon}
+                      </span>{' '}
+                      {slide.badge_text}
+                    </span>
+                    <h2 className="slide-title">{slide.title}</h2>
+                    <p className="slide-subtitle">{slide.subtitle}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            <div className="slideshow-indicators">
+              {slideshows.map((_, index) => (
+                <button 
+                  key={index}
+                  className={`indicator ${currentSlide === index ? 'active' : ''}`}
+                  onClick={() => handleIndicatorClick(index)}
+                />
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Campaign List */}
         <div className="campaign-list">
           {isLoading ? (
-            <>
-              <SkeletonCard />
-              <SkeletonCard />
-              <SkeletonCard />
-            </>
+            <div style={{ color: 'white', textAlign: 'center', padding: '2rem' }}>Loading campaigns...</div>
+          ) : filteredCampaigns.length === 0 ? (
+            <div style={{ color: 'white', textAlign: 'center', padding: '2rem' }}>No campaigns found.</div>
           ) : (
-            <AnimatePresence mode="popLayout">
-              {filteredCampaigns.map((campaign, index) => (
-                <CampaignCard
+            filteredCampaigns.map((campaign) => {
+              const themeColor = getCampaignTypeColor(campaign.type);
+              
+              return (
+                <article 
+                  className="campaign-item" 
                   key={campaign.id}
-                  campaign={campaign}
-                  index={index}
                   onClick={() => navigate(`/campaigns/${campaign.id}`)}
-                  typeColor={getCampaignTypeColor(campaign.type)}
-                  typeLabel={getCampaignTypeLabel(campaign.type)}
-                />
-              ))}
-            </AnimatePresence>
+                  style={{ cursor: 'pointer' }}
+                >
+                  {campaign.image_url && (
+                    <div className="campaign-images">
+                      <img
+                        alt={campaign.title}
+                        className="campaign-img"
+                        src={campaign.image_url}
+                      />
+                    </div>
+                  )}
+
+                  <div className="campaign-header-row">
+                    <div className="campaign-tags">
+                      <span className={`tag-badge ${themeColor}`}>
+                        <span className="material-symbols-outlined" style={{ fontSize: '12px' }}>
+                          {getCampaignTypeIcon(campaign.type)}
+                        </span>{' '}
+                        {getCampaignTypeLabel(campaign.type)}
+                      </span>
+                      <span className="tag-expired">{formatTimeLeft(campaign.end_date)}</span>
+                    </div>
+                    {campaign.prize_pool > 0 && (
+                      <div className="campaign-prize-col">
+                        <div className="campaign-prize-label">PRIZE POOL</div>
+                        <div className="campaign-prize-amount">{formatCurrency(campaign.prize_pool, true)}</div>
+                      </div>
+                    )}
+                  </div>
+
+                  <h3 className="campaign-card-title">{campaign.title}</h3>
+                  <p className="campaign-card-desc">{campaign.description}</p>
+
+                  <div className="campaign-footer-row">
+                    <div className="campaign-brand">
+                      <div className="brand-logo">
+                        {campaign.advertiser?.avatar_url ? (
+                          <img
+                            alt={campaign.advertiser.full_name}
+                            src={campaign.advertiser.avatar_url}
+                          />
+                        ) : (
+                          <span className="material-symbols-outlined" style={{ fontSize: '14px', color: 'white' }}>
+                            store
+                          </span>
+                        )}
+                      </div>
+                      <span className="brand-name">{campaign.advertiser?.full_name || 'Advertiser'}</span>
+                    </div>
+                    {campaign.payout_tiers && campaign.payout_tiers.length > 0 && (
+                      <div className="campaign-payout-tiers">
+                        {campaign.payout_tiers.slice(0, 2).map((tier) => (
+                          <span className="payout-tier" key={tier.id}>
+                            {formatCount(tier.min_views)} -&gt; {formatCurrency(tier.payout_amount, true)}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </article>
+              );
+            })
           )}
         </div>
-
-        {!isLoading && filteredCampaigns.length === 0 && (
-          <div className="feed-empty">
-            <span className="feed-empty-icon">🔍</span>
-            <h4>No campaigns found</h4>
-            <p className="text-secondary text-sm">Try adjusting your filters or search query</p>
-          </div>
-        )}
-      </div>
+      </main>
     </div>
   );
 };
 
-// ── Campaign Card Component ────────────────────────────
-interface CampaignCardProps {
-  campaign: Campaign;
-  index: number;
-  onClick: () => void;
-  typeColor: string;
-  typeLabel: string;
-}
-
-const CampaignCard: React.FC<CampaignCardProps> = ({
-  campaign,
-  index,
-  onClick,
-  typeColor,
-  typeLabel,
-}) => {
-  const topTier = campaign.payout_tiers?.[campaign.payout_tiers.length - 1];
-
-  return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      transition={{ type: 'spring' as const, stiffness: 300, damping: 30, delay: index * 0.05 }}
-    >
-      <Card variant="glass" padding="none" onClick={onClick} className="campaign-card">
-        {/* Card Header */}
-        <div className="campaign-card-header">
-          <div className="campaign-card-meta">
-            <Badge variant={typeColor as any} size="sm">{typeLabel}</Badge>
-            <span className="campaign-time-left">{formatTimeLeft(campaign.end_date)}</span>
-          </div>
-          {campaign.prize_pool > 0 && (
-            <div className="campaign-prize">
-              <span className="campaign-prize-label">Prize Pool</span>
-              <span className="campaign-prize-amount gradient-text">
-                {formatCurrency(campaign.prize_pool, true)}
-              </span>
-            </div>
-          )}
-        </div>
-
-        {/* Card Image (if exists) */}
-        {campaign.image_url && (
-          <div className="w-full h-40 bg-black/20 overflow-hidden">
-            <img 
-              src={campaign.image_url} 
-              alt={campaign.title} 
-              className="w-full h-full object-cover" 
-            />
-          </div>
-        )}
-
-        {/* Card Body */}
-        <div className="campaign-card-body">
-          <h4 className="campaign-card-title">{campaign.title}</h4>
-          <p className="campaign-card-desc line-clamp-2">{campaign.description}</p>
-
-          {/* Advertiser */}
-          <div className="campaign-card-advertiser">
-            <Avatar
-              src={campaign.advertiser?.avatar_url}
-              name={campaign.advertiser?.full_name || 'Advertiser'}
-              size="xs"
-              verified={campaign.advertiser?.is_verified}
-            />
-            <span className="text-sm text-secondary">
-              {campaign.advertiser?.full_name}
-            </span>
-          </div>
-
-          {/* Bottom Row */}
-          <div className="campaign-card-footer">
-            <div className="campaign-card-stats">
-              {campaign.location && (
-                <span className="campaign-stat">
-                  <FiMapPin size={12} /> {campaign.location}
-                </span>
-              )}
-              <span className="campaign-stat">
-                <FiUsers size={12} /> {campaign.submission_count} creators
-              </span>
-            </div>
-            {topTier && (
-              <div className="campaign-top-payout">
-                Up to <strong>{formatCurrency(topTier.payout_amount, true)}</strong>
-              </div>
-            )}
-          </div>
-
-          {/* Payout Tiers Preview */}
-          {campaign.payout_tiers && campaign.payout_tiers.length > 0 && (
-            <div className="campaign-tiers-preview">
-              {campaign.payout_tiers.slice(0, 3).map((tier) => (
-                <div key={tier.id} className="tier-chip">
-                  {formatCount(tier.min_views)} views → {formatCurrency(tier.payout_amount, true)}
-                </div>
-              ))}
-              {campaign.payout_tiers.length > 3 && (
-                <div className="tier-chip tier-chip-more">
-                  +{campaign.payout_tiers.length - 3} more
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Keywords */}
-          <div className="campaign-keywords">
-            {campaign.keywords.slice(0, 3).map((kw) => (
-              <span key={kw} className="keyword-tag">#{kw.replace(/\s+/g, '')}</span>
-            ))}
-          </div>
-        </div>
-      </Card>
-    </motion.div>
-  );
-};
-
-export default CampaignFeedPage;
+export default HomeMenuPage;

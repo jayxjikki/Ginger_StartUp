@@ -1,279 +1,438 @@
 /* ═══════════════════════════════════════════════════════════
-   GINGER — Campaign Feed Page Styles
+   GINGER — Home Menu Styles (Previously Clipping)
    ═══════════════════════════════════════════════════════════ */
 
-.campaign-feed {
+.home-menu-page {
+  width: 100%;
+  max-width: var(--container-max, 1440px);
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
-  padding-top: calc(var(--safe-top) + var(--space-4));
+  min-height: 100vh;
+  padding-bottom: 6rem;
+  margin: 0 auto;
 }
 
-/* ── Header ────────────────────────────────────────────── */
-.feed-header {
+.home-header {
+  width: 100%;
+  position: sticky;
+  top: 0;
+  background-color: var(--bg-primary);
+  z-index: 40;
+  padding-top: 1.5rem;
+  padding-bottom: 1rem;
+  padding-left: var(--space-5);
+  padding-right: var(--space-5);
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
-/* ── Search Bar ────────────────────────────────────────── */
-.feed-search {
+.home-title {
+  font-family: var(--font-display);
+  font-size: 32px;
+  line-height: 40px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.home-subtitle {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+.home-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding-left: var(--space-5);
+  padding-right: var(--space-5);
+  gap: 1.5rem;
+}
+
+/* Search Area */
+.search-container {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
   width: 100%;
 }
 
 .search-bar {
+  flex: 1;
+  background-color: var(--bg-elevated);
+  border-radius: var(--radius-full);
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  background: var(--bg-card);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-xl);
-  padding: var(--space-1) var(--space-3);
-  transition: all var(--duration-normal) var(--ease-smooth);
-}
-
-.search-bar:focus-within {
-  border-color: var(--ginger-500);
-  box-shadow: 0 0 0 3px rgba(247, 147, 30, 0.08);
-}
-
-.search-icon {
-  color: var(--text-tertiary);
-  flex-shrink: 0;
+  padding: 0.75rem 1rem;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
 }
 
 .search-input {
-  flex: 1;
-  padding: var(--space-2) 0;
-  background: none;
+  background: transparent;
   border: none;
-  outline: none;
   color: var(--text-primary);
-  font-size: var(--text-sm);
+  width: 100%;
+  font-family: var(--font-sans);
+  font-size: 16px;
+  outline: none;
+  margin-left: 0.75rem;
 }
 
 .search-input::placeholder {
-  color: var(--text-tertiary);
+  color: var(--text-secondary);
 }
 
-.search-filter-btn {
-  width: 36px;
-  height: 36px;
+.filter-btn {
+  background-color: var(--bg-elevated);
+  padding: 0.75rem;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
-  color: var(--text-secondary);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+  border: none;
   cursor: pointer;
-  transition: all var(--duration-fast);
+  transition: opacity 0.2s;
 }
 
-.search-filter-btn:hover {
-  background: var(--bg-card-hover);
-  color: var(--ginger-500);
+.filter-btn:hover {
+  opacity: 0.8;
 }
 
-/* ── Sort Pills ────────────────────────────────────────── */
-.sort-pills {
+/* Chips */
+.filter-chips {
   display: flex;
-  gap: var(--space-2);
+  gap: 0.75rem;
   overflow-x: auto;
+  padding-bottom: 0.5rem;
+  -ms-overflow-style: none;
   scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
-  padding-bottom: var(--space-1);
+}
+.filter-chips::-webkit-scrollbar {
+  display: none;
 }
 
-.sort-pills::-webkit-scrollbar { display: none; }
-
-.sort-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: var(--space-2) var(--space-3);
-  background: var(--bg-card);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-full);
-  color: var(--text-secondary);
-  font-size: var(--text-xs);
-  font-weight: 600;
+.filter-chip {
   white-space: nowrap;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  font-family: 'Geist', sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  font-weight: 500;
+  text-transform: uppercase;
+  background: transparent;
   cursor: pointer;
-  transition: all var(--duration-fast) var(--ease-smooth);
-  -webkit-tap-highlight-color: transparent;
+  transition: all 0.2s;
 }
 
-.sort-pill:hover {
-  background: var(--bg-card-hover);
+.filter-chip:hover {
+  border-color: var(--text-secondary);
   color: var(--text-primary);
 }
 
-.sort-pill.active {
-  background: rgba(247, 147, 30, 0.12);
-  border-color: rgba(247, 147, 30, 0.3);
-  color: var(--ginger-400);
+.filter-chip.active {
+  border-color: var(--text-primary);
+  color: var(--text-primary);
+  background-color: rgba(255,255,255,0.1);
 }
 
-/* ── Campaign List ─────────────────────────────────────── */
+/* Slideshow */
+.slideshow-wrapper {
+  width: 100%;
+  position: relative;
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  background: rgba(26, 26, 26, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.slideshow-container {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  width: 100%;
+  height: 12rem; /* h-48 */
+  scroll-behavior: smooth;
+  position: relative;
+}
+.slideshow-container::-webkit-scrollbar {
+  display: none;
+}
+
+.slide {
+  width: 100%;
+  flex-shrink: 0;
+  scroll-snap-align: center;
+  position: relative;
+  height: 100%;
+}
+
+.slide-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.6;
+}
+
+.slide-content {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 1.25rem;
+  z-index: 20;
+}
+
+.slide-gradient {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 10;
+}
+.slide-gradient.blue { background: linear-gradient(to right, rgba(30, 58, 138, 0.2), transparent); }
+.slide-gradient.purple { background: linear-gradient(to right, rgba(88, 28, 135, 0.2), transparent); }
+.slide-gradient.emerald { background: linear-gradient(to right, rgba(6, 78, 59, 0.2), transparent); }
+
+.slide-badge {
+  font-family: 'Geist', sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  margin-bottom: 0.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  text-transform: uppercase;
+}
+
+.slide-badge.blue { color: #60a5fa; }
+.slide-badge.purple { color: #c084fc; }
+.slide-badge.emerald { color: #34d399; }
+
+.slide-title {
+  font-family: var(--font-display);
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.slide-subtitle {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-top: 0.25rem;
+}
+
+.slideshow-indicators {
+  position: absolute;
+  bottom: 0.75rem;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  z-index: 30;
+}
+
+.indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.3);
+  transition: all 0.3s;
+  border: none;
+  padding: 0;
+}
+.indicator.active {
+  background-color: white;
+  width: 16px;
+}
+
+/* Campaign List */
 .campaign-list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: 1.25rem;
 }
 
-/* ── Campaign Card ─────────────────────────────────────── */
-.campaign-card {
+.campaign-item {
+  background-color: #121212;
+  border: 1px solid #222222;
+  border-radius: var(--radius-xl);
+  padding: 0.75rem;
+  transition: border-color 0.2s;
+  position: relative;
   overflow: hidden;
 }
 
-.campaign-card-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  padding: var(--space-4) var(--space-4) 0;
+.campaign-item:hover {
+  border-color: #444444;
 }
 
-.campaign-card-meta {
+.campaign-images {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  margin-bottom: 0.75rem;
+  border-radius: var(--radius-lg);
+}
+.campaign-images::-webkit-scrollbar {
+  display: none;
+}
+
+.campaign-img {
+  height: 8rem;
+  width: 12rem;
+  object-fit: cover;
+  border-radius: var(--radius-lg);
+  flex-shrink: 0;
+}
+
+.campaign-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.5rem;
+}
+
+.campaign-tags {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: 0.5rem;
 }
 
-.campaign-time-left {
-  font-size: var(--text-xs);
-  color: var(--text-tertiary);
-  font-weight: 500;
+.tag-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: var(--radius-full);
+  font-family: 'Geist', sans-serif;
+  font-size: 10px;
+  text-transform: uppercase;
 }
 
-.campaign-prize {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 2px;
+.tag-badge.blue {
+  background-color: rgba(30, 58, 138, 0.3);
+  color: #60a5fa;
+  border: 1px solid rgba(30, 58, 138, 0.5);
+}
+
+.tag-badge.purple {
+  background-color: rgba(88, 28, 135, 0.3);
+  color: #c084fc;
+  border: 1px solid rgba(88, 28, 135, 0.5);
+}
+
+.tag-expired {
+  font-family: 'Geist', sans-serif;
+  font-size: 10px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+}
+
+.campaign-prize-col {
+  text-align: right;
 }
 
 .campaign-prize-label {
+  font-family: 'Geist', sans-serif;
   font-size: 10px;
-  color: var(--text-tertiary);
+  color: var(--text-secondary);
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  font-weight: 600;
 }
 
 .campaign-prize-amount {
-  font-family: var(--font-display);
-  font-size: var(--text-xl);
-  font-weight: 800;
-}
-
-/* ── Card Body ─────────────────────────────────────────── */
-.campaign-card-body {
-  padding: var(--space-3) var(--space-4) var(--space-4);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
+  font-size: 18px;
+  color: #60a5fa;
+  font-weight: 700;
+  line-height: 1.25;
 }
 
 .campaign-card-title {
-  font-size: var(--text-lg);
-  font-weight: 700;
+  font-size: 16px;
   color: var(--text-primary);
-  line-height: var(--leading-snug);
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+  line-height: 1.25;
 }
 
 .campaign-card-desc {
-  font-size: var(--text-sm);
+  font-family: var(--font-sans);
+  font-size: 13px;
   color: var(--text-secondary);
-  line-height: var(--leading-relaxed);
+  margin-bottom: 0.75rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
-/* ── Advertiser ────────────────────────────────────────── */
-.campaign-card-advertiser {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-/* ── Footer Stats ──────────────────────────────────────── */
-.campaign-card-footer {
+.campaign-footer-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-3);
 }
 
-.campaign-card-stats {
+.campaign-brand {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: 0.5rem;
 }
 
-.campaign-stat {
-  display: inline-flex;
+.brand-logo {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background-color: var(--bg-elevated);
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  display: flex;
   align-items: center;
-  gap: 4px;
-  font-size: var(--text-xs);
-  color: var(--text-tertiary);
+  justify-content: center;
 }
 
-.campaign-top-payout {
-  font-size: var(--text-xs);
-  color: var(--ginger-400);
+.brand-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.brand-name {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  color: var(--text-primary);
   font-weight: 500;
 }
 
-.campaign-top-payout strong {
-  font-weight: 700;
-}
-
-/* ── Payout Tiers Preview ──────────────────────────────── */
-.campaign-tiers-preview {
+.campaign-payout-tiers {
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1);
+  gap: 0.25rem;
 }
 
-.tier-chip {
-  padding: 3px 10px;
-  background: rgba(247, 147, 30, 0.08);
-  border: 1px solid rgba(247, 147, 30, 0.15);
-  border-radius: var(--radius-full);
-  font-size: 11px;
-  color: var(--ginger-400);
-  font-weight: 600;
+.payout-tier {
+  padding: 0.125rem 0.375rem;
+  border-radius: 4px;
+  background-color: var(--bg-elevated);
+  color: var(--text-primary);
+  font-family: 'Geist', sans-serif;
+  font-size: 9px;
+  border: 1px solid var(--border-subtle);
   white-space: nowrap;
-}
-
-.tier-chip-more {
-  background: var(--bg-card);
-  border-color: var(--border-subtle);
-  color: var(--text-tertiary);
-}
-
-/* ── Keywords ──────────────────────────────────────────── */
-.campaign-keywords {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1);
-}
-
-.keyword-tag {
-  font-size: 11px;
-  color: var(--accent-400);
-  font-weight: 500;
-}
-
-/* ── Empty State ───────────────────────────────────────── */
-.feed-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: var(--space-3);
-  padding: var(--space-16) 0;
-}
-
-.feed-empty-icon {
-  font-size: 48px;
 }

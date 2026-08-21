@@ -1,0 +1,311 @@
+/* ═══════════════════════════════════════════════════════════
+   GINGER — Edit Profile Styles (Liquid Onyx Design)
+   ═══════════════════════════════════════════════════════════ */
+
+.edit-profile-wrapper {
+  background-color: #080808; /* Void base */
+  color: var(--text-primary, #ffffff);
+  min-height: 100vh;
+  -webkit-tap-highlight-color: transparent;
+  display: flex;
+  flex-direction: column;
+}
+
+.liquid-bg {
+  background: radial-gradient(circle at top right, rgba(255,255,255,0.03), transparent 40%),
+              radial-gradient(circle at bottom left, rgba(255,255,255,0.02), transparent 50%);
+}
+
+.edit-top-bar {
+  position: fixed;
+  top: 0;
+  width: 100%;
+  z-index: 50;
+  background-color: #000000;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.edit-top-bar-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 1rem;
+  height: 4rem;
+  max-width: 1440px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.edit-close-btn {
+  width: 2.5rem;
+  height: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  color: var(--text-primary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.edit-close-btn:hover {
+  opacity: 0.8;
+}
+
+.edit-title {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.edit-save-btn {
+  font-weight: 700;
+  color: var(--text-primary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+  padding: 0 0.5rem;
+}
+
+.edit-save-btn:hover {
+  opacity: 0.8;
+}
+
+.edit-main {
+  flex-grow: 1;
+  padding: 6rem 1rem 8rem 1rem;
+  max-width: 42rem;
+  margin: 0 auto;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.banner-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-xl);
+  padding: 2rem;
+}
+
+.banner-bg-wrapper {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.banner-bg-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.4;
+}
+
+.banner-gradient {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, rgba(13,13,13,0.2), rgba(13,13,13,0.6), rgba(13,13,13,1));
+}
+
+.avatar-wrapper {
+  position: relative;
+  z-index: 10;
+  cursor: pointer;
+}
+
+.avatar-container {
+  width: 7rem;
+  height: 7rem;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid #353534;
+  padding: 4px;
+  position: relative;
+  background-color: #000;
+}
+
+.avatar-img {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.avatar-overlay {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background-color: rgba(19,19,19,0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  border: 1px solid rgba(255,255,255,0.2);
+  z-index: 20;
+}
+
+.avatar-wrapper:hover .avatar-overlay {
+  opacity: 1;
+}
+
+.change-photo-btn {
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-full);
+  background-color: rgba(18,18,18,0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: rgba(255,255,255,0.9);
+  border: 1px solid rgba(255,255,255,0.1);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.change-photo-btn:hover {
+  color: #fff;
+  background-color: rgba(30,30,30,0.8);
+}
+
+.form-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.input-label {
+  font-family: 'Geist', sans-serif;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding-left: 0.25rem;
+  color: #B8860B; /* Golden label from design */
+}
+
+.glass-input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-xl);
+  font-family: var(--font-body);
+  background-color: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.05);
+  border-bottom: 2px solid #222;
+  transition: all 0.3s ease;
+}
+
+.glass-input::placeholder {
+  color: rgba(255,255,255,0.3);
+}
+
+.glass-input:focus {
+  outline: none;
+  border-bottom-color: #fff;
+  box-shadow: inset 0 -1px 0 rgba(255,255,255,0.5);
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.links-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.links-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.glass-card {
+  background-color: #121212;
+  border: 1px solid #222222;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.02);
+  transition: border-color 0.3s ease;
+}
+.glass-card:hover {
+  border-color: #444444;
+}
+
+.link-item {
+  border-radius: var(--radius-xl);
+  padding: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+}
+
+.link-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.link-icon-wrap {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  background-color: #2a2a2a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.link-name {
+  color: #fff;
+  transition: opacity 0.2s ease;
+}
+
+.link-item:hover .link-name {
+  opacity: 0.8;
+}
+
+.add-link-btn {
+  margin-top: 0.5rem;
+  width: 100%;
+  padding: 1rem;
+  border-radius: var(--radius-xl);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  color: #fff;
+  font-weight: 700;
+  border: 1px solid rgba(255,255,255,0.1);
+  background-color: rgba(255,255,255,0.02);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.add-link-btn:hover {
+  background-color: rgba(255,255,255,0.1);
+}
+
+.add-link-btn:active {
+  transform: scale(0.98);
+}

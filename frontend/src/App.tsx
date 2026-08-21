@@ -11,6 +11,7 @@ import { useAuthStore } from './store/authStore';
 // Pages
 import LoginPage from './features/auth/pages/LoginPage';
 import ProfilePage from './features/profile/pages/ProfilePage';
+import EditProfilePage from './features/profile/pages/EditProfilePage';
 import CampaignFeedPage from './features/campaigns/pages/CampaignFeedPage';
 import CampaignDetailPage from './features/campaigns/pages/CampaignDetailPage';
 import CreateCampaignPage from './features/advertise/pages/CreateCampaignPage';
@@ -138,6 +139,14 @@ const App: React.FC = () => {
                 <AppLayout>
                   <ProfilePage />
                 </AppLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/profile/edit"
+            element={
+              <ProtectedRoute>
+                <EditProfilePage />
               </ProtectedRoute>
             }
           />

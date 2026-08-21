@@ -3,12 +3,13 @@
 // ═══════════════════════════════════════════════════════════
 
 import { create } from 'zustand';
-import type { Campaign, CampaignFilters, Submission } from '../types/campaign.types';
+import type { Campaign, CampaignFilters, Submission, SlideshowItem } from '../types/campaign.types';
 import { supabase } from '../lib/supabase';
 
 interface CampaignState {
   campaigns: Campaign[];
   filteredCampaigns: Campaign[];
+  slideshows: SlideshowItem[];
   selectedCampaign: Campaign | null;
   mySubmissions: Submission[];
   filters: CampaignFilters;
@@ -37,6 +38,7 @@ const defaultFilters: CampaignFilters = {
 export const useCampaignStore = create<CampaignState>((set, get) => ({
   campaigns: [],
   filteredCampaigns: [],
+  slideshows: [],
   selectedCampaign: null,
   mySubmissions: [],
   filters: defaultFilters,
@@ -47,20 +49,28 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
     set({ isLoading: true, error: null });
     
     try {
-      const { data, error } = await supabase
-        .from('campaigns')
-        .select(`
-          *,
-          advertiser:profiles(*),
-          payout_tiers(*)
-        `)
-        .order('created_at', { ascending: false });
+      const [campaignsRes, slideshowsRes] = await Promise.all([
+        supabase
+          .from('campaigns')
+          .select(`
+            *,
+            advertiser:profiles(*),
+            payout_tiers(*)
+          `)
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('slideshows')
+          .select('*')
+          .order('order_index', { ascending: true })
+      ]);
 
-      if (error) throw error;
+      if (campaignsRes.error) throw campaignsRes.error;
+      if (slideshowsRes.error) throw slideshowsRes.error;
 
       set({ 
-        campaigns: data as unknown as Campaign[], 
-        filteredCampaigns: data as unknown as Campaign[] 
+        campaigns: campaignsRes.data as unknown as Campaign[], 
+        filteredCampaigns: campaignsRes.data as unknown as Campaign[],
+        slideshows: slideshowsRes.data as unknown as SlideshowItem[]
       });
       get().applyFilters();
     } catch (err: any) {

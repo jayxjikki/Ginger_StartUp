@@ -1,99 +1,87 @@
-// ═══════════════════════════════════════════════════════════
-// GINGER — Login Page
-// Premium splash + Google auth with animated background
-// ═══════════════════════════════════════════════════════════
-
-import React from 'react';
-import { motion } from 'framer-motion';
-import { FcGoogle } from 'react-icons/fc';
+import React, { useEffect, useRef } from 'react';
 import { useAuthStore } from '../../../store/authStore';
-import Button from '../../../components/ui/Button';
-import { APP_NAME, APP_TAGLINE, APP_DESCRIPTION } from '../../../lib/constants';
+import LoginBackground from '../components/LoginBackground';
 import './LoginPage.css';
 
 const LoginPage: React.FC = () => {
   const { signInWithGoogle, isLoading } = useAuthStore();
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // Simple subtle entrance animation similar to provided HTML
+    if (containerRef.current) {
+      const elements = containerRef.current.children;
+      Array.from(elements).forEach((el, index) => {
+        const htmlEl = el as HTMLElement;
+        htmlEl.style.opacity = '0';
+        htmlEl.style.transform = 'translateY(10px)';
+        htmlEl.style.transition = `opacity 0.6s ease ${index * 0.15}s, transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) ${index * 0.15}s`;
+        
+        requestAnimationFrame(() => {
+          htmlEl.style.opacity = '1';
+          htmlEl.style.transform = 'translateY(0)';
+        });
+      });
+    }
+  }, []);
 
   return (
-    <div className="login-page">
-      {/* Animated Background Orbs */}
-      <div className="login-bg">
-        <div className="login-orb login-orb-1" />
-        <div className="login-orb login-orb-2" />
-        <div className="login-orb login-orb-3" />
-      </div>
+    <div className="login-container">
+      <LoginBackground />
+      
+      {/* Central Brand Logo Background */}
+      <div className="login-glow"></div>
+      <img 
+        src="/image.png" 
+        alt="Ginger Background" 
+        className="login-bg-image" 
+      />
 
-      <div className="login-content">
-        {/* Logo & Branding */}
-        <motion.div
-          className="login-brand"
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ type: 'spring' as const, stiffness: 200, damping: 20, delay: 0.1 }}
-        >
-          <div className="login-logo">
-            <span className="login-logo-icon">🫚</span>
+      <div className="login-content-wrapper" ref={containerRef}>
+        {/* Hero Section / Text */}
+        <div className="login-hero">
+          <div>
+            <h1 className="login-hero-title">Welcome</h1>
+            <p className="login-hero-subtitle">Experience fluid precision.</p>
           </div>
-          <h1 className="login-title">{APP_NAME}</h1>
-          <p className="login-tagline gradient-text">{APP_TAGLINE}</p>
-        </motion.div>
+        </div>
 
-        {/* Description */}
-        <motion.p
-          className="login-description"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ type: 'spring' as const, stiffness: 200, damping: 20, delay: 0.25 }}
-        >
-          {APP_DESCRIPTION}
-        </motion.p>
-
-        {/* Features Preview */}
-        <motion.div
-          className="login-features"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ type: 'spring' as const, stiffness: 200, damping: 20, delay: 0.4 }}
-        >
-          <div className="login-feature">
-            <span className="login-feature-icon">🎬</span>
-            <span className="login-feature-text">Create videos & earn from campaigns</span>
-          </div>
-          <div className="login-feature">
-            <span className="login-feature-icon">📢</span>
-            <span className="login-feature-text">Advertise & pay only for results</span>
-          </div>
-          <div className="login-feature">
-            <span className="login-feature-icon">💰</span>
-            <span className="login-feature-text">Fair payouts based on verified views</span>
-          </div>
-        </motion.div>
-
-        {/* Auth Buttons */}
-        <motion.div
-          className="login-actions"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ type: 'spring' as const, stiffness: 200, damping: 20, delay: 0.55 }}
-        >
-          <Button
-            variant="secondary"
-            size="lg"
-            fullWidth
-            icon={<FcGoogle size={22} />}
+        {/* Authentication Options */}
+        <div className="login-auth-options">
+          <button 
+            className="liquid-chrome" 
             onClick={signInWithGoogle}
-            isLoading={isLoading}
-            id="btn-google-login"
+            disabled={isLoading}
           >
-            Continue with Google
-          </Button>
+            <span className="material-symbols-outlined">mail</span>
+            <span>{isLoading ? 'Connecting...' : 'Continue with Google'}</span>
+          </button>
+          
+          <button className="ghost-button">
+            <span className="material-symbols-outlined">phone_iphone</span>
+            <span>Continue with Phone Number</span>
+          </button>
+          
+          <div className="login-divider">
+            <div className="login-divider-line"></div>
+            <span className="login-divider-text">or</span>
+            <div className="login-divider-line"></div>
+          </div>
+          
+          <div className="login-links">
+            <a href="#" className="login-link-primary">Log In</a>
+            <span style={{ color: 'rgba(255, 255, 255, 0.4)' }}>•</span>
+            <a href="#" className="login-link-secondary">Sign Up</a>
+          </div>
+        </div>
 
-          <p className="login-terms">
-            By continuing, you agree to our{' '}
-            <a href="#terms">Terms of Service</a> and{' '}
-            <a href="#privacy">Privacy Policy</a>
+        {/* Footer / Terms */}
+        <div className="login-footer">
+          <p>
+            By continuing, you agree to Ginger's <br />
+            <a href="#" className="login-footer-link">Terms of Service</a> and <a href="#" className="login-footer-link">Privacy Policy</a>.
           </p>
-        </motion.div>
+        </div>
       </div>
     </div>
   );
