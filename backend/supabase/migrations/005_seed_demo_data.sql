@@ -72,12 +72,12 @@ BEGIN
   ON CONFLICT DO NOTHING;
 
   -- 5. Insert Social Links
-  INSERT INTO public.social_links (profile_id, platform, platform_username, followers_count, is_verified)
+  INSERT INTO public.social_links (profile_id, platform, username, url, followers, verified)
   VALUES 
-    (inf1_id, 'youtube', 'MeeraTravels', 300000, true),
-    (inf1_id, 'instagram', 'meeratravels', 520000, true),
-    (inf2_id, 'instagram', 'fitraj_official', 1200000, true),
-    (inf3_id, 'youtube', 'codewithneha', 350000, false)
+    (inf1_id, 'youtube', 'MeeraTravels', 'https://youtube.com/@MeeraTravels', 300000, true),
+    (inf1_id, 'instagram', 'meeratravels', 'https://instagram.com/meeratravels', 520000, true),
+    (inf2_id, 'instagram', 'fitraj_official', 'https://instagram.com/fitraj_official', 1200000, true),
+    (inf3_id, 'youtube', 'codewithneha', 'https://youtube.com/@codewithneha', 350000, false)
   ON CONFLICT DO NOTHING;
 
 END $$;

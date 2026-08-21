@@ -26,8 +26,8 @@ interface BlogPost {
 interface SocialLink {
   id: string;
   platform: string;
-  platform_username: string;
-  followers_count: number;
+  username: string;
+  followers: number;
 }
 
 interface ProfileState {

@@ -150,8 +150,8 @@ const ProfilePage: React.FC = () => {
                     {link.platform === 'tiktok' && <FaTiktok />}
                   </span>
                   <div>
-                    <p className="social-username">@{link.platform_username}</p>
-                    <p className="social-followers">{formatCount(link.followers_count)} followers</p>
+                    <p className="social-username">@{link.username}</p>
+                    <p className="social-followers">{formatCount(link.followers)} followers</p>
                   </div>
                 </div>
                 <FiLink size={14} className="text-tertiary" />
