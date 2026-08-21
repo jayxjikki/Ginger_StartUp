@@ -271,9 +271,9 @@ const ProfilePage: React.FC = () => {
                 </Card>
               )}
 
-              <div className={isPublicView ? "carousel-container mb-8" : "achievements-list mb-8"}>
+              <div className="carousel-container mb-8">
                 {achievements.length > 0 ? achievements.map((ach) => (
-                  <Card key={ach.id} variant="glass" padding="md" className={`achievement-card flex items-center gap-4 ${isPublicView ? 'carousel-item' : 'mb-3'}`}>
+                  <Card key={ach.id} variant="glass" padding="md" className="achievement-card flex items-center gap-4 carousel-item">
                     <div className="achievement-icon text-ginger text-2xl p-3 bg-black/20 rounded-full min-w-max">
                       {ach.icon_url ? <img src={ach.icon_url} alt="" className="w-8 h-8 rounded-full" /> : <FiAward />}
                     </div>
@@ -289,16 +289,16 @@ const ProfilePage: React.FC = () => {
 
               {/* Portfolio Grid */}
               <h5 className="section-title">Past Work</h5>
-              <div className={isPublicView ? "carousel-container portfolio-carousel" : "portfolio-grid"}>
+              <div className="carousel-container portfolio-carousel">
                 {[1, 2, 3, 4, 5].map((i) => (
-                  <div key={i} className={`portfolio-item ${isPublicView ? 'carousel-item' : ''}`}>
+                  <div key={i} className="portfolio-item carousel-item">
                     <div className="portfolio-placeholder">
                       <FiImage size={24} />
                     </div>
                   </div>
                 ))}
                 {!isPublicView && (
-                  <div className="portfolio-item add-new">
+                  <div className="portfolio-item add-new carousel-item">
                     <div className="portfolio-placeholder">
                       <FiPlus size={24} />
                     </div>
@@ -353,9 +353,9 @@ const ProfilePage: React.FC = () => {
                 </Card>
               )}
 
-              <div className={isPublicView ? "carousel-container" : "blogs-list flex flex-col gap-4"}>
+              <div className="carousel-container">
                 {posts.length > 0 ? posts.map((post) => (
-                  <Card key={post.id} variant="default" padding="none" className={`blog-card overflow-hidden ${isPublicView ? 'carousel-item' : ''}`}>
+                  <Card key={post.id} variant="default" padding="none" className="blog-card overflow-hidden carousel-item">
                     <div className="blog-image h-32 bg-white/5 flex items-center justify-center relative overflow-hidden">
                       {post.image_url ? (
                         <img src={post.image_url} alt="" className="absolute inset-0 w-full h-full object-cover" />
