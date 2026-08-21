@@ -294,3 +294,26 @@
 .bg-white\/5 { background: rgba(255, 255, 255, 0.05); }
 .text-white\/20 { color: rgba(255, 255, 255, 0.2); }
 .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+/* ── Carousel Styles ───────────────────────────────────── */
+.carousel-container {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  gap: var(--space-4);
+  padding-bottom: var(--space-2);
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+.carousel-container::-webkit-scrollbar {
+  display: none; /* Safari and Chrome */
+}
+.carousel-item {
+  scroll-snap-align: center;
+  flex: 0 0 85%; /* shows a peek of the next card */
+}
+
+/* Portfolio carousel specific tweaks */
+.portfolio-carousel .carousel-item {
+  flex: 0 0 45%;
+}

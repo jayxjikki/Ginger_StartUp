@@ -5,7 +5,7 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
   FiEdit2, FiMapPin, FiLink, FiSettings, FiLogOut,
   FiYoutube, FiInstagram, FiPlus, FiImage, FiAward
@@ -35,6 +35,10 @@ const fadeUp = {
 const ProfilePage: React.FC = () => {
   const { user, signOut } = useAuthStore();
   const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
+  
+  const targetUserId = id || user?.id;
+  const isPublicView = id && id !== user?.id;
   
   const { 
     profile, 
@@ -102,10 +106,10 @@ const ProfilePage: React.FC = () => {
   };
 
   React.useEffect(() => {
-    if (user?.id) {
-      fetchProfileData(user.id);
+    if (targetUserId) {
+      fetchProfileData(targetUserId);
     }
-  }, [user?.id, fetchProfileData]);
+  }, [targetUserId, fetchProfileData]);
 
   if (isLoading || !profile) {
     return (
@@ -125,15 +129,17 @@ const ProfilePage: React.FC = () => {
       >
         {/* Header Actions */}
         <motion.div className="profile-header-actions" variants={fadeUp}>
-          <h4>Profile</h4>
-          <div className="profile-header-btns">
-            <button className="icon-btn" onClick={() => navigate('/profile/edit')} aria-label="Edit Profile">
-              <FiEdit2 />
-            </button>
-            <button className="icon-btn" aria-label="Settings">
-              <FiSettings />
-            </button>
-          </div>
+          <h4>{isPublicView ? profile.full_name : 'Profile'}</h4>
+          {!isPublicView && (
+            <div className="profile-header-btns">
+              <button className="icon-btn" onClick={() => navigate('/profile/edit')} aria-label="Edit Profile">
+                <FiEdit2 />
+              </button>
+              <button className="icon-btn" aria-label="Settings">
+                <FiSettings />
+              </button>
+            </div>
+          )}
         </motion.div>
 
         {/* Profile Card */}
@@ -231,10 +237,12 @@ const ProfilePage: React.FC = () => {
             >
               {/* Achievements Section */}
               <div className="flex justify-between items-center mb-4">
-                <h5 className="section-title mb-0">My Achievements</h5>
-                <Button variant="ghost" size="sm" onClick={() => setShowAddAchievement(!showAddAchievement)}>
-                  {showAddAchievement ? 'Cancel' : <><FiPlus className="mr-1" /> Add</>}
-                </Button>
+                <h5 className="section-title mb-0">Achievements</h5>
+                {!isPublicView && (
+                  <Button variant="ghost" size="sm" onClick={() => setShowAddAchievement(!showAddAchievement)}>
+                    {showAddAchievement ? 'Cancel' : <><FiPlus className="mr-1" /> Add</>}
+                  </Button>
+                )}
               </div>
 
               {showAddAchievement && (
@@ -263,10 +271,10 @@ const ProfilePage: React.FC = () => {
                 </Card>
               )}
 
-              <div className="achievements-list mb-8">
+              <div className={isPublicView ? "carousel-container mb-8" : "achievements-list mb-8"}>
                 {achievements.length > 0 ? achievements.map((ach) => (
-                  <Card key={ach.id} variant="glass" padding="md" className="achievement-card flex items-center gap-4 mb-3">
-                    <div className="achievement-icon text-ginger text-2xl p-3 bg-black/20 rounded-full">
+                  <Card key={ach.id} variant="glass" padding="md" className={`achievement-card flex items-center gap-4 ${isPublicView ? 'carousel-item' : 'mb-3'}`}>
+                    <div className="achievement-icon text-ginger text-2xl p-3 bg-black/20 rounded-full min-w-max">
                       {ach.icon_url ? <img src={ach.icon_url} alt="" className="w-8 h-8 rounded-full" /> : <FiAward />}
                     </div>
                     <div>
@@ -281,19 +289,21 @@ const ProfilePage: React.FC = () => {
 
               {/* Portfolio Grid */}
               <h5 className="section-title">Past Work</h5>
-              <div className="portfolio-grid">
+              <div className={isPublicView ? "carousel-container portfolio-carousel" : "portfolio-grid"}>
                 {[1, 2, 3, 4, 5].map((i) => (
-                  <div key={i} className="portfolio-item">
+                  <div key={i} className={`portfolio-item ${isPublicView ? 'carousel-item' : ''}`}>
                     <div className="portfolio-placeholder">
                       <FiImage size={24} />
                     </div>
                   </div>
                 ))}
-                <div className="portfolio-item add-new">
-                  <div className="portfolio-placeholder">
-                    <FiPlus size={24} />
+                {!isPublicView && (
+                  <div className="portfolio-item add-new">
+                    <div className="portfolio-placeholder">
+                      <FiPlus size={24} />
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             </motion.div>
           )}
@@ -307,10 +317,12 @@ const ProfilePage: React.FC = () => {
               transition={{ duration: 0.2 }}
             >
               <div className="flex justify-between items-center mb-4">
-                <h5 className="section-title mb-0">My Blog Posts</h5>
-                <Button variant="primary" size="sm" onClick={() => setShowAddBlog(!showAddBlog)}>
-                  {showAddBlog ? 'Cancel' : <><FiPlus className="mr-1" /> New Post</>}
-                </Button>
+                <h5 className="section-title mb-0">Blog Posts</h5>
+                {!isPublicView && (
+                  <Button variant="primary" size="sm" onClick={() => setShowAddBlog(!showAddBlog)}>
+                    {showAddBlog ? 'Cancel' : <><FiPlus className="mr-1" /> New Post</>}
+                  </Button>
+                )}
               </div>
 
               {showAddBlog && (
@@ -341,9 +353,9 @@ const ProfilePage: React.FC = () => {
                 </Card>
               )}
 
-              <div className="blogs-list flex flex-col gap-4">
+              <div className={isPublicView ? "carousel-container" : "blogs-list flex flex-col gap-4"}>
                 {posts.length > 0 ? posts.map((post) => (
-                  <Card key={post.id} variant="default" padding="none" className="blog-card overflow-hidden">
+                  <Card key={post.id} variant="default" padding="none" className={`blog-card overflow-hidden ${isPublicView ? 'carousel-item' : ''}`}>
                     <div className="blog-image h-32 bg-white/5 flex items-center justify-center relative overflow-hidden">
                       {post.image_url ? (
                         <img src={post.image_url} alt="" className="absolute inset-0 w-full h-full object-cover" />
@@ -367,18 +379,20 @@ const ProfilePage: React.FC = () => {
           )}
         </AnimatePresence>
 
-        {/* Sign Out */}
-        <motion.div variants={fadeUp} className="mt-8 mb-6">
-          <Button
-            variant="ghost"
-            fullWidth
-            icon={<FiLogOut />}
-            onClick={signOut}
-            className="signout-btn text-red-500"
-          >
-            Sign Out
-          </Button>
-        </motion.div>
+        {/* Sign Out (Only for own profile) */}
+        {!isPublicView && (
+          <motion.div variants={fadeUp} className="mt-8 mb-6">
+            <Button
+              variant="ghost"
+              fullWidth
+              icon={<FiLogOut />}
+              onClick={signOut}
+              className="signout-btn text-red-500"
+            >
+              Sign Out
+            </Button>
+          </motion.div>
+        )}
       </motion.div>
     </div>
   );

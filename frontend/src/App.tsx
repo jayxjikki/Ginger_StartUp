@@ -141,6 +141,16 @@ const App: React.FC = () => {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/profile/:id"
+            element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <ProfilePage />
+                </AppLayout>
+              </ProtectedRoute>
+            }
+          />
 
           {/* Default redirect */}
           <Route path="/" element={<Navigate to="/campaigns" replace />} />
