@@ -14,6 +14,9 @@ import Button from '../../../components/ui/Button';
 import Card from '../../../components/ui/Card';
 import Input, { Textarea } from '../../../components/ui/Input';
 import Badge from '../../../components/ui/Badge';
+import ImageUpload from '../../../components/ui/ImageUpload';
+import { useAuthStore } from '../../../store/authStore';
+import { useCampaignStore } from '../../../store/campaignStore';
 import { CAMPAIGN_TYPES, VERIFICATION_PERIODS, SOCIAL_PLATFORMS } from '../../../lib/constants';
 import './CreateCampaignPage.css';
 
@@ -26,7 +29,11 @@ const steps = [
 
 const CreateCampaignPage: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuthStore();
+  const { createCampaign } = useCampaignStore();
+  
   const [currentStep, setCurrentStep] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     type: 'pool' as string,
     title: '',
@@ -40,6 +47,7 @@ const CreateCampaignPage: React.FC = () => {
     prizePool: '',
     discountPercent: '',
     verificationDays: 7,
+    image_url: '',
     tiers: [
       { minViews: '1000', amount: '1000', rewardType: 'cash' },
       { minViews: '10000', amount: '10000', rewardType: 'cash' },
@@ -81,6 +89,35 @@ const CreateCampaignPage: React.FC = () => {
     const newTiers = [...formData.tiers];
     (newTiers[index] as any)[field] = value;
     updateField('tiers', newTiers);
+  };
+
+  const handleLaunch = async () => {
+    if (!user) return;
+    setIsSubmitting(true);
+    try {
+      await createCampaign({
+        advertiser_id: user.id,
+        title: formData.title,
+        description: formData.description,
+        type: formData.type as any,
+        prize_pool: Number(formData.prizePool) || 0,
+        remaining_pool: Number(formData.prizePool) || 0,
+        status: 'active',
+        required_platforms: formData.platforms,
+        video_requirements: formData.videoRequirements,
+        slogan: formData.slogan,
+        keywords: formData.keywords,
+        location: formData.location,
+        discount_percent: Number(formData.discountPercent) || 0,
+        verification_days: formData.verificationDays,
+        image_url: formData.image_url,
+      });
+      navigate('/campaigns');
+    } catch (err) {
+      console.error('Failed to create campaign', err);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -173,6 +210,12 @@ const CreateCampaignPage: React.FC = () => {
                   value={formData.description}
                   onChange={(e) => updateField('description', e.target.value)}
                   placeholder="Describe what kind of videos you want..."
+                />
+
+                <ImageUpload 
+                  label="Campaign Cover Image (Cloudinary)" 
+                  onUploadSuccess={(url) => updateField('image_url', url)}
+                  onUploadError={(err) => console.error(err)}
                 />
 
                 <Input
@@ -375,8 +418,14 @@ const CreateCampaignPage: React.FC = () => {
               Next
             </Button>
           ) : (
-            <Button variant="primary" size="lg" id="btn-launch-campaign">
-              🚀 Launch Campaign
+            <Button 
+              variant="primary" 
+              size="lg" 
+              id="btn-launch-campaign" 
+              onClick={handleLaunch}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? 'Launching...' : '🚀 Launch Campaign'}
             </Button>
           )}
         </div>

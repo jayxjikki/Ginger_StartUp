@@ -22,6 +22,7 @@ export interface Campaign {
   end_date: string;
   verification_days: number;
   created_at: string;
+  image_url?: string;
   // Joined fields
   advertiser?: {
     full_name: string;

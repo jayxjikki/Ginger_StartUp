@@ -17,6 +17,7 @@ interface CampaignState {
 
   // Actions
   fetchCampaigns: () => Promise<void>;
+  createCampaign: (campaign: Partial<Campaign>) => Promise<void>;
   setSelectedCampaign: (campaign: Campaign | null) => void;
   setFilters: (filters: Partial<CampaignFilters>) => void;
   applyFilters: () => void;
@@ -67,6 +68,29 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
       set({ error: err.message });
     } finally {
       set({ isLoading: false });
+    }
+  },
+
+  createCampaign: async (campaign: Partial<Campaign>) => {
+    try {
+      // In a real app we might insert payout tiers too. For now, just insert the campaign.
+      const { data, error } = await supabase
+        .from('campaigns')
+        .insert([campaign])
+        .select(`*, advertiser:profiles(*)`)
+        .single();
+        
+      if (error) throw error;
+      
+      const newCampaign = data as unknown as Campaign;
+      set((state) => {
+        const updated = [newCampaign, ...state.campaigns];
+        return { campaigns: updated };
+      });
+      get().applyFilters();
+    } catch (err: any) {
+      console.error('Error creating campaign:', err);
+      throw err;
     }
   },
 

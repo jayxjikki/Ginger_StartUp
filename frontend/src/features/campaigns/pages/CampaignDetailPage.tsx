@@ -97,6 +97,17 @@ const CampaignDetailPage: React.FC = () => {
           </div>
         </motion.div>
 
+        {/* Campaign Cover Image */}
+        {campaign.image_url && (
+          <motion.div variants={fadeUp} className="w-full h-48 bg-black/20 rounded-xl overflow-hidden mb-6">
+            <img 
+              src={campaign.image_url} 
+              alt={campaign.title} 
+              className="w-full h-full object-cover" 
+            />
+          </motion.div>
+        )}
+
         {/* Prize Pool Card */}
         {campaign.prize_pool > 0 && (
           <motion.div variants={fadeUp}>

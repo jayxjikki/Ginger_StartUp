@@ -192,6 +192,17 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
           )}
         </div>
 
+        {/* Card Image (if exists) */}
+        {campaign.image_url && (
+          <div className="w-full h-40 bg-black/20 overflow-hidden">
+            <img 
+              src={campaign.image_url} 
+              alt={campaign.title} 
+              className="w-full h-full object-cover" 
+            />
+          </div>
+        )}
+
         {/* Card Body */}
         <div className="campaign-card-body">
           <h4 className="campaign-card-title">{campaign.title}</h4>
