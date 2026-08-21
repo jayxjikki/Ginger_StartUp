@@ -401,7 +401,7 @@ const ProfilePage: React.FC = () => {
                 </Card>
               )}
 
-              <div className="carousel-container">
+              <div className="carousel-container blog-carousel">
                 {posts.length > 0 ? posts.map((post) => (
                   <Card key={post.id} variant="default" padding="none" className="blog-card overflow-hidden carousel-item">
                     <div className="blog-image h-32 bg-white/5 flex items-center justify-center relative overflow-hidden">
