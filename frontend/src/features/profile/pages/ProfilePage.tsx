@@ -111,6 +111,54 @@ const ProfilePage: React.FC = () => {
     }
   }, [targetUserId, fetchProfileData]);
 
+  // Auto-scroll logic for carousels
+  React.useEffect(() => {
+    const containers = document.querySelectorAll('.carousel-container');
+    const cleanups: (() => void)[] = [];
+
+    containers.forEach((container) => {
+      let isUserInteracting = false;
+
+      const handleInteractStart = () => { isUserInteracting = true; };
+      const handleInteractEnd = () => { isUserInteracting = false; };
+
+      container.addEventListener('touchstart', handleInteractStart);
+      container.addEventListener('touchend', handleInteractEnd);
+      container.addEventListener('mousedown', handleInteractStart);
+      container.addEventListener('mouseup', handleInteractEnd);
+      container.addEventListener('wheel', handleInteractStart); // Stop on scroll
+
+      const interval = setInterval(() => {
+        if (!isUserInteracting) {
+          const maxScroll = container.scrollWidth - container.clientWidth;
+          
+          if (container.scrollLeft >= maxScroll - 5) {
+            // Reached the end, scroll back to start
+            container.scrollTo({ left: 0, behavior: 'smooth' });
+          } else {
+            // Find the width of one child
+            const firstChild = container.querySelector('.carousel-item');
+            const scrollStep = firstChild ? (firstChild as HTMLElement).offsetWidth + 16 : container.clientWidth * 0.85;
+            container.scrollBy({ left: scrollStep, behavior: 'smooth' });
+          }
+        }
+      }, 3500); // 3.5 seconds
+
+      cleanups.push(() => {
+        clearInterval(interval);
+        container.removeEventListener('touchstart', handleInteractStart);
+        container.removeEventListener('touchend', handleInteractEnd);
+        container.removeEventListener('mousedown', handleInteractStart);
+        container.removeEventListener('mouseup', handleInteractEnd);
+        container.removeEventListener('wheel', handleInteractStart);
+      });
+    });
+
+    return () => {
+      cleanups.forEach(cleanup => cleanup());
+    };
+  }, [achievements.length, posts.length, activeTab]);
+
   if (isLoading || !profile) {
     return (
       <div className="page-content flex justify-center items-center h-full">
