@@ -27,11 +27,18 @@ import './styles/utilities.css';
 
 // Auth guard wrapper
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // For development, always show the app (bypass auth)
-  // In production, uncomment the auth check below
-  // const { user, isInitialized } = useAuthStore();
-  // if (!isInitialized) return <SplashScreen />;
-  // if (!user) return <Navigate to="/login" replace />;
+  const { user, isInitialized } = useAuthStore();
+  
+  if (!isInitialized) {
+    return (
+      <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="btn-spinner" style={{ width: '40px', height: '40px', borderColor: 'rgba(247, 147, 30, 0.3)', borderTopColor: '#F7931E' }} />
+      </div>
+    );
+  }
+  
+  if (!user) return <Navigate to="/login" replace />;
+  
   return <>{children}</>;
 };
 
