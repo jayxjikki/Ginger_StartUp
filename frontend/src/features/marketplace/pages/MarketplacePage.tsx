@@ -5,88 +5,49 @@
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { FiSearch, FiSliders, FiMapPin, FiStar } from 'react-icons/fi';
-import { FaYoutube, FaInstagram, FaTiktok } from 'react-icons/fa';
+import { FiSearch, FiSliders, FiMapPin } from 'react-icons/fi';
+import { FaYoutube, FaInstagram } from 'react-icons/fa';
 import Card from '../../../components/ui/Card';
 import Badge from '../../../components/ui/Badge';
 import Avatar from '../../../components/ui/Avatar';
 import Button from '../../../components/ui/Button';
 import { formatCount, formatCurrency } from '../../../utils/formatters';
 import { CATEGORIES } from '../../../types/user.types';
-import './MarketplacePage.css';
-
-// Demo influencer data
-const demoInfluencers = [
-  {
-    id: '1', name: 'Meera Travels', username: '@meeratravels', avatar: null,
-    bio: 'Travel vlogger | 50+ countries explored | Luxury travel & budget hacks',
-    category: 'Travel', location: 'Mumbai, India', verified: true,
-    followers: 820000, rating: 4.9, completedCampaigns: 45,
-    ratePerPost: 8000, ratePerReel: 15000,
-    platforms: ['youtube', 'instagram'],
-  },
-  {
-    id: '2', name: 'FitRaj', username: '@fitraj_official', avatar: null,
-    bio: 'Fitness coach & certified nutritionist | Transform your body & mind',
-    category: 'Fitness & Gym', location: 'Delhi, India', verified: true,
-    followers: 1200000, rating: 4.8, completedCampaigns: 72,
-    ratePerPost: 12000, ratePerReel: 25000,
-    platforms: ['youtube', 'instagram', 'tiktok'],
-  },
-  {
-    id: '3', name: 'CodeWithNeha', username: '@codewithneha', avatar: null,
-    bio: 'Tech educator | React, Python, AI tutorials | Making coding fun',
-    category: 'Education', location: 'Bangalore, India', verified: false,
-    followers: 350000, rating: 4.7, completedCampaigns: 18,
-    ratePerPost: 5000, ratePerReel: 10000,
-    platforms: ['youtube'],
-  },
-  {
-    id: '4', name: 'TastyAnkit', username: '@tastyankit', avatar: null,
-    bio: 'Food reviewer | Street food to fine dining | 500+ restaurants reviewed',
-    category: 'Food & Restaurant', location: 'Pune, India', verified: true,
-    followers: 680000, rating: 4.9, completedCampaigns: 89,
-    ratePerPost: 6000, ratePerReel: 12000,
-    platforms: ['instagram', 'youtube'],
-  },
-  {
-    id: '5', name: 'GamerPriya', username: '@gamerpriya', avatar: null,
-    bio: 'Pro gamer & streamer | Valorant, BGMI | Esports enthusiast',
-    category: 'Gaming', location: 'Hyderabad, India', verified: false,
-    followers: 450000, rating: 4.6, completedCampaigns: 22,
-    ratePerPost: 4000, ratePerReel: 8000,
-    platforms: ['youtube', 'instagram', 'tiktok'],
-  },
-  {
-    id: '6', name: 'StyleByRiya', username: '@stylebyriya', avatar: null,
-    bio: 'Fashion & beauty creator | Affordable fashion tips | Brand collaborations',
-    category: 'Fashion & Beauty', location: 'Jaipur, India', verified: true,
-    followers: 920000, rating: 4.8, completedCampaigns: 56,
-    ratePerPost: 10000, ratePerReel: 20000,
-    platforms: ['instagram', 'youtube'],
-  },
-];
+import { supabase } from '../../../lib/supabase';
+import type { Profile } from '../../../types/user.types';
 
 const MarketplacePage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
+  const [influencers, setInfluencers] = useState<Profile[]>([]);
 
-  const filtered = demoInfluencers.filter((inf) => {
+  React.useEffect(() => {
+    const fetchInfluencers = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          // Only show verified influencers in marketplace for now, or you could remove this to show everyone
+          // .eq('is_verified', true) 
+          .order('follower_count', { ascending: false });
+        
+        if (error) throw error;
+        setInfluencers((data || []) as Profile[]);
+      } catch (err) {
+        console.error('Error fetching marketplace influencers:', err);
+      }
+    };
+    fetchInfluencers();
+  }, []);
+
+  const filtered = influencers.filter((inf) => {
     const matchesSearch = !search ||
-      inf.name.toLowerCase().includes(search.toLowerCase()) ||
-      inf.category.toLowerCase().includes(search.toLowerCase());
+      (inf.full_name?.toLowerCase().includes(search.toLowerCase()) || 
+       inf.username?.toLowerCase().includes(search.toLowerCase()) ||
+       inf.category?.toLowerCase().includes(search.toLowerCase()));
     const matchesCategory = !selectedCategory || inf.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
-
-  const getPlatformIcon = (platform: string) => {
-    switch (platform) {
-      case 'youtube': return <FaYoutube />;
-      case 'instagram': return <FaInstagram />;
-      case 'tiktok': return <FaTiktok />;
-      default: return null;
-    }
-  };
 
   return (
     <div className="page-content">
@@ -161,43 +122,39 @@ const MarketplacePage: React.FC = () => {
             >
               <Card variant="glass" padding="md" className="influencer-card" onClick={() => {}}>
                 <div className="inf-header">
-                  <Avatar src={inf.avatar} name={inf.name} size="lg" verified={inf.verified} />
+                  <Avatar src={inf.avatar_url} name={inf.full_name || 'User'} size="lg" verified={inf.is_verified} />
                   <div className="inf-info">
-                    <h5 className="inf-name">{inf.name}</h5>
+                    <h5 className="inf-name">{inf.full_name}</h5>
                     <p className="text-xs text-secondary">{inf.username}</p>
                     <div className="inf-meta">
-                      <span className="inf-location"><FiMapPin size={10} /> {inf.location}</span>
-                      <span className="inf-rating"><FiStar size={10} /> {inf.rating}</span>
+                      {inf.location && <span className="inf-location"><FiMapPin size={10} /> {inf.location}</span>}
                     </div>
                   </div>
                 </div>
 
-                <p className="inf-bio text-sm line-clamp-2">{inf.bio}</p>
+                <p className="inf-bio text-sm line-clamp-2">{inf.bio || 'No bio available'}</p>
 
                 <div className="inf-stats">
                   <div className="inf-stat">
-                    <span className="inf-stat-value">{formatCount(inf.followers)}</span>
+                    <span className="inf-stat-value">{formatCount(inf.follower_count || 0)}</span>
                     <span className="inf-stat-label">Followers</span>
                   </div>
                   <div className="inf-stat">
-                    <span className="inf-stat-value">{inf.completedCampaigns}</span>
+                    <span className="inf-stat-value">-</span>
                     <span className="inf-stat-label">Campaigns</span>
                   </div>
                   <div className="inf-stat">
-                    <span className="inf-stat-value">{formatCurrency(inf.ratePerPost, true)}</span>
+                    <span className="inf-stat-value">{formatCurrency(inf.rates?.per_post || 0, true)}</span>
                     <span className="inf-stat-label">Per Post</span>
                   </div>
                 </div>
 
                 <div className="inf-footer">
                   <div className="inf-platforms">
-                    {inf.platforms.map((p) => (
-                      <span key={p} className={`inf-platform-icon platform-${p}`}>
-                        {getPlatformIcon(p)}
-                      </span>
-                    ))}
+                    <span className="inf-platform-icon platform-instagram"><FaInstagram /></span>
+                    <span className="inf-platform-icon platform-youtube"><FaYoutube /></span>
                   </div>
-                  <Badge variant="ginger" size="sm">{inf.category}</Badge>
+                  {inf.category && <Badge variant="ginger" size="sm">{inf.category}</Badge>}
                 </div>
 
                 <Button variant="outline" size="sm" fullWidth className="mt-3">

@@ -12,6 +12,7 @@ import {
 } from 'react-icons/fi';
 import { FaTiktok } from 'react-icons/fa';
 import { useAuthStore } from '../../../store/authStore';
+import { useProfileStore } from '../../../store/profileStore';
 import Avatar from '../../../components/ui/Avatar';
 import Button from '../../../components/ui/Button';
 import Card from '../../../components/ui/Card';
@@ -31,36 +32,19 @@ const fadeUp = {
   show: { opacity: 1, y: 0, transition: { type: 'spring' as const, stiffness: 300, damping: 30 } },
 };
 
-// Demo profile data
-const demoProfile = {
-  full_name: 'Alex Creator',
-  username: '@alexcreator',
-  avatar_url: null,
-  bio: 'Content creator | Travel & Food lover 🌍🍔 | 500K+ community | Open for collaborations',
-  category: 'Travel',
-  location: 'Mumbai, India',
-  is_verified: true,
-  follower_count: 524000,
-  rates: { per_post: 5000, per_story: 2000, per_reel: 8000, per_video: 15000, currency: 'INR' },
-};
-
-const demoStats = {
-  totalEarnings: 285000,
-  activeCampaigns: 4,
-  completedCampaigns: 23,
-  totalViews: 12400000,
-};
-
-const demoSocialLinks = [
-  { platform: 'youtube', username: 'AlexCreator', followers: 280000, icon: <FiYoutube /> },
-  { platform: 'instagram', username: 'alexcreator', followers: 524000, icon: <FiInstagram /> },
-  { platform: 'tiktok', username: 'alexcreator', followers: 180000, icon: <FaTiktok /> },
-];
-
 const ProfilePage: React.FC = () => {
-  const { signOut } = useAuthStore();
+  const { user, signOut } = useAuthStore();
   const navigate = useNavigate();
-  const profile = demoProfile;
+  
+  const { 
+    profile, 
+    achievements, 
+    posts, 
+    socialLinks, 
+    stats, 
+    isLoading, 
+    fetchProfileData 
+  } = useProfileStore();
 
   // New Feature States
   const [activeTab, setActiveTab] = useState<'portfolio' | 'blogs'>('portfolio');
@@ -74,6 +58,20 @@ const ProfilePage: React.FC = () => {
   const handleUploadError = (error: Error) => {
     console.error('Upload failed:', error.message);
   };
+
+  React.useEffect(() => {
+    if (user?.id) {
+      fetchProfileData(user.id);
+    }
+  }, [user?.id, fetchProfileData]);
+
+  if (isLoading || !profile) {
+    return (
+      <div className="page-content flex justify-center items-center h-full">
+        <p>Loading Profile...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="page-content">
@@ -122,19 +120,19 @@ const ProfilePage: React.FC = () => {
         {/* Stats Grid */}
         <motion.div className="stats-grid" variants={fadeUp}>
           <Card variant="default" padding="md" className="stat-card">
-            <span className="stat-value gradient-text">{formatCurrency(demoStats.totalEarnings, true)}</span>
+            <span className="stat-value gradient-text">{formatCurrency(stats.totalEarnings, true)}</span>
             <span className="stat-label">Total Earned</span>
           </Card>
           <Card variant="default" padding="md" className="stat-card">
-            <span className="stat-value text-ginger">{demoStats.activeCampaigns}</span>
+            <span className="stat-value text-ginger">{stats.activeCampaigns}</span>
             <span className="stat-label">Active</span>
           </Card>
           <Card variant="default" padding="md" className="stat-card">
-            <span className="stat-value">{demoStats.completedCampaigns}</span>
+            <span className="stat-value">{stats.completedCampaigns}</span>
             <span className="stat-label">Completed</span>
           </Card>
           <Card variant="default" padding="md" className="stat-card">
-            <span className="stat-value">{formatCount(demoStats.totalViews)}</span>
+            <span className="stat-value">{formatCount(stats.totalViews)}</span>
             <span className="stat-label">Total Views</span>
           </Card>
         </motion.div>
@@ -143,18 +141,24 @@ const ProfilePage: React.FC = () => {
         <motion.div variants={fadeUp}>
           <h5 className="section-title">Connected Platforms</h5>
           <div className="social-links-list">
-            {demoSocialLinks.map((link) => (
-              <Card key={link.platform} variant="default" padding="md" className="social-link-card">
+            {socialLinks.length > 0 ? socialLinks.map((link) => (
+              <Card key={link.id} variant="default" padding="md" className="social-link-card">
                 <div className="social-link-info">
-                  <span className={`social-icon social-${link.platform}`}>{link.icon}</span>
+                  <span className={`social-icon social-${link.platform}`}>
+                    {link.platform === 'youtube' && <FiYoutube />}
+                    {link.platform === 'instagram' && <FiInstagram />}
+                    {link.platform === 'tiktok' && <FaTiktok />}
+                  </span>
                   <div>
-                    <p className="social-username">@{link.username}</p>
-                    <p className="social-followers">{formatCount(link.followers)} followers</p>
+                    <p className="social-username">@{link.platform_username}</p>
+                    <p className="social-followers">{formatCount(link.followers_count)} followers</p>
                   </div>
                 </div>
                 <FiLink size={14} className="text-tertiary" />
               </Card>
-            ))}
+            )) : (
+              <p className="text-sm text-secondary">No social platforms connected yet.</p>
+            )}
           </div>
         </motion.div>
 
@@ -208,16 +212,19 @@ const ProfilePage: React.FC = () => {
               )}
 
               <div className="achievements-list mb-8">
-                {/* Demo Achievement */}
-                <Card variant="glass" padding="md" className="achievement-card flex items-center gap-4">
-                  <div className="achievement-icon text-ginger text-2xl p-3 bg-black/20 rounded-full">
-                    <FiAward />
-                  </div>
-                  <div>
-                    <h6 className="mb-1 text-sm font-medium">Top Performer 2025</h6>
-                    <p className="text-xs text-tertiary">Awarded for generating 10M+ views in a single campaign.</p>
-                  </div>
-                </Card>
+                {achievements.length > 0 ? achievements.map((ach) => (
+                  <Card key={ach.id} variant="glass" padding="md" className="achievement-card flex items-center gap-4 mb-3">
+                    <div className="achievement-icon text-ginger text-2xl p-3 bg-black/20 rounded-full">
+                      {ach.icon_url ? <img src={ach.icon_url} alt="" className="w-8 h-8 rounded-full" /> : <FiAward />}
+                    </div>
+                    <div>
+                      <h6 className="mb-1 text-sm font-medium">{ach.title}</h6>
+                      <p className="text-xs text-tertiary">{ach.description}</p>
+                    </div>
+                  </Card>
+                )) : (
+                  <p className="text-sm text-secondary">No achievements to display.</p>
+                )}
               </div>
 
               {/* Portfolio Grid */}
@@ -276,19 +283,26 @@ const ProfilePage: React.FC = () => {
               )}
 
               <div className="blogs-list flex flex-col gap-4">
-                {/* Demo Blog Post */}
-                <Card variant="default" padding="none" className="blog-card overflow-hidden">
-                  <div className="blog-image h-32 bg-white/5 flex items-center justify-center">
-                    <FiImage size={32} className="text-white/20" />
-                  </div>
-                  <div className="p-4">
-                    <h6 className="text-md mb-2">How I grew my audience to 500K</h6>
-                    <p className="text-sm text-secondary mb-3 line-clamp-2">
-                      Consistency is key. When I first started creating content, I didn't see results for months. But applying these 3 strategies changed everything...
-                    </p>
-                    <span className="text-xs text-tertiary">Posted 2 days ago</span>
-                  </div>
-                </Card>
+                {posts.length > 0 ? posts.map((post) => (
+                  <Card key={post.id} variant="default" padding="none" className="blog-card overflow-hidden">
+                    <div className="blog-image h-32 bg-white/5 flex items-center justify-center relative overflow-hidden">
+                      {post.image_url ? (
+                        <img src={post.image_url} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                      ) : (
+                        <FiImage size={32} className="text-white/20" />
+                      )}
+                    </div>
+                    <div className="p-4">
+                      <h6 className="text-md mb-2">{post.title}</h6>
+                      <p className="text-sm text-secondary mb-3 line-clamp-2">
+                        {post.content}
+                      </p>
+                      <span className="text-xs text-tertiary">Posted on {new Date(post.created_at).toLocaleDateString()}</span>
+                    </div>
+                  </Card>
+                )) : (
+                  <p className="text-sm text-secondary">No blog posts yet.</p>
+                )}
               </div>
             </motion.div>
           )}

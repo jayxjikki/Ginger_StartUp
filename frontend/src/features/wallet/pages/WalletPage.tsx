@@ -10,6 +10,8 @@ import Card from '../../../components/ui/Card';
 import Button from '../../../components/ui/Button';
 import Badge from '../../../components/ui/Badge';
 import { formatCurrency, formatRelativeTime } from '../../../utils/formatters';
+import { useAuthStore } from '../../../store/authStore';
+import { useWalletStore } from '../../../store/walletStore';
 import './WalletPage.css';
 
 const stagger = {
@@ -22,25 +24,24 @@ const fadeUp = {
   show: { opacity: 1, y: 0, transition: { type: 'spring' as const, stiffness: 300, damping: 30 } },
 };
 
-// Demo data
-const demoBalance = {
-  available: 45200,
-  pending: 12800,
-  total_earned: 285000,
-  total_spent: 32000,
-};
-
-const demoTransactions = [
-  { id: '1', type: 'earning', amount: 10000, status: 'completed', description: 'Campaign: Himalayan Resort', created_at: '2026-08-21T10:00:00Z' },
-  { id: '2', type: 'earning', amount: 5000, status: 'completed', description: 'Campaign: Spice Garden', created_at: '2026-08-20T15:30:00Z' },
-  { id: '3', type: 'withdrawal', amount: -25000, status: 'completed', description: 'Bank withdrawal', created_at: '2026-08-19T09:00:00Z' },
-  { id: '4', type: 'earning', amount: 2000, status: 'pending', description: 'Campaign: FitZone Gym', created_at: '2026-08-18T14:00:00Z' },
-  { id: '5', type: 'deposit', amount: 50000, status: 'completed', description: 'Razorpay deposit', created_at: '2026-08-17T11:00:00Z' },
-  { id: '6', type: 'earning', amount: 15000, status: 'completed', description: 'Campaign: EduSpark', created_at: '2026-08-16T16:00:00Z' },
-  { id: '7', type: 'commission', amount: -750, status: 'completed', description: 'Platform fee (5%)', created_at: '2026-08-16T16:00:00Z' },
-];
-
 const WalletPage: React.FC = () => {
+  const { user } = useAuthStore();
+  const { balance, transactions, isLoading, fetchWalletData } = useWalletStore();
+
+  React.useEffect(() => {
+    if (user?.id) {
+      fetchWalletData(user.id);
+    }
+  }, [user?.id, fetchWalletData]);
+
+  if (isLoading) {
+    return (
+      <div className="page-content flex justify-center items-center h-full">
+        <p>Loading Wallet...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="page-content">
       <motion.div
@@ -65,11 +66,11 @@ const WalletPage: React.FC = () => {
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.2, type: 'spring' as const, stiffness: 200, damping: 20 }}
               >
-                {formatCurrency(demoBalance.available)}
+                {formatCurrency(balance.available)}
               </motion.h1>
               <div className="balance-pending">
                 <FiClock size={12} />
-                <span>{formatCurrency(demoBalance.pending)} pending</span>
+                <span>{formatCurrency(balance.pending)} pending</span>
               </div>
             </div>
 
@@ -89,14 +90,14 @@ const WalletPage: React.FC = () => {
           <Card variant="default" padding="md" className="wallet-stat">
             <span className="wallet-stat-icon">📈</span>
             <div>
-              <span className="wallet-stat-value text-success">{formatCurrency(demoBalance.total_earned, true)}</span>
+              <span className="wallet-stat-value text-success">{formatCurrency(balance.total_earned, true)}</span>
               <span className="wallet-stat-label">Total Earned</span>
             </div>
           </Card>
           <Card variant="default" padding="md" className="wallet-stat">
             <span className="wallet-stat-icon">💸</span>
             <div>
-              <span className="wallet-stat-value">{formatCurrency(demoBalance.total_spent, true)}</span>
+              <span className="wallet-stat-value">{formatCurrency(balance.total_spent, true)}</span>
               <span className="wallet-stat-label">Total Spent</span>
             </div>
           </Card>
@@ -106,7 +107,7 @@ const WalletPage: React.FC = () => {
         <motion.div variants={fadeUp}>
           <h5 className="section-title">Recent Transactions</h5>
           <div className="transactions-list">
-            {demoTransactions.map((tx, idx) => (
+            {transactions.length > 0 ? transactions.map((tx, idx) => (
               <motion.div
                 key={tx.id}
                 className="transaction-row"
@@ -133,7 +134,9 @@ const WalletPage: React.FC = () => {
                   </Badge>
                 </div>
               </motion.div>
-            ))}
+            )) : (
+              <p className="text-secondary text-sm">No transactions yet.</p>
+            )}
           </div>
         </motion.div>
       </motion.div>
