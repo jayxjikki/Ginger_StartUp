@@ -1,0 +1,258 @@
+/* ═══════════════════════════════════════════════════════════
+   GINGER — Create Campaign Page Styles
+   ═══════════════════════════════════════════════════════════ */
+
+.create-campaign {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding-top: calc(var(--safe-top) + var(--space-3));
+}
+
+.create-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* ── Step Progress ─────────────────────────────────────── */
+.step-progress {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  position: relative;
+  padding: 0 var(--space-2);
+}
+
+.step-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  z-index: 1;
+}
+
+.step-dot {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--bg-card);
+  border: 2px solid var(--border-subtle);
+  color: var(--text-tertiary);
+  font-size: 14px;
+  transition: all var(--duration-normal) var(--ease-smooth);
+}
+
+.step-item.active .step-dot {
+  border-color: var(--ginger-500);
+  color: var(--ginger-500);
+}
+
+.step-item.current .step-dot {
+  background: var(--gradient-ginger);
+  border-color: var(--ginger-500);
+  color: white;
+  box-shadow: 0 0 20px rgba(247, 147, 30, 0.3);
+}
+
+.step-label {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.step-item.active .step-label {
+  color: var(--ginger-500);
+}
+
+.step-line {
+  position: absolute;
+  top: 18px;
+  left: 40px;
+  right: 40px;
+  height: 2px;
+  background: var(--border-subtle);
+  z-index: 0;
+}
+
+.step-line-fill {
+  height: 100%;
+  background: var(--gradient-ginger);
+  border-radius: var(--radius-full);
+}
+
+/* ── Step Content ──────────────────────────────────────── */
+.step-content {
+  min-height: 300px;
+}
+
+/* ── Campaign Type Grid ────────────────────────────────── */
+.campaign-type-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.campaign-type-card {
+  cursor: pointer;
+  transition: all var(--duration-fast);
+}
+
+/* ── Form Fields ───────────────────────────────────────── */
+.form-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.form-label {
+  display: block;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-2);
+}
+
+/* ── Keyword Input ─────────────────────────────────────── */
+.keyword-input-row {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-start;
+}
+
+.keywords-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.keyword-remove {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0;
+  margin-left: 4px;
+  opacity: 0.7;
+}
+
+.keyword-remove:hover {
+  opacity: 1;
+}
+
+/* ── Platform Grid ─────────────────────────────────────── */
+.platform-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.platform-chip {
+  padding: var(--space-2) var(--space-4);
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--duration-fast);
+}
+
+.platform-chip.active {
+  background: rgba(247, 147, 30, 0.12);
+  border-color: var(--ginger-500);
+  color: var(--ginger-400);
+}
+
+/* ── Verify Period ─────────────────────────────────────── */
+.verify-period-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.period-chip {
+  padding: var(--space-2) var(--space-3);
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--duration-fast);
+}
+
+.period-chip.active {
+  background: rgba(247, 147, 30, 0.12);
+  border-color: var(--ginger-500);
+  color: var(--ginger-400);
+}
+
+/* ── Tiers Builder ─────────────────────────────────────── */
+.tiers-builder {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.tier-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.tier-arrow-small {
+  color: var(--text-tertiary);
+  font-size: var(--text-lg);
+  flex-shrink: 0;
+  margin-top: var(--space-2);
+}
+
+.tier-delete {
+  background: none;
+  border: none;
+  color: var(--error-400);
+  cursor: pointer;
+  padding: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+/* ── Review Summary ────────────────────────────────────── */
+.review-summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.review-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.review-row:last-child {
+  border-bottom: none;
+}
+
+.review-label {
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+}
+
+/* ── Step Navigation ───────────────────────────────────── */
+.step-nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) 0;
+}

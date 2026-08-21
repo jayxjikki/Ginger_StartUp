@@ -1,0 +1,62 @@
+/* ═══════════════════════════════════════════════════════════
+   GINGER — Avatar Styles
+   ═══════════════════════════════════════════════════════════ */
+
+.avatar {
+  position: relative;
+  border-radius: var(--radius-full);
+  overflow: visible;
+  flex-shrink: 0;
+}
+
+.avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: var(--radius-full);
+}
+
+.avatar-fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--gradient-ginger);
+  color: white;
+  font-family: var(--font-display);
+  font-weight: 700;
+  border-radius: var(--radius-full);
+}
+
+/* ── Sizes ─────────────────────────────────────────────── */
+.avatar-xs { width: 28px; height: 28px; font-size: 10px; }
+.avatar-sm { width: 36px; height: 36px; font-size: 12px; }
+.avatar-md { width: 48px; height: 48px; font-size: 16px; }
+.avatar-lg { width: 64px; height: 64px; font-size: 20px; }
+.avatar-xl { width: 88px; height: 88px; font-size: 28px; }
+
+.avatar-xs .avatar-fallback { font-size: 10px; }
+.avatar-sm .avatar-fallback { font-size: 12px; }
+.avatar-md .avatar-fallback { font-size: 16px; }
+.avatar-lg .avatar-fallback { font-size: 20px; }
+.avatar-xl .avatar-fallback { font-size: 28px; }
+
+/* ── Verified Badge ────────────────────────────────────── */
+.avatar-verified {
+  position: absolute;
+  bottom: -1px;
+  right: -1px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-primary);
+  border-radius: var(--radius-full);
+  padding: 2px;
+}
+
+.avatar-lg .avatar-verified svg,
+.avatar-xl .avatar-verified svg {
+  width: 18px;
+  height: 18px;
+}

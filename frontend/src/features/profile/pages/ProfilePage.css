@@ -1,0 +1,267 @@
+/* ═══════════════════════════════════════════════════════════
+   GINGER — Profile Page Styles
+   ═══════════════════════════════════════════════════════════ */
+
+.profile-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding-top: calc(var(--safe-top) + var(--space-4));
+}
+
+/* ── Header ────────────────────────────────────────────── */
+.profile-header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.profile-header-btns {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.icon-btn {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-smooth);
+}
+
+.icon-btn:hover {
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
+  border-color: var(--border-default);
+}
+
+/* ── Profile Card ──────────────────────────────────────── */
+.profile-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.profile-info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.profile-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.profile-name {
+  font-size: var(--text-xl);
+  font-weight: 700;
+}
+
+.profile-username {
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.profile-location {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-tertiary);
+  font-size: var(--text-xs);
+  margin-top: 2px;
+}
+
+.profile-bio {
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+}
+
+.profile-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* ── Stats Grid ────────────────────────────────────────── */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-3);
+}
+
+.stat-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+}
+
+.stat-value {
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.stat-label {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ── Section Title ─────────────────────────────────────── */
+.section-title {
+  margin-bottom: var(--space-3);
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+/* ── Social Links ──────────────────────────────────────── */
+.social-links-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.social-link-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.social-link-info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.social-icon {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  font-size: 18px;
+  color: white;
+}
+
+.social-youtube { background: #FF0000; }
+.social-instagram { background: linear-gradient(135deg, #F58529, #DD2A7B, #8134AF); }
+.social-tiktok { background: #010101; }
+.social-facebook { background: #1877F2; }
+
+.social-username {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.social-followers {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
+.add-social-btn {
+  border: 1px dashed var(--border-default) !important;
+  border-radius: var(--radius-lg) !important;
+  margin-top: var(--space-1);
+}
+
+/* ── Rates Grid ────────────────────────────────────────── */
+.rates-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-3);
+}
+
+.rate-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.rate-label {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  font-weight: 500;
+}
+
+.rate-value {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--ginger-400);
+}
+
+/* ── Media Kit Upload ──────────────────────────────────── */
+.media-kit-upload {
+  border-style: dashed !important;
+}
+
+.media-kit-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--space-2);
+  padding: var(--space-4) 0;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.media-kit-icon {
+  font-size: 32px;
+  margin-bottom: var(--space-2);
+}
+
+/* ── Portfolio Grid ────────────────────────────────────── */
+.portfolio-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2);
+}
+
+.portfolio-item {
+  aspect-ratio: 1;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.portfolio-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-card);
+  border: 1px dashed var(--border-default);
+  border-radius: var(--radius-md);
+  color: var(--text-tertiary);
+  font-size: var(--text-2xl);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-smooth);
+}
+
+.portfolio-placeholder:hover {
+  background: var(--bg-card-hover);
+  color: var(--ginger-500);
+  border-color: var(--ginger-500);
+}
+
+/* ── Sign Out ──────────────────────────────────────────── */
+.signout-btn {
+  color: var(--error-400) !important;
+}

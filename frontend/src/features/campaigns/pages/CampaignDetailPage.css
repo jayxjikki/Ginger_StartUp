@@ -1,0 +1,342 @@
+/* ═══════════════════════════════════════════════════════════
+   GINGER — Campaign Detail Page Styles
+   ═══════════════════════════════════════════════════════════ */
+
+.campaign-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding-top: calc(var(--safe-top) + var(--space-3));
+}
+
+/* ── Top Bar ───────────────────────────────────────────── */
+.detail-topbar {
+  display: flex;
+  justify-content: space-between;
+}
+
+/* ── Header ────────────────────────────────────────────── */
+.detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.detail-time-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+/* ── Title ─────────────────────────────────────────────── */
+.detail-title {
+  font-size: var(--text-2xl);
+  line-height: var(--leading-snug);
+}
+
+/* ── Advertiser ────────────────────────────────────────── */
+.detail-advertiser {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* ── Prize Pool Card ───────────────────────────────────── */
+.prize-pool-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.prize-pool-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.prize-pool-label {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+}
+
+.prize-pool-amount {
+  font-size: var(--text-3xl) !important;
+}
+
+.prize-pool-remaining {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.prize-pool-progress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--gradient-ginger);
+  border-radius: var(--radius-full);
+  position: relative;
+}
+
+.progress-fill::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--ginger-500);
+  border: 2px solid var(--bg-primary);
+  box-shadow: 0 0 12px rgba(247, 147, 30, 0.5);
+}
+
+/* ── Payout Tiers ──────────────────────────────────────── */
+.payout-tiers {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.payout-tier {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  transition: all var(--duration-fast);
+}
+
+.payout-tier:hover {
+  border-color: var(--border-ginger);
+  background: rgba(247, 147, 30, 0.04);
+}
+
+.tier-views {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+  min-width: 100px;
+}
+
+.tier-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--gradient-ginger);
+  flex-shrink: 0;
+}
+
+.tier-arrow {
+  color: var(--text-tertiary);
+  font-size: var(--text-sm);
+}
+
+.tier-reward {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.tier-amount {
+  font-family: var(--font-display);
+  font-size: var(--text-base);
+  font-weight: 700;
+  color: var(--ginger-400);
+}
+
+.tier-bonus {
+  font-size: var(--text-xs);
+  color: var(--success-400);
+  font-weight: 500;
+}
+
+/* ── Requirements ──────────────────────────────────────── */
+.requirements-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.req-item {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+}
+
+.req-icon {
+  color: var(--ginger-500);
+  margin-top: 3px;
+  flex-shrink: 0;
+}
+
+/* ── Info Grid ─────────────────────────────────────────── */
+.detail-info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-3);
+}
+
+.info-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+}
+
+.info-icon {
+  color: var(--ginger-500);
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.info-label {
+  display: block;
+  font-size: 10px;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+.info-value {
+  display: block;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-top: 2px;
+}
+
+/* ── Top Earners ───────────────────────────────────────── */
+.top-earners {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.earner-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.earner-rank {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--text-sm);
+  min-width: 28px;
+  color: var(--text-tertiary);
+}
+
+.rank-1 { color: #FFD700; }
+.rank-2 { color: #C0C0C0; }
+.rank-3 { color: #CD7F32; }
+
+.earner-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.earner-amount {
+  font-family: var(--font-display);
+}
+
+/* ── Keywords ──────────────────────────────────────────── */
+.detail-keywords {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* ── CTA ───────────────────────────────────────────────── */
+.detail-cta {
+  padding: var(--space-4) 0;
+}
+
+/* ── Modal ─────────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: var(--z-modal-backdrop);
+  padding: var(--space-4);
+}
+
+.modal-content {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-2xl) var(--radius-2xl) var(--radius-lg) var(--radius-lg);
+  padding: var(--space-6);
+  width: 100%;
+  max-width: 480px;
+  max-height: 90dvh;
+  overflow-y: auto;
+}
+
+.modal-actions {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: flex-end;
+}
+
+/* ── Section Title (reuse) ─────────────────────────────── */
+.section-title {
+  margin-bottom: var(--space-3);
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+/* ── Icon Button (reuse) ───────────────────────────────── */
+.icon-btn {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-smooth);
+}
+
+.icon-btn:hover {
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
+}

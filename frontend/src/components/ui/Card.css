@@ -1,0 +1,65 @@
+/* ═══════════════════════════════════════════════════════════
+   GINGER — Card Styles
+   ═══════════════════════════════════════════════════════════ */
+
+.card {
+  border-radius: var(--radius-xl);
+  position: relative;
+  overflow: hidden;
+}
+
+/* ── Variants ──────────────────────────────────────────── */
+.card-default {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+}
+
+.card-glass {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+}
+
+.card-ginger {
+  background: rgba(247, 147, 30, 0.06);
+  border: 1px solid var(--border-ginger);
+}
+
+.card-elevated {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-md);
+}
+
+/* ── Padding ───────────────────────────────────────────── */
+.card-pad-none { padding: 0; }
+.card-pad-sm { padding: var(--space-3); }
+.card-pad-md { padding: var(--space-4); }
+.card-pad-lg { padding: var(--space-6); }
+
+/* ── Clickable ─────────────────────────────────────────── */
+.card-clickable {
+  cursor: pointer;
+  transition: all var(--duration-normal) var(--ease-smooth);
+}
+
+.card-clickable:hover {
+  border-color: var(--border-strong);
+}
+
+/* ── Shine Effect (on hover for glass cards) ───────────── */
+.card-glass.card-clickable::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--gradient-card-shine);
+  opacity: 0;
+  transition: opacity var(--duration-normal) var(--ease-smooth);
+  pointer-events: none;
+}
+
+.card-glass.card-clickable:hover::after {
+  opacity: 1;
+}

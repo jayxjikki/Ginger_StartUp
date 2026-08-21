@@ -1,0 +1,138 @@
+/* ═══════════════════════════════════════════════════════════
+   GINGER — Marketplace Page Styles
+   ═══════════════════════════════════════════════════════════ */
+
+.marketplace {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding-top: calc(var(--safe-top) + var(--space-4));
+}
+
+.market-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* ── Category Pills ────────────────────────────────────── */
+.category-pills {
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: var(--space-1);
+}
+
+.category-pills::-webkit-scrollbar { display: none; }
+
+/* ── Influencer List ───────────────────────────────────── */
+.influencer-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* ── Influencer Card ───────────────────────────────────── */
+.influencer-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.inf-header {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.inf-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.inf-name {
+  font-size: var(--text-base);
+}
+
+.inf-meta {
+  display: flex;
+  gap: var(--space-3);
+  margin-top: 2px;
+}
+
+.inf-location, .inf-rating {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.inf-rating {
+  color: var(--warning-400);
+}
+
+.inf-bio {
+  color: var(--text-secondary);
+}
+
+/* ── Influencer Stats ──────────────────────────────────── */
+.inf-stats {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.inf-stat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: var(--space-2);
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+}
+
+.inf-stat-value {
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.inf-stat-label {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  font-weight: 500;
+}
+
+/* ── Influencer Footer ─────────────────────────────────── */
+.inf-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.inf-platforms {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.inf-platform-icon {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  color: white;
+}
+
+.platform-youtube { background: #FF0000; }
+.platform-instagram { background: linear-gradient(135deg, #F58529, #DD2A7B); }
+.platform-tiktok { background: #010101; }
