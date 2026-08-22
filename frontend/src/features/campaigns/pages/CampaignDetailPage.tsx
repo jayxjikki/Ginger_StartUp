@@ -79,7 +79,11 @@ const CampaignDetailPage: React.FC = () => {
     );
   }
 
-  const poolUsedPercent = ((campaign.prize_pool - campaign.remaining_pool) / campaign.prize_pool) * 100;
+  const safePrizePool = campaign.prize_pool || 0;
+  const safeRemainingPool = campaign.remaining_pool != null ? campaign.remaining_pool : safePrizePool;
+  const poolUsedPercent = safePrizePool > 0 
+    ? Math.max(0, Math.min(100, ((safePrizePool - safeRemainingPool) / safePrizePool) * 100))
+    : 0;
 
   return (
     <div className="page-content">
@@ -154,7 +158,7 @@ const CampaignDetailPage: React.FC = () => {
                 <div className="prize-pool-remaining">
                   <span className="text-xs text-tertiary">Remaining</span>
                   <span className="font-bold text-ginger">
-                    {formatCurrency(campaign.remaining_pool, true)}
+                    {formatCurrency(safeRemainingPool, true)}
                   </span>
                 </div>
               </div>
