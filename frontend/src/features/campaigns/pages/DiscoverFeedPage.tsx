@@ -188,7 +188,7 @@ const DiscoverFeedPage: React.FC = () => {
                 <div className="creator-header" onClick={() => navigate(`/profile/${creator.id}`)} style={{ cursor: 'pointer' }}>
                   {creator.avatarUrl.includes('placeholder.com') ? (
                     <div className="creator-avatar-placeholder">
-                      {creator.fullName.split(' ').map(n => n[0]).join('').substring(0, 2)}
+                      {creator.fullName.split(' ').map((n: string) => n[0]).join('').substring(0, 2)}
                     </div>
                   ) : (
                     <img alt={creator.fullName} className="creator-avatar" src={creator.avatarUrl} />

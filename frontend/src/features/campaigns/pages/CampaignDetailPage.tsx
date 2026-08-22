@@ -12,7 +12,6 @@ import {
   FiExternalLink, FiCheck, FiAlertCircle
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
-import { supabase } from '../../../lib/supabase';
 import { useAuthStore } from '../../../store/authStore';
 import { useCampaignStore } from '../../../store/campaignStore';
 import Card from '../../../components/ui/Card';
@@ -43,7 +42,7 @@ const CampaignDetailPage: React.FC = () => {
   const { user } = useAuthStore();
 
   const campaign = campaigns.find((c) => c.id === id);
-  const isExpired = campaign ? new Date(campaign.end_date) < new Date() : false;
+  const isExpired = campaign?.end_date ? new Date(campaign.end_date) < new Date() : false;
   const [topEarners, setTopEarners] = useState<any[]>([]);
 
   const handleSubmit = async () => {
