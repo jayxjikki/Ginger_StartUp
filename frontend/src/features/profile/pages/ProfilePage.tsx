@@ -16,6 +16,7 @@ import TransitionLoader from '../../../components/ui/TransitionLoader';
 import youtubeIcon from '../../../assets/youtube.png';
 import instagramIcon from '../../../assets/instagram.png';
 import tiktokIcon from '../../../assets/tiktok.png';
+import { formatCount } from '../../../utils/formatters';
 import './ProfilePage.css';
 
 const ProfilePage: React.FC = () => {
@@ -213,18 +214,20 @@ const ProfilePage: React.FC = () => {
 
         {/* Social Stats Bar */}
         <section className="social-stats-bar">
-          <div className="social-stat-item youtube">
-            <img src={youtubeIcon} alt="YouTube" style={{ width: '18px', height: '18px', objectFit: 'contain' }} />
-            <span>1.2M</span>
-          </div>
-          <div className="social-stat-item instagram">
-            <img src={instagramIcon} alt="Instagram" style={{ width: '18px', height: '18px', objectFit: 'contain' }} />
-            <span>500K</span>
-          </div>
-          <div className="social-stat-item tiktok">
-            <img src={tiktokIcon} alt="TikTok" style={{ width: '18px', height: '18px', objectFit: 'contain' }} />
-            <span>2.1M</span>
-          </div>
+          {socialLinks && socialLinks.length > 0 ? (
+            socialLinks.map((link) => {
+              const platform = link.platform.toLowerCase();
+              const icon = platform === 'youtube' ? youtubeIcon : platform === 'instagram' ? instagramIcon : tiktokIcon;
+              return (
+                <div key={link.id} className={`social-stat-item ${platform}`}>
+                  <img src={icon} alt={link.platform} style={{ width: '18px', height: '18px', objectFit: 'contain' }} />
+                  <span>{formatCount(link.followers)}</span>
+                </div>
+              );
+            })
+          ) : (
+            <div className="text-secondary text-sm" style={{ padding: '8px' }}>No social accounts linked</div>
+          )}
           {!isPublicView && (
             <button className="social-add-btn" aria-label="Add Platform">
               <span className="material-symbols-outlined">add</span>
@@ -243,7 +246,7 @@ const ProfilePage: React.FC = () => {
             <span className="stat-label">Completed</span>
           </div>
           <div className="liquid-card stat-box">
-            <span className="stat-value text-primary">{stats.totalViews}</span>
+            <span className="stat-value text-primary">{formatCount(stats.totalViews)}</span>
             <span className="stat-label">Total Views</span>
           </div>
         </section>

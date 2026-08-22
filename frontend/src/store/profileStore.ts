@@ -125,11 +125,40 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
         .select('*')
         .eq('profile_id', userId);
 
+      // Fetch Submissions for Stats
+      const { data: submissionsData } = await supabase
+        .from('submissions')
+        .select('*')
+        .eq('creator_id', userId);
+
+      let totalEarnings = 0;
+      let activeCampaigns = 0;
+      let completedCampaigns = 0;
+      let totalViews = 0;
+
+      if (submissionsData) {
+        submissionsData.forEach((sub: any) => {
+          totalViews += (sub.current_views || 0);
+          if (sub.status === 'paid') {
+            completedCampaigns += 1;
+            totalEarnings += (sub.earned_amount || 0);
+          } else if (sub.status === 'pending' || sub.status === 'verified') {
+            activeCampaigns += 1;
+          }
+        });
+      }
+
       set({
         profile: profileData as Profile,
         achievements: achievementsData || [],
         posts: postsData || [],
         socialLinks: socialData || [],
+        stats: {
+          totalEarnings,
+          activeCampaigns,
+          completedCampaigns,
+          totalViews,
+        }
       });
     } catch (err: any) {
       console.error('Error fetching profile data:', err);
