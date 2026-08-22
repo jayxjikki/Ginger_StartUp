@@ -231,14 +231,16 @@ const HomeMenuPage: React.FC = () => {
                   style={{ cursor: 'pointer' }}
                 >
                   {campaign.image_url && (
-                    <img
-                      alt={campaign.title}
-                      className="campaign-bg-img"
-                      src={campaign.image_url}
-                    />
+                    <div className="campaign-images">
+                      <img
+                        alt={campaign.title}
+                        className="campaign-img"
+                        src={campaign.image_url}
+                      />
+                    </div>
                   )}
                   
-                  <div className="campaign-content-overlay">
+                  <div className="campaign-content">
                     <div className="campaign-header-row">
                       <div className="campaign-tags">
                         <span className={`tag-badge ${themeColor}`}>
