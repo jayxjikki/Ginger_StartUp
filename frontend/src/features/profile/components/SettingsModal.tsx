@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import TransitionLoader from '../../../components/ui/TransitionLoader';
 import './SettingsModal.css';
 
 interface SettingsModalProps {
@@ -8,9 +9,21 @@ interface SettingsModalProps {
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
   const navigate = useNavigate();
+  const [isNavigating, setIsNavigating] = useState(false);
+
+  const handleNavigate = (e: React.MouseEvent, path: string) => {
+    e.preventDefault();
+    setIsNavigating(true);
+    setTimeout(() => {
+      navigate(path, { state: { fromTransition: true } });
+    }, 400);
+  };
+
   return (
-    <div className="settings-modal-overlay">
-      <div className="settings-modal-container">
+    <>
+      <TransitionLoader isActive={isNavigating} />
+      <div className="settings-modal-overlay">
+        <div className="settings-modal-container">
         {/* TopAppBar */}
         <header className="settings-header">
           <button aria-label="Close" className="settings-close-btn" onClick={onClose}>
@@ -28,11 +41,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
             <a 
               className="liquid-card settings-menu-item" 
               href="#account"
-              onClick={(e) => {
-                e.preventDefault();
-                onClose();
-                navigate('/profile/account');
-              }}
+              onClick={(e) => handleNavigate(e, '/profile/account')}
             >
               <div className="settings-menu-item-left">
                 <div className="glass-icon-container settings-icon">
@@ -47,11 +56,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
             <a 
               className="liquid-card settings-menu-item" 
               href="#payments"
-              onClick={(e) => {
-                e.preventDefault();
-                onClose();
-                navigate('/profile/payments');
-              }}
+              onClick={(e) => handleNavigate(e, '/profile/payments')}
             >
               <div className="settings-menu-item-left">
                 <div className="glass-icon-container settings-icon">
@@ -66,11 +71,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
             <a 
               className="liquid-card settings-menu-item" 
               href="#activity"
-              onClick={(e) => {
-                e.preventDefault();
-                onClose();
-                navigate('/profile/activity');
-              }}
+              onClick={(e) => handleNavigate(e, '/profile/activity')}
             >
               <div className="settings-menu-item-left">
                 <div className="glass-icon-container settings-icon">
@@ -143,6 +144,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
         </main>
       </div>
     </div>
+    </>
   );
 };
 

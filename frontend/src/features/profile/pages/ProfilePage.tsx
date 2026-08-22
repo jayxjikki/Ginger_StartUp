@@ -12,6 +12,10 @@ import ImageUpload from '../../../components/ui/ImageUpload';
 import Button from '../../../components/ui/Button';
 import Card from '../../../components/ui/Card';
 import SettingsModal from '../components/SettingsModal';
+import TransitionLoader from '../../../components/ui/TransitionLoader';
+import youtubeIcon from '../../../assets/youtube.png';
+import instagramIcon from '../../../assets/instagram.png';
+import tiktokIcon from '../../../assets/tiktok.png';
 import './ProfilePage.css';
 
 const ProfilePage: React.FC = () => {
@@ -46,6 +50,13 @@ const ProfilePage: React.FC = () => {
   const [desc, setDesc] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [showSettings, setShowSettings] = useState(false);
+  const [isEntering, setIsEntering] = useState((location.state as any)?.fromTransition || false);
+
+  useEffect(() => {
+    if (isEntering) {
+      setTimeout(() => setIsEntering(false), 400);
+    }
+  }, [isEntering]);
 
   useEffect(() => {
     if (location.state && (location.state as any).openSettings) {
@@ -136,8 +147,10 @@ const ProfilePage: React.FC = () => {
   const actualAvatarUrl = profile.avatar_url || 'https://via.placeholder.com/150';
 
   return (
-    <div className="profile-page-wrapper">
-      {/* ImageViewer Modal */}
+    <>
+      <TransitionLoader isActive={isEntering} />
+      <div className="profile-page-wrapper">
+        {/* ImageViewer Modal */}
       <ImageViewer 
         isOpen={!!selectedImage} 
         imageUrl={selectedImage || ''} 
@@ -195,15 +208,15 @@ const ProfilePage: React.FC = () => {
         {/* Social Stats Bar */}
         <section className="social-stats-bar">
           <div className="social-stat-item youtube">
-            <span className="material-symbols-outlined social-stat-icon" style={{ fontVariationSettings: "'FILL' 1" }}>play_circle</span>
+            <img src={youtubeIcon} alt="YouTube" style={{ width: '18px', height: '18px', objectFit: 'contain' }} />
             <span>1.2M</span>
           </div>
           <div className="social-stat-item instagram">
-            <span className="material-symbols-outlined social-stat-icon">photo_camera</span>
+            <img src={instagramIcon} alt="Instagram" style={{ width: '18px', height: '18px', objectFit: 'contain' }} />
             <span>500K</span>
           </div>
           <div className="social-stat-item tiktok">
-            <span className="material-symbols-outlined social-stat-icon">music_note</span>
+            <img src={tiktokIcon} alt="TikTok" style={{ width: '18px', height: '18px', objectFit: 'contain' }} />
             <span>2.1M</span>
           </div>
           {!isPublicView && (
@@ -356,6 +369,7 @@ const ProfilePage: React.FC = () => {
         </section>
       </main>
     </div>
+    </>
   );
 };
 

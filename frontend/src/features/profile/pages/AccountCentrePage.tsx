@@ -1,20 +1,41 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../../store/authStore';
 import { useProfileStore } from '../../../store/profileStore';
+import TransitionLoader from '../../../components/ui/TransitionLoader';
+import instagramIcon from '../../../assets/instagram.png';
 import './AccountCentrePage.css';
 
 const AccountCentrePage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuthStore();
   const { profile } = useProfileStore();
 
   const actualAvatarUrl = profile?.avatar_url || 'https://via.placeholder.com/150';
   const fullName = profile?.full_name || 'Jikki Thakur';
   const email = user?.email || 'jikki@example.com';
+  
+  const [isNavigating, setIsNavigating] = useState(false);
+  const [isEntering, setIsEntering] = useState((location.state as any)?.fromTransition || false);
+
+  useEffect(() => {
+    if (isEntering) {
+      setTimeout(() => setIsEntering(false), 400);
+    }
+  }, [isEntering]);
+
+  const handleBack = () => {
+    setIsNavigating(true);
+    setTimeout(() => {
+      navigate('/profile', { state: { openSettings: true, fromTransition: true } });
+    }, 400);
+  };
 
   return (
-    <div className="account-centre-page">
+    <>
+      <TransitionLoader isActive={isNavigating || isEntering} />
+      <div className="account-centre-page">
       {/* Ambient Glow */}
       <div className="account-ambient-glow"></div>
 
@@ -23,7 +44,7 @@ const AccountCentrePage: React.FC = () => {
         <button 
           aria-label="Go back" 
           className="account-back-btn"
-          onClick={() => navigate('/profile', { state: { openSettings: true } })}
+          onClick={handleBack}
         >
           <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 0" }}>arrow_back</span>
         </button>
@@ -49,7 +70,7 @@ const AccountCentrePage: React.FC = () => {
             <div className="glass-panel liquid-hover account-card">
               <div className="account-icon-wrap">
                 <img 
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuD-_fEtxWsDPv5ORuPg843yzzOsgzH_SylqtXy9lf_8rdt9oBbFHleN-k553txsHeIwBHOcAnpN-t6yb68bU27r1LjVx-sk-BV4ei1uuSEh2NlEqhgfvQKvws2zgXNvvMzjZBT59KRo75ltWt1HIcDEjiSAOy33fQ_8S6v0DvfS07NUYxMCp2h9Wg7csGrNesrV-ZySmMcYbe1nIOCpZ5B7hqRwj-WD7QzA_s9wR3WLLIzMsn0D5UAg" 
+                  src={instagramIcon} 
                   alt="Instagram" 
                   style={{ width: '24px', height: '24px', opacity: 0.8 }} 
                 />
@@ -166,6 +187,7 @@ const AccountCentrePage: React.FC = () => {
         </section>
       </main>
     </div>
+    </>
   );
 };
 

@@ -67,7 +67,7 @@
 .activity-main {
   flex: 1;
   padding-top: 96px;
-  padding-bottom: 128px;
+  padding-bottom: 32px;
   padding-left: 20px;
   padding-right: 20px;
   position: relative;

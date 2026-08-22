@@ -1,13 +1,32 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import TransitionLoader from '../../../components/ui/TransitionLoader';
 import './ActivityPage.css';
 
 const ActivityPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const [isNavigating, setIsNavigating] = useState(false);
+  const [isEntering, setIsEntering] = useState((location.state as any)?.fromTransition || false);
+
+  useEffect(() => {
+    if (isEntering) {
+      setTimeout(() => setIsEntering(false), 400);
+    }
+  }, [isEntering]);
+
+  const handleBack = () => {
+    setIsNavigating(true);
+    setTimeout(() => {
+      navigate('/profile', { state: { openSettings: true, fromTransition: true } });
+    }, 400);
+  };
 
   return (
-    <div className="activity-page">
-      {/* Ambient Liquid Background Effect */}
+    <>
+      <TransitionLoader isActive={isNavigating || isEntering} />
+      <div className="activity-page">
+        {/* Ambient Liquid Background Effect */}
       <div className="activity-ambient-bg"></div>
 
       {/* TopAppBar */}
@@ -16,7 +35,7 @@ const ActivityPage: React.FC = () => {
           <button 
             aria-label="Go back" 
             className="activity-back-btn"
-            onClick={() => navigate('/profile', { state: { openSettings: true } })}
+            onClick={handleBack}
           >
             <span className="material-symbols-outlined">arrow_back</span>
           </button>
@@ -130,7 +149,7 @@ const ActivityPage: React.FC = () => {
           </section>
 
           {/* History Section */}
-          <section className="activity-section" style={{ marginBottom: '48px' }}>
+          <section className="activity-section">
             <h3 className="activity-section-title">History</h3>
             <div className="activity-grid-2">
               <div className="activity-glass-card" style={{ flexDirection: 'column', alignItems: 'flex-start', minHeight: '120px', justifyContent: 'space-between' }}>
@@ -158,6 +177,7 @@ const ActivityPage: React.FC = () => {
         </div>
       </main>
     </div>
+    </>
   );
 };
 

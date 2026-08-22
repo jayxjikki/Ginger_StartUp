@@ -1,22 +1,41 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import TransitionLoader from '../../../components/ui/TransitionLoader';
 import './PaymentVerificationPage.css';
 
 const PaymentVerificationPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [selectedDoc, setSelectedDoc] = useState('National Identity Card');
+  const [isNavigating, setIsNavigating] = useState(false);
+  const [isEntering, setIsEntering] = useState((location.state as any)?.fromTransition || false);
   
   const docOptions = ['National Identity Card', 'School ID Card', 'Driving License'];
 
+  useEffect(() => {
+    if (isEntering) {
+      setTimeout(() => setIsEntering(false), 400);
+    }
+  }, [isEntering]);
+
+  const handleBack = () => {
+    setIsNavigating(true);
+    setTimeout(() => {
+      navigate('/profile', { state: { openSettings: true, fromTransition: true } });
+    }, 400);
+  };
+
   return (
-    <div className="payment-page">
-      {/* TopAppBar */}
+    <>
+      <TransitionLoader isActive={isNavigating || isEntering} />
+      <div className="payment-page">
+        {/* TopAppBar */}
       <header className="payment-top-bar">
         <button 
           aria-label="Go back" 
           className="payment-back-btn"
-          onClick={() => navigate('/profile', { state: { openSettings: true } })}
+          onClick={handleBack}
         >
           <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 0" }}>arrow_back</span>
         </button>
@@ -127,6 +146,7 @@ const PaymentVerificationPage: React.FC = () => {
         </div>
       </main>
     </div>
+    </>
   );
 };
 
