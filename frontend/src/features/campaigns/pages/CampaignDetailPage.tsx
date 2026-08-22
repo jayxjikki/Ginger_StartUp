@@ -43,6 +43,7 @@ const CampaignDetailPage: React.FC = () => {
   const { user } = useAuthStore();
 
   const campaign = campaigns.find((c) => c.id === id);
+  const isExpired = campaign ? new Date(campaign.end_date) < new Date() : false;
   const [topEarners, setTopEarners] = useState<any[]>([]);
 
   const handleSubmit = async () => {
@@ -379,8 +380,9 @@ const CampaignDetailPage: React.FC = () => {
             fullWidth
             onClick={() => setShowSubmitModal(true)}
             id="btn-submit-video"
+            disabled={isExpired}
           >
-            Submit Your Video
+            {isExpired ? 'Campaign Expired' : 'Submit Your Video'}
           </Button>
         </motion.div>
 
