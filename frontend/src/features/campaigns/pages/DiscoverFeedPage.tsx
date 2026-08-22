@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import MediaKitViewer from '../components/MediaKitViewer';
 import DiscoverFilterModal from '../components/DiscoverFilterModal';
 import type { FilterState } from '../components/DiscoverFilterModal';
-import { DUMMY_CREATORS } from '../data/dummyData';
+import { supabase } from '../../../lib/supabase';
 import youtubeIcon from '../../../assets/youtube.png';
 import instagramIcon from '../../../assets/instagram.png';
 import tiktokIcon from '../../../assets/tiktok.png';
@@ -47,8 +47,49 @@ const DiscoverFeedPage: React.FC = () => {
     'Fashion'
   ];
 
+  const [creators, setCreators] = useState<any[]>([]);
+
+  React.useEffect(() => {
+    const fetchCreators = async () => {
+      try {
+        const { data: profiles, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .order('follower_count', { ascending: false });
+        
+        if (error) throw error;
+
+        const { data: links } = await supabase.from('social_links').select('*');
+
+        const mappedCreators = (profiles || []).map((p: any) => {
+          const userLinks = (links || []).filter((l: any) => l.profile_id === p.id);
+          return {
+            id: p.id,
+            fullName: p.full_name || 'Unknown',
+            handle: p.username || '',
+            category: p.category || 'Other',
+            followers: p.follower_count || 0,
+            perPost: p.rates?.per_post || 0,
+            location: p.location || '',
+            avatarUrl: p.avatar_url || 'https://via.placeholder.com/150/333/fff?text=?',
+            platforms: userLinks.map((l: any) => l.platform.toLowerCase()),
+            mediaKit: {
+              type: 'image',
+              url: 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?q=80&w=1000'
+            }
+          };
+        });
+
+        setCreators(mappedCreators);
+      } catch (err) {
+        console.error('Error fetching discover creators:', err);
+      }
+    };
+    fetchCreators();
+  }, []);
+
   const filteredCreators = useMemo(() => {
-    return DUMMY_CREATORS.filter(creator => {
+    return creators.filter(creator => {
       // 1. Category Filter
       if (activeCategory !== 'All' && creator.category !== activeCategory) {
         return false;
