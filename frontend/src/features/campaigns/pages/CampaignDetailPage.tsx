@@ -407,34 +407,67 @@ const CampaignDetailPage: React.FC = () => {
         {/* Submit CTA or Submission Status */}
         <motion.div className="detail-cta" variants={fadeUp}>
           {userSubmission ? (
-            <Card variant="ginger" padding="md">
-              <h5 className="section-title" style={{ color: 'var(--text-primary)' }}>Your Submission</h5>
-              <div className="flex flex-col gap-3 mt-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-secondary">Status</span>
-                  <Badge variant={userSubmission.status === 'verified' ? 'success' : 'default'} size="sm">
-                    {userSubmission.status.toUpperCase()}
-                  </Badge>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-secondary">Views Tracked</span>
-                  <span className="font-bold">{formatCount(userSubmission.current_views || 0)}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-secondary">Earned Amount</span>
-                  <span className="font-bold text-ginger">{formatCurrency(userSubmission.earned_amount || 0, true)}</span>
-                </div>
-                <a 
-                  href={userSubmission.video_url} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-center text-xs mt-2"
-                  style={{ color: 'var(--text-tertiary)', textDecoration: 'underline' }}
-                >
-                  View Submitted Video
-                </a>
-              </div>
-            </Card>
+            (() => {
+              // Calculate expected earning (next tier)
+              let nextTier: any = null;
+              if (campaign.payout_tiers && campaign.payout_tiers.length > 0) {
+                const sortedTiers = [...campaign.payout_tiers].sort((a, b) => a.min_views - b.min_views);
+                const currentViews = userSubmission.current_views || 0;
+                for (const tier of sortedTiers) {
+                  if (tier.min_views > currentViews) {
+                    nextTier = tier;
+                    break;
+                  }
+                }
+                if (!nextTier && currentViews >= sortedTiers[sortedTiers.length - 1].min_views) {
+                  nextTier = 'max';
+                }
+              }
+
+              return (
+                <Card variant="ginger" padding="md">
+                  <h5 className="section-title" style={{ color: 'var(--text-primary)' }}>Your Submission</h5>
+                  <div className="flex flex-col gap-3 mt-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-secondary">Status</span>
+                      <Badge variant={userSubmission.status === 'verified' ? 'success' : 'default'} size="sm">
+                        {userSubmission.status.toUpperCase()}
+                      </Badge>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-secondary">Views Tracked</span>
+                      <span className="font-bold">{formatCount(userSubmission.current_views || 0)}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-secondary">Earned Amount</span>
+                      <span className="font-bold text-ginger">{formatCurrency(userSubmission.earned_amount || 0, true)}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-secondary">Expected Earning</span>
+                      {nextTier === 'max' ? (
+                        <span className="font-bold text-success text-sm">Max Reached! 🏆</span>
+                      ) : nextTier ? (
+                        <div className="text-right">
+                          <span className="font-bold">{formatCurrency(nextTier.payout_amount, true)}</span>
+                          <span className="block text-[10px] text-tertiary uppercase tracking-wider mt-0.5">at {formatCount(nextTier.min_views)} views</span>
+                        </div>
+                      ) : (
+                        <span className="text-sm text-tertiary">No Tiers</span>
+                      )}
+                    </div>
+                    <a 
+                      href={userSubmission.video_url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-center text-xs mt-3 pt-3 border-t border-white/5"
+                      style={{ color: 'var(--text-tertiary)', textDecoration: 'none' }}
+                    >
+                      <span style={{ borderBottom: '1px solid rgba(255,255,255,0.2)', paddingBottom: '1px' }}>View Submitted Video</span>
+                    </a>
+                  </div>
+                </Card>
+              );
+            })()
           ) : (
             <Button
               variant="primary"
