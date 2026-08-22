@@ -11,6 +11,9 @@ import {
   FiArrowLeft, FiShare2, FiMapPin, FiClock, FiUsers,
   FiExternalLink, FiCheck, FiAlertCircle
 } from 'react-icons/fi';
+import toast from 'react-hot-toast';
+import { supabase } from '../../../lib/supabase';
+import { useAuthStore } from '../../../store/authStore';
 import { useCampaignStore } from '../../../store/campaignStore';
 import Card from '../../../components/ui/Card';
 import Button from '../../../components/ui/Button';
@@ -36,9 +39,56 @@ const CampaignDetailPage: React.FC = () => {
   const { campaigns } = useCampaignStore();
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [videoUrl, setVideoUrl] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { user } = useAuthStore();
 
   const campaign = campaigns.find((c) => c.id === id);
   const [topEarners, setTopEarners] = useState<any[]>([]);
+
+  const handleSubmit = async () => {
+    if (!user) {
+      toast.error('You must be logged in to submit a video.');
+      return;
+    }
+    if (!videoUrl) {
+      toast.error('Please enter a video URL.');
+      return;
+    }
+    
+    setIsSubmitting(true);
+    try {
+      let platform = 'other';
+      const lowerUrl = videoUrl.toLowerCase();
+      if (lowerUrl.includes('youtube.com') || lowerUrl.includes('youtu.be')) platform = 'youtube';
+      else if (lowerUrl.includes('instagram.com')) platform = 'instagram';
+      else if (lowerUrl.includes('tiktok.com')) platform = 'tiktok';
+      else if (lowerUrl.includes('twitter.com') || lowerUrl.includes('x.com')) platform = 'twitter';
+
+      const { error } = await supabase.from('submissions').insert({
+        campaign_id: campaign!.id,
+        creator_id: user.id,
+        video_url: videoUrl,
+        platform: platform,
+        video_id: 'auto-' + Math.random().toString(36).substring(7)
+      });
+
+      if (error) {
+        if (error.code === '23505') { // Unique constraint violation
+          throw new Error('You have already submitted a video for this campaign.');
+        }
+        throw error;
+      }
+
+      toast.success('Video submitted successfully!');
+      setShowSubmitModal(false);
+      setVideoUrl('');
+    } catch (err: any) {
+      console.error('Submit error:', err);
+      toast.error(err.message || 'Failed to submit video');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   useEffect(() => {
     if (!campaign) return;
@@ -358,8 +408,8 @@ const CampaignDetailPage: React.FC = () => {
                 />
               </div>
               <div className="modal-actions mt-6">
-                <Button variant="ghost" onClick={() => setShowSubmitModal(false)}>Cancel</Button>
-                <Button variant="primary" onClick={() => setShowSubmitModal(false)}>
+                <Button variant="ghost" onClick={() => setShowSubmitModal(false)} disabled={isSubmitting}>Cancel</Button>
+                <Button variant="primary" onClick={handleSubmit} disabled={isSubmitting} isLoading={isSubmitting}>
                   Submit
                 </Button>
               </div>
