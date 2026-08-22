@@ -3,9 +3,10 @@
 // Full campaign view with payout tiers, requirements, submit
 // ═══════════════════════════════════════════════════════════
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useParams, useNavigate } from 'react-router-dom';
+import { supabase } from '../../../lib/supabase';
 import {
   FiArrowLeft, FiShare2, FiMapPin, FiClock, FiUsers,
   FiExternalLink, FiCheck, FiAlertCircle
@@ -37,6 +38,37 @@ const CampaignDetailPage: React.FC = () => {
   const [videoUrl, setVideoUrl] = useState('');
 
   const campaign = campaigns.find((c) => c.id === id);
+  const [topEarners, setTopEarners] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!campaign) return;
+    const fetchTopEarners = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('submissions')
+          .select('*, creator:profiles(*)')
+          .eq('campaign_id', campaign.id)
+          .order('earned_amount', { ascending: false })
+          .limit(3);
+
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          setTopEarners(data.map((sub, index) => ({
+            rank: index + 1,
+            name: sub.creator?.full_name || 'Unknown',
+            views: sub.current_views || 0,
+            earned: sub.earned_amount || 0
+          })));
+        } else {
+          setTopEarners([]);
+        }
+      } catch (err) {
+        console.error('Error fetching top earners:', err);
+      }
+    };
+    fetchTopEarners();
+  }, [campaign?.id]);
 
   if (!campaign) {
     return (
@@ -256,22 +288,22 @@ const CampaignDetailPage: React.FC = () => {
           <h5 className="section-title">🏆 Top Earners</h5>
           <Card variant="default" padding="md">
             <div className="top-earners">
-              {[
-                { rank: 1, name: 'Rohan Vlogs', views: 450000, earned: 200000 },
-                { rank: 2, name: 'TravelWithMeera', views: 125000, earned: 100000 },
-                { rank: 3, name: 'FoodieAnkit', views: 78000, earned: 50000 },
-              ].map((earner) => (
-                <div key={earner.rank} className="earner-row">
-                  <span className={`earner-rank rank-${earner.rank}`}>#{earner.rank}</span>
-                  <div className="earner-info">
-                    <span className="font-semibold text-sm">{earner.name}</span>
-                    <span className="text-xs text-tertiary">{formatCount(earner.views)} views</span>
+              {topEarners.length > 0 ? (
+                topEarners.map((earner) => (
+                  <div key={earner.rank} className="earner-row">
+                    <span className={`earner-rank rank-${earner.rank}`}>#{earner.rank}</span>
+                    <div className="earner-info">
+                      <span className="font-semibold text-sm">{earner.name}</span>
+                      <span className="text-xs text-tertiary">{formatCount(earner.views)} views</span>
+                    </div>
+                    <span className="earner-amount gradient-text font-bold">
+                      {formatCurrency(earner.earned, true)}
+                    </span>
                   </div>
-                  <span className="earner-amount gradient-text font-bold">
-                    {formatCurrency(earner.earned, true)}
-                  </span>
-                </div>
-              ))}
+                ))
+              ) : (
+                <div className="text-center text-sm text-tertiary py-4">No top earners yet. Be the first!</div>
+              )}
             </div>
           </Card>
         </motion.div>
