@@ -33,6 +33,7 @@ const ProfilePage: React.FC = () => {
     stats, 
     posts,
     achievements,
+    socialLinks,
     isLoading, 
     fetchProfileData,
     createPost,
@@ -215,7 +216,7 @@ const ProfilePage: React.FC = () => {
         {/* Social Stats Bar */}
         <section className="social-stats-bar">
           {socialLinks && socialLinks.length > 0 ? (
-            socialLinks.map((link) => {
+            socialLinks.map((link: any) => {
               const platform = link.platform.toLowerCase();
               const icon = platform === 'youtube' ? youtubeIcon : platform === 'instagram' ? instagramIcon : tiktokIcon;
               return (

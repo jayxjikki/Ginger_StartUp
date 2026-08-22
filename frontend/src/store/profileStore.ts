@@ -67,7 +67,7 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       if (userId.startsWith('dummy-')) {
-        const dummyProfile: Profile = {
+        const dummyProfile = {
           id: userId,
           full_name: userId === 'dummy-jikki' ? 'Jikki Thakur' : 'Meera Travels',
           username: userId === 'dummy-jikki' ? '@jikkithakur' : '@meeratravels',
@@ -75,9 +75,8 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
             ? 'https://lh3.googleusercontent.com/aida/AP1WRLsAciJvVI6nGE8Riv5pl5AiCdsgUyuCBIztyf8yJ1nMsVzN_tKamimn4oVc377SuO03Y0BLG3vBSg6L9Gb661VbZxjTCOmgqtLkycpkas-Y4kNRelTvegSPmDOwuXDoRbG_T9NDOpD85w4fS1MEQXqfzIMok67ViFzp1sO1_5M7JgPmQnt8hPSXXoZIoKnrd1CqosMcNxDB8nQ1sCkiHfR8QRnCR7F_sliBrGJirtLIostx8BD9Qdq5Oh0' 
             : 'https://via.placeholder.com/150/333/fff?text=MT',
           bio: userId === 'dummy-jikki' ? 'Tech professional & passionate world traveler.' : 'Travel vlogger | Exploring the world one city at a time.',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        };
+          created_at: new Date().toISOString()
+        } as unknown as Profile;
         
         set({
           profile: dummyProfile,
