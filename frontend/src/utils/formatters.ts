@@ -48,7 +48,8 @@ export function formatRelativeTime(dateString: string): string {
 /**
  * Format remaining time until a date
  */
-export function formatTimeLeft(dateString: string): string {
+export function formatTimeLeft(dateString: string | null | undefined): string {
+  if (!dateString) return 'No deadline';
   const date = new Date(dateString);
   const now = new Date();
   const diffMs = date.getTime() - now.getTime();
