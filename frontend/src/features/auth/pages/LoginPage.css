@@ -277,3 +277,68 @@
   display: inline-block;
   vertical-align: middle;
 }
+
+.login-terms-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 24px;
+  width: 100%;
+}
+
+.login-terms-checkbox {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  background: rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.login-terms-checkbox:hover {
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
+.login-terms-checkbox.accepted {
+  background: #34C759;
+  border-color: #34C759;
+}
+
+.login-terms-checkbox .material-symbols-outlined {
+  font-size: 16px;
+  color: #ffffff;
+  opacity: 0;
+  transform: scale(0.5);
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.login-terms-checkbox.accepted .material-symbols-outlined {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.login-terms-label {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  user-select: none;
+}
+
+.login-terms-label span {
+  color: var(--login-primary);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-color: rgba(255, 255, 255, 0.3);
+}
+
+.login-auth-options button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}

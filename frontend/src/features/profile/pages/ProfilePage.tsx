@@ -163,10 +163,16 @@ const ProfilePage: React.FC = () => {
       {/* Top App Bar */}
       <header className="profile-top-bar">
         <div className="profile-top-brand">
-          <span className="material-symbols-outlined text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>
-            blur_on
-          </span>
-          <h1 className="profile-brand-name">Ginger</h1>
+          {isPublicView ? (
+            <button className="top-action-btn" onClick={() => navigate(-1)} style={{ marginRight: '8px', background: 'transparent' }}>
+              <span className="material-symbols-outlined">arrow_back</span>
+            </button>
+          ) : (
+            <span className="material-symbols-outlined text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>
+              blur_on
+            </span>
+          )}
+          <h1 className="profile-brand-name">{isPublicView ? profile.full_name : 'Ginger'}</h1>
         </div>
         {!isPublicView && (
           <div className="profile-top-actions">

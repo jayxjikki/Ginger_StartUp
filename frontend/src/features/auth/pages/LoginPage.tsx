@@ -1,11 +1,37 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../../store/authStore';
+import TransitionLoader from '../../../components/ui/TransitionLoader';
 import LoginBackground from '../components/LoginBackground';
+import TermsModal from '../components/TermsModal';
 import './LoginPage.css';
 
 const LoginPage: React.FC = () => {
   const { signInWithGoogle, isLoading } = useAuthStore();
   const containerRef = useRef<HTMLDivElement>(null);
+  const location = useLocation();
+  const [isEntering, setIsEntering] = useState((location.state as any)?.fromTransition || false);
+  const [isTermsAccepted, setIsTermsAccepted] = useState(false);
+  const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
+
+  const handleTermsCheckboxClick = () => {
+    if (isTermsAccepted) {
+      setIsTermsAccepted(false);
+    } else {
+      setIsTermsModalOpen(true);
+    }
+  };
+
+  const handleAcceptTerms = () => {
+    setIsTermsAccepted(true);
+    setIsTermsModalOpen(false);
+  };
+
+  useEffect(() => {
+    if (isEntering) {
+      setTimeout(() => setIsEntering(false), 400);
+    }
+  }, [isEntering]);
 
   useEffect(() => {
     // Simple subtle entrance animation similar to provided HTML
@@ -26,7 +52,9 @@ const LoginPage: React.FC = () => {
   }, []);
 
   return (
-    <div className="login-container">
+    <>
+      <TransitionLoader isActive={isEntering} />
+      <div className="login-container">
       <LoginBackground />
       
       {/* Central Brand Logo Background */}
@@ -51,13 +79,13 @@ const LoginPage: React.FC = () => {
           <button 
             className="liquid-chrome" 
             onClick={signInWithGoogle}
-            disabled={isLoading}
+            disabled={isLoading || !isTermsAccepted}
           >
             <span className="material-symbols-outlined">mail</span>
             <span>{isLoading ? 'Connecting...' : 'Continue with Google'}</span>
           </button>
           
-          <button className="ghost-button">
+          <button className="ghost-button" disabled={!isTermsAccepted}>
             <span className="material-symbols-outlined">phone_iphone</span>
             <span>Continue with Phone Number</span>
           </button>
@@ -73,6 +101,18 @@ const LoginPage: React.FC = () => {
             <span style={{ color: 'rgba(255, 255, 255, 0.4)' }}>•</span>
             <a href="#" className="login-link-secondary">Sign Up</a>
           </div>
+          
+          <div className="login-terms-wrapper">
+            <div 
+              className={`login-terms-checkbox ${isTermsAccepted ? 'accepted' : ''}`}
+              onClick={handleTermsCheckboxClick}
+            >
+              <span className="material-symbols-outlined">check</span>
+            </div>
+            <div className="login-terms-label" onClick={handleTermsCheckboxClick}>
+              I have read and agree to the <span>Terms & Conditions</span>
+            </div>
+          </div>
         </div>
 
         {/* Footer / Terms */}
@@ -84,6 +124,13 @@ const LoginPage: React.FC = () => {
         </div>
       </div>
     </div>
+    
+    <TermsModal 
+      isOpen={isTermsModalOpen} 
+      onClose={() => setIsTermsModalOpen(false)} 
+      onAccept={handleAcceptTerms} 
+    />
+    </>
   );
 };
 

@@ -88,7 +88,7 @@
 .account-main {
   flex: 1;
   padding-top: 100px;
-  padding-bottom: 128px;
+  padding-bottom: 32px;
   padding-left: 20px;
   padding-right: 20px;
   position: relative;
@@ -98,7 +98,7 @@
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 40px;
+  gap: 24px;
 }
 
 .account-header {
@@ -333,7 +333,7 @@
 }
 
 .danger-zone {
-  margin-top: 32px;
+  margin-top: 8px;
 }
 
 .danger-card {

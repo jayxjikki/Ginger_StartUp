@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuthStore } from '../../../store/authStore';
 import TransitionLoader from '../../../components/ui/TransitionLoader';
+import TermsModal from '../../auth/components/TermsModal';
+import HelpModal from './HelpModal';
 import './SettingsModal.css';
 
 interface SettingsModalProps {
@@ -9,13 +12,47 @@ interface SettingsModalProps {
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
   const navigate = useNavigate();
+  const { signOut } = useAuthStore();
   const [isNavigating, setIsNavigating] = useState(false);
+  const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
+  const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
 
   const handleNavigate = (e: React.MouseEvent, path: string) => {
     e.preventDefault();
     setIsNavigating(true);
     setTimeout(() => {
       navigate(path, { state: { fromTransition: true } });
+    }, 400);
+  };
+
+  const handleOpenTerms = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsNavigating(true);
+    setTimeout(() => {
+      setIsNavigating(false);
+      setIsTermsModalOpen(true);
+    }, 400);
+  };
+
+  const handleOpenHelp = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsNavigating(true);
+    setTimeout(() => {
+      setIsNavigating(false);
+      setIsHelpModalOpen(true);
+    }, 400);
+  };
+
+  const handleSignOut = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsNavigating(true);
+    setTimeout(async () => {
+      try {
+        await signOut();
+      } catch (err) {
+        console.error('Sign out failed', err);
+      }
+      navigate('/login', { state: { fromTransition: true } });
     }, 400);
   };
 
@@ -96,7 +133,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
             </a>
 
             {/* Help */}
-            <a className="liquid-card settings-menu-item" href="#help">
+            <a 
+              className="liquid-card settings-menu-item" 
+              href="#help"
+              onClick={handleOpenHelp}
+            >
               <div className="settings-menu-item-left">
                 <div className="glass-icon-container settings-icon">
                   <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>help</span>
@@ -107,7 +148,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
             </a>
 
             {/* Terms and Conditions */}
-            <a className="liquid-card settings-menu-item" href="#terms">
+            <a 
+              className="liquid-card settings-menu-item" 
+              href="#terms"
+              onClick={handleOpenTerms}
+            >
               <div className="settings-menu-item-left">
                 <div className="glass-icon-container settings-icon">
                   <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>description</span>
@@ -131,7 +176,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
             <div className="settings-divider" style={{ opacity: 0.5 }}></div>
 
             {/* Sign Out */}
-            <a className="liquid-card settings-menu-item settings-sign-out" href="#signout" onClick={(e) => { e.preventDefault(); /* handle sign out */ }}>
+            <a 
+              className="liquid-card settings-menu-item settings-sign-out" 
+              href="#signout" 
+              onClick={handleSignOut}
+            >
               <div className="settings-menu-item-left">
                 <div className="settings-icon-danger">
                   <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>logout</span>
@@ -144,6 +193,18 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
         </main>
       </div>
     </div>
+    
+    <TermsModal 
+      isOpen={isTermsModalOpen} 
+      onClose={() => setIsTermsModalOpen(false)} 
+      onAccept={() => setIsTermsModalOpen(false)} 
+      hideAcceptButton={true}
+    />
+    
+    <HelpModal 
+      isOpen={isHelpModalOpen} 
+      onClose={() => setIsHelpModalOpen(false)} 
+    />
     </>
   );
 };

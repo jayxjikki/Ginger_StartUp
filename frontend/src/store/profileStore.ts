@@ -66,6 +66,37 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
   fetchProfileData: async (userId: string) => {
     set({ isLoading: true, error: null });
     try {
+      if (userId.startsWith('dummy-')) {
+        const dummyProfile: Profile = {
+          id: userId,
+          full_name: userId === 'dummy-jikki' ? 'Jikki Thakur' : 'Meera Travels',
+          username: userId === 'dummy-jikki' ? '@jikkithakur' : '@meeratravels',
+          avatar_url: userId === 'dummy-jikki' 
+            ? 'https://lh3.googleusercontent.com/aida/AP1WRLsAciJvVI6nGE8Riv5pl5AiCdsgUyuCBIztyf8yJ1nMsVzN_tKamimn4oVc377SuO03Y0BLG3vBSg6L9Gb661VbZxjTCOmgqtLkycpkas-Y4kNRelTvegSPmDOwuXDoRbG_T9NDOpD85w4fS1MEQXqfzIMok67ViFzp1sO1_5M7JgPmQnt8hPSXXoZIoKnrd1CqosMcNxDB8nQ1sCkiHfR8QRnCR7F_sliBrGJirtLIostx8BD9Qdq5Oh0' 
+            : 'https://via.placeholder.com/150/333/fff?text=MT',
+          bio: userId === 'dummy-jikki' ? 'Tech professional & passionate world traveler.' : 'Travel vlogger | Exploring the world one city at a time.',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+        
+        set({
+          profile: dummyProfile,
+          achievements: [],
+          posts: [
+            { id: '1', title: 'Sample Post', content: 'Dummy post content', image_url: 'https://images.unsplash.com/photo-1542204165-65bf26472b9b?q=80&w=1000&auto=format&fit=crop', created_at: new Date().toISOString() }
+          ],
+          socialLinks: [],
+          stats: {
+            totalEarnings: 12000,
+            activeCampaigns: 5,
+            completedCampaigns: 50,
+            totalViews: 1200000
+          },
+          isLoading: false
+        });
+        return;
+      }
+
       // Fetch Profile
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
