@@ -62,14 +62,14 @@ const EditProfilePage: React.FC = () => {
   const handleFocus = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const label = e.currentTarget.parentElement?.querySelector('label');
     if (label) {
-      label.style.color = '#fff'; // primary equivalent in this design
+      label.style.color = '#34d399'; // Emerald color
     }
   };
 
   const handleBlur = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const label = e.currentTarget.parentElement?.querySelector('label');
     if (label) {
-      label.style.color = '#B8860B'; // revert to golden
+      label.style.color = '#8fa696'; // Revert to inactive color
     }
   };
 
@@ -120,7 +120,7 @@ const EditProfilePage: React.FC = () => {
         {/* Input Fields */}
         <section className="form-section">
           <div className="input-group">
-            <label className="input-label">Name</label>
+            <label className="edit-input-label">Name</label>
             <input 
               className="glass-input" 
               type="text" 
@@ -131,18 +131,24 @@ const EditProfilePage: React.FC = () => {
             />
           </div>
           <div className="input-group">
-            <label className="input-label">Username</label>
+            <label className="edit-input-label">Username</label>
             <input 
               className="glass-input" 
               type="text" 
               value={username} 
-              onChange={e => setUsername(e.target.value)}
+              onChange={e => {
+                let val = e.target.value;
+                if (val && !val.startsWith('@')) {
+                  val = '@' + val;
+                }
+                setUsername(val);
+              }}
               onFocus={handleFocus}
               onBlur={handleBlur}
             />
           </div>
           <div className="input-group">
-            <label className="input-label">Pronouns</label>
+            <label className="edit-input-label">Pronouns</label>
             <input 
               className="glass-input" 
               type="text" 
@@ -153,7 +159,7 @@ const EditProfilePage: React.FC = () => {
             />
           </div>
           <div className="input-group">
-            <label className="input-label">Bio</label>
+            <label className="edit-input-label">Bio</label>
             <textarea 
               className="glass-input" 
               rows={3} 
@@ -168,7 +174,7 @@ const EditProfilePage: React.FC = () => {
 
         {/* Links Section */}
         <section className="links-section">
-          <h2 className="input-label" style={{ marginBottom: '0.5rem' }}>Links</h2>
+          <h2 className="edit-input-label" style={{ marginBottom: '0.5rem' }}>Links</h2>
           <div className="links-list">
             
             <div className="glass-card link-item group">

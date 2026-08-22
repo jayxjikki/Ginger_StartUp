@@ -1,10 +1,10 @@
 /* ═══════════════════════════════════════════════════════════
-   GINGER — Edit Profile Styles (Liquid Onyx Design)
+   GINGER — Edit Profile Styles (Emerald Twilight)
    ═══════════════════════════════════════════════════════════ */
 
 .edit-profile-wrapper {
-  background-color: #080808; /* Void base */
-  color: var(--text-primary, #ffffff);
+  background-color: #04100a; /* Emerald Twilight base */
+  color: #e5e2e1;
   min-height: 100vh;
   -webkit-tap-highlight-color: transparent;
   display: flex;
@@ -12,8 +12,9 @@
 }
 
 .liquid-bg {
-  background: radial-gradient(circle at top right, rgba(255,255,255,0.03), transparent 40%),
-              radial-gradient(circle at bottom left, rgba(255,255,255,0.02), transparent 50%);
+  background: radial-gradient(circle at top right, rgba(52,211,153,0.08), transparent 40%),
+              radial-gradient(circle at bottom left, rgba(52,211,153,0.05), transparent 50%), 
+              #04100a;
 }
 
 .edit-top-bar {
@@ -21,15 +22,15 @@
   top: 0;
   width: 100%;
   z-index: 50;
-  background-color: #000000;
-  border-bottom: 1px solid rgba(255,255,255,0.05);
+  background-color: #ffffff; /* White header */
+  border-bottom: 1px solid rgba(0,0,0,0.1);
 }
 
 .edit-top-bar-content {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0 1rem;
+  padding: 0 20px;
   height: 4rem;
   max-width: 1440px;
   margin: 0 auto;
@@ -42,31 +43,37 @@
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  color: var(--text-primary);
+  color: #000000;
   background: transparent;
   border: none;
   cursor: pointer;
-  transition: opacity 0.2s ease;
+  transition: opacity 0.2s ease, transform 0.2s;
 }
 
 .edit-close-btn:hover {
   opacity: 0.8;
 }
 
+.edit-close-btn:active {
+  transform: scale(0.95);
+}
+
 .edit-title {
-  font-family: var(--font-display);
-  font-size: 20px;
-  font-weight: 700;
+  font-family: 'Hanken Grotesk', sans-serif;
+  font-size: 32px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: #000000;
   margin: 0;
 }
 
 .edit-save-btn {
   font-weight: 700;
-  color: var(--text-primary);
+  color: #000000;
   background: transparent;
   border: none;
   cursor: pointer;
-  transition: opacity 0.2s ease;
+  transition: opacity 0.2s ease, transform 0.2s;
   padding: 0 0.5rem;
 }
 
@@ -74,9 +81,13 @@
   opacity: 0.8;
 }
 
+.edit-save-btn:active {
+  transform: scale(0.95);
+}
+
 .edit-main {
   flex-grow: 1;
-  padding: 6rem 1rem 8rem 1rem;
+  padding: 6rem 20px 8rem 20px;
   max-width: 42rem;
   margin: 0 auto;
   width: 100%;
@@ -92,7 +103,7 @@
   gap: 1rem;
   position: relative;
   overflow: hidden;
-  border-radius: var(--radius-xl);
+  border-radius: 12px;
   padding: 2rem;
 }
 
@@ -112,7 +123,7 @@
 .banner-gradient {
   position: absolute;
   inset: 0;
-  background: linear-gradient(to bottom, rgba(13,13,13,0.2), rgba(13,13,13,0.6), rgba(13,13,13,1));
+  background: linear-gradient(to bottom, rgba(4,16,10,0.2), rgba(4,16,10,0.6), rgba(4,16,10,1));
 }
 
 .avatar-wrapper {
@@ -126,10 +137,9 @@
   height: 7rem;
   border-radius: 50%;
   overflow: hidden;
-  border: 2px solid #353534;
+  border: 2px solid #0c2416;
   padding: 4px;
   position: relative;
-  background-color: #000;
 }
 
 .avatar-img {
@@ -145,9 +155,9 @@
   position: absolute;
   inset: 0;
   border-radius: 50%;
-  background-color: rgba(19,19,19,0.4);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background-color: rgba(4,16,10,0.4);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -167,20 +177,25 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem 1rem;
-  border-radius: var(--radius-full);
-  background-color: rgba(18,18,18,0.8);
+  border-radius: 9999px;
+  background-color: #0a1811;
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  color: rgba(255,255,255,0.9);
-  border: 1px solid rgba(255,255,255,0.1);
+  color: rgba(52,211,153,0.9);
+  border: 1px solid rgba(52,211,153,0.2);
+  font-family: 'Inter', sans-serif;
   font-size: 14px;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .change-photo-btn:hover {
-  color: #fff;
-  background-color: rgba(30,30,30,0.8);
+  color: #34d399;
+  border-color: rgba(52,211,153,0.4);
+}
+
+.change-photo-btn:active {
+  transform: scale(0.95);
 }
 
 .form-section {
@@ -192,41 +207,44 @@
 .input-group {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
 }
 
-.input-label {
+.edit-input-label {
+  display: block;
   font-family: 'Geist', sans-serif;
   font-size: 12px;
+  font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.1em;
   padding-left: 0.25rem;
-  color: #B8860B; /* Golden label from design */
+  color: #8fa696; 
+  transition: color 0.3s ease;
+  margin-bottom: 4px;
 }
 
 .glass-input {
   width: 100%;
   padding: 0.75rem 1rem;
-  border-radius: var(--radius-xl);
-  font-family: var(--font-body);
-  background-color: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  background-color: #030a06;
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  color: #fff;
-  border: 1px solid rgba(255,255,255,0.05);
-  border-bottom: 2px solid #222;
+  color: #ffffff;
+  border: 1px solid transparent;
+  border-bottom: 2px solid #102a1c;
   transition: all 0.3s ease;
 }
 
 .glass-input::placeholder {
-  color: rgba(255,255,255,0.3);
+  color: rgba(196, 199, 200, 0.5);
 }
 
 .glass-input:focus {
   outline: none;
-  border-bottom-color: #fff;
-  box-shadow: inset 0 -1px 0 rgba(255,255,255,0.5);
-  background-color: rgba(255, 255, 255, 0.05);
+  border-bottom-color: #34d399;
+  box-shadow: inset 0 -1px 0 rgba(52,211,153,0.5);
 }
 
 .links-section {
@@ -242,17 +260,18 @@
 }
 
 .glass-card {
-  background-color: #121212;
-  border: 1px solid #222222;
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.02);
+  background-color: #0a1811;
+  border: 1px solid #12281a;
+  box-shadow: inset 0 0 0 1px rgba(52,211,153,0.02);
   transition: border-color 0.3s ease;
 }
+
 .glass-card:hover {
-  border-color: #444444;
+  border-color: #1a3c28;
 }
 
 .link-item {
-  border-radius: var(--radius-xl);
+  border-radius: 12px;
   padding: 1rem;
   display: flex;
   align-items: center;
@@ -270,14 +289,20 @@
   width: 2.5rem;
   height: 2.5rem;
   border-radius: 50%;
-  background-color: #2a2a2a;
+  background-color: #0a1f13;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
+.link-icon-wrap span {
+  color: #34d399;
+}
+
 .link-name {
-  color: #fff;
+  color: #ffffff;
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
   transition: opacity 0.2s ease;
 }
 
@@ -289,23 +314,31 @@
   margin-top: 0.5rem;
   width: 100%;
   padding: 1rem;
-  border-radius: var(--radius-xl);
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  color: #fff;
+  color: #34d399;
   font-weight: 700;
-  border: 1px solid rgba(255,255,255,0.1);
-  background-color: rgba(255,255,255,0.02);
+  border: 1px solid rgba(52,211,153,0.3);
+  background-color: #030a06;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .add-link-btn:hover {
-  background-color: rgba(255,255,255,0.1);
+  background-color: rgba(52,211,153,0.1);
 }
 
 .add-link-btn:active {
-  transform: scale(0.98);
+  transform: scale(0.95);
+}
+
+/* Material icon rotation inside button */
+.add-link-btn span {
+  transition: transform 0.2s ease;
+}
+.add-link-btn:hover span {
+  transform: rotate(90deg);
 }

@@ -1,0 +1,175 @@
+/* SettingsModal.css */
+.settings-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background-color: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+
+.settings-modal-container {
+  width: 100%;
+  max-width: 420px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  background-color: #131313;
+  border-radius: 20px;
+  box-shadow: 0 24px 40px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px 12px 24px;
+}
+
+.settings-close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  cursor: pointer;
+  padding: 0;
+  transition: opacity 0.2s, transform 0.2s;
+}
+
+.settings-close-btn:hover {
+  opacity: 0.8;
+}
+
+.settings-close-btn:active {
+  transform: scale(0.95);
+}
+
+.settings-brand {
+  font-family: 'Hanken Grotesk', sans-serif;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+  margin: 0;
+}
+
+.settings-main {
+  flex: 1;
+  padding: 8px 24px 24px 24px;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.settings-main::-webkit-scrollbar {
+  display: none;
+}
+
+.settings-title {
+  font-family: 'Hanken Grotesk', sans-serif;
+  font-size: 28px;
+  font-weight: 600;
+  color: #e5e2e1;
+  margin-bottom: 24px;
+  margin-top: 0;
+}
+
+.settings-menu-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.settings-menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  border-radius: 12px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: opacity 0.3s;
+}
+
+.settings-menu-item:hover {
+  opacity: 0.8;
+}
+
+.settings-menu-item-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.settings-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #444748;
+}
+
+.glass-icon-container {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.02));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.settings-icon span {
+  color: #e5e2e1;
+}
+
+.settings-menu-text {
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  color: #e5e2e1;
+}
+
+.settings-chevron {
+  color: #444748;
+  transition: color 0.3s;
+}
+
+.settings-menu-item:hover .settings-chevron {
+  color: #ffffff;
+}
+
+.settings-divider {
+  width: 100%;
+  height: 1px;
+  background-color: #444748;
+  margin: 8px 0;
+}
+
+.settings-sign-out {
+  margin-top: 16px;
+  border-color: rgba(255, 180, 171, 0.2);
+  background-color: rgba(147, 0, 10, 0.1);
+}
+
+.settings-icon-danger {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(147, 0, 10, 0.3);
+  border: 1px solid rgba(255, 180, 171, 0.3);
+}
+
+.settings-icon-danger span {
+  color: #ffb4ab;
+}
+
+.text-danger {
+  color: #ffb4ab !important;
+}

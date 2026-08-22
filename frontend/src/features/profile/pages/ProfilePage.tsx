@@ -3,7 +3,7 @@
 // ═══════════════════════════════════════════════════════════
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../../store/authStore';
 import { useProfileStore } from '../../../store/profileStore';
 import ImageViewer from '../../../components/ui/ImageViewer';
@@ -11,11 +11,13 @@ import Input, { Textarea } from '../../../components/ui/Input';
 import ImageUpload from '../../../components/ui/ImageUpload';
 import Button from '../../../components/ui/Button';
 import Card from '../../../components/ui/Card';
+import SettingsModal from '../components/SettingsModal';
 import './ProfilePage.css';
 
 const ProfilePage: React.FC = () => {
   const { user } = useAuthStore();
   const navigate = useNavigate();
+  const location = useLocation();
   const { id } = useParams<{ id: string }>();
   
   const targetUserId = id || user?.id;
@@ -43,6 +45,14 @@ const ProfilePage: React.FC = () => {
   const [title, setTitle] = useState('');
   const [desc, setDesc] = useState('');
   const [imageUrl, setImageUrl] = useState('');
+  const [showSettings, setShowSettings] = useState(false);
+
+  useEffect(() => {
+    if (location.state && (location.state as any).openSettings) {
+      setShowSettings(true);
+      window.history.replaceState({}, document.title);
+    }
+  }, [location]);
 
   useEffect(() => {
     if (targetUserId) {
@@ -58,9 +68,9 @@ const ProfilePage: React.FC = () => {
       const container = btn.parentElement;
       if (container) {
         const width = btn.offsetWidth;
-        const left = btn.offsetLeft - container.offsetLeft;
+        const left = btn.offsetLeft;
         tabSliderRef.current.style.width = `${width}px`;
-        tabSliderRef.current.style.transform = `translateX(${left - 4}px)`;
+        tabSliderRef.current.style.transform = `translateX(${left}px)`;
       }
     }
   };
@@ -102,15 +112,15 @@ const ProfilePage: React.FC = () => {
         const container = targetBtn.parentElement;
         if (container) {
           const width = targetBtn.offsetWidth;
-          const left = targetBtn.offsetLeft - container.offsetLeft;
+          const left = targetBtn.offsetLeft;
           tabSliderRef.current.style.width = `${width}px`;
-          tabSliderRef.current.style.transform = `translateX(${left - 4}px)`;
+          tabSliderRef.current.style.transform = `translateX(${left}px)`;
         }
       }
     }
   }, []);
 
-  if (isLoading || !profile) {
+  if (!profile || (isLoading && profile.id !== targetUserId)) {
     return (
       <div className="profile-page-wrapper" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
         <p>Loading Profile...</p>
@@ -134,6 +144,9 @@ const ProfilePage: React.FC = () => {
         onClose={() => setSelectedImage(null)} 
       />
 
+      {/* Settings Modal */}
+      {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
+
       {/* Top App Bar */}
       <header className="profile-top-bar">
         <div className="profile-top-brand">
@@ -147,7 +160,7 @@ const ProfilePage: React.FC = () => {
             <button className="top-action-btn" onClick={() => navigate('/profile/edit')}>
               <span className="material-symbols-outlined">edit</span>
             </button>
-            <button className="top-action-btn">
+            <button className="top-action-btn" onClick={() => setShowSettings(true)}>
               <span className="material-symbols-outlined">settings</span>
             </button>
           </div>
@@ -169,9 +182,35 @@ const ProfilePage: React.FC = () => {
             style={{ cursor: 'zoom-in' }}
           />
           <h2 className="profile-name">{profile.full_name}</h2>
+          {profile.username && (
+            <p className="profile-username" style={{ color: '#8fa696', fontSize: '14px', marginTop: '-4px', marginBottom: '8px', textAlign: 'center' }}>
+              {profile.username.startsWith('@') ? profile.username : `@${profile.username}`}
+            </p>
+          )}
           <p className="profile-bio">
             {profile.bio || 'Tech professional & passionate world traveler. Exploring the intersection of innovation and global culture.'}
           </p>
+        </section>
+
+        {/* Social Stats Bar */}
+        <section className="social-stats-bar">
+          <div className="social-stat-item youtube">
+            <span className="material-symbols-outlined social-stat-icon" style={{ fontVariationSettings: "'FILL' 1" }}>play_circle</span>
+            <span>1.2M</span>
+          </div>
+          <div className="social-stat-item instagram">
+            <span className="material-symbols-outlined social-stat-icon">photo_camera</span>
+            <span>500K</span>
+          </div>
+          <div className="social-stat-item tiktok">
+            <span className="material-symbols-outlined social-stat-icon">music_note</span>
+            <span>2.1M</span>
+          </div>
+          {!isPublicView && (
+            <button className="social-add-btn" aria-label="Add Platform">
+              <span className="material-symbols-outlined">add</span>
+            </button>
+          )}
         </section>
 
         {/* Stats Grid */}

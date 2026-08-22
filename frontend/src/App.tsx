@@ -12,7 +12,11 @@ import { useAuthStore } from './store/authStore';
 import LoginPage from './features/auth/pages/LoginPage';
 import ProfilePage from './features/profile/pages/ProfilePage';
 import EditProfilePage from './features/profile/pages/EditProfilePage';
+import ActivityPage from './features/profile/pages/ActivityPage';
+import AccountCentrePage from './features/profile/pages/AccountCentrePage';
+import PaymentVerificationPage from './features/profile/pages/PaymentVerificationPage';
 import CampaignFeedPage from './features/campaigns/pages/CampaignFeedPage';
+import DiscoverFeedPage from './features/campaigns/pages/DiscoverFeedPage';
 import CampaignDetailPage from './features/campaigns/pages/CampaignDetailPage';
 import CreateCampaignPage from './features/advertise/pages/CreateCampaignPage';
 import MarketplacePage from './features/marketplace/pages/MarketplacePage';
@@ -107,7 +111,7 @@ const App: React.FC = () => {
             element={
               <ProtectedRoute>
                 <AppLayout>
-                  <MarketplacePage />
+                  <DiscoverFeedPage />
                 </AppLayout>
               </ProtectedRoute>
             }
@@ -147,6 +151,30 @@ const App: React.FC = () => {
             element={
               <ProtectedRoute>
                 <EditProfilePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/profile/activity"
+            element={
+              <ProtectedRoute>
+                <ActivityPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/profile/account"
+            element={
+              <ProtectedRoute>
+                <AccountCentrePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/profile/payments"
+            element={
+              <ProtectedRoute>
+                <PaymentVerificationPage />
               </ProtectedRoute>
             }
           />
