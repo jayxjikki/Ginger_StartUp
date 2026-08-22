@@ -44,6 +44,7 @@ const CampaignDetailPage: React.FC = () => {
   const campaign = campaigns.find((c) => c.id === id);
   const isExpired = campaign?.end_date ? new Date(campaign.end_date) < new Date() : false;
   const [topEarners, setTopEarners] = useState<any[]>([]);
+  const [userSubmission, setUserSubmission] = useState<any | null>(null);
 
   const handleSubmit = async () => {
     if (!user) {
@@ -82,6 +83,14 @@ const CampaignDetailPage: React.FC = () => {
       toast.success('Video submitted successfully!');
       setShowSubmitModal(false);
       setVideoUrl('');
+      
+      // Update local state to hide button immediately
+      setUserSubmission({
+        status: 'pending',
+        current_views: 0,
+        earned_amount: 0,
+        video_url: videoUrl
+      });
     } catch (err: any) {
       console.error('Submit error:', err);
       toast.error(err.message || 'Failed to submit video');
@@ -119,6 +128,30 @@ const CampaignDetailPage: React.FC = () => {
     };
     fetchTopEarners();
   }, [campaign?.id]);
+
+  // Fetch User's Submission
+  useEffect(() => {
+    if (!campaign || !user) return;
+    
+    const fetchSubmission = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('submissions')
+          .select('*')
+          .eq('campaign_id', campaign.id)
+          .eq('creator_id', user.id)
+          .single();
+        
+        if (data) {
+          setUserSubmission(data);
+        }
+      } catch (err) {
+        // Ignored, user just hasn't submitted yet
+      }
+    };
+    
+    fetchSubmission();
+  }, [campaign?.id, user?.id]);
 
   if (!campaign) {
     return (
@@ -371,18 +404,49 @@ const CampaignDetailPage: React.FC = () => {
           </div>
         </motion.div>
 
-        {/* Submit CTA */}
+        {/* Submit CTA or Submission Status */}
         <motion.div className="detail-cta" variants={fadeUp}>
-          <Button
-            variant="primary"
-            size="lg"
-            fullWidth
-            onClick={() => setShowSubmitModal(true)}
-            id="btn-submit-video"
-            disabled={isExpired}
-          >
-            {isExpired ? 'Campaign Expired' : 'Submit Your Video'}
-          </Button>
+          {userSubmission ? (
+            <Card variant="ginger" padding="md">
+              <h5 className="section-title" style={{ color: 'var(--text-primary)' }}>Your Submission</h5>
+              <div className="flex flex-col gap-3 mt-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-secondary">Status</span>
+                  <Badge variant={userSubmission.status === 'verified' ? 'success' : 'default'} size="sm">
+                    {userSubmission.status.toUpperCase()}
+                  </Badge>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-secondary">Views Tracked</span>
+                  <span className="font-bold">{formatCount(userSubmission.current_views || 0)}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-secondary">Earned Amount</span>
+                  <span className="font-bold text-ginger">{formatCurrency(userSubmission.earned_amount || 0, true)}</span>
+                </div>
+                <a 
+                  href={userSubmission.video_url} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-center text-xs mt-2"
+                  style={{ color: 'var(--text-tertiary)', textDecoration: 'underline' }}
+                >
+                  View Submitted Video
+                </a>
+              </div>
+            </Card>
+          ) : (
+            <Button
+              variant="primary"
+              size="lg"
+              fullWidth
+              onClick={() => setShowSubmitModal(true)}
+              id="btn-submit-video"
+              disabled={isExpired}
+            >
+              {isExpired ? 'Campaign Expired' : 'Submit Your Video'}
+            </Button>
+          )}
         </motion.div>
 
         {/* Submit Modal */}
