@@ -190,7 +190,7 @@ const AdminDashboard: React.FC = () => {
                 <div className="action-buttons">
                   <button 
                     className={`icon-btn ${u.is_banned ? 'unban' : 'ban'}`}
-                    onClick={() => handleBan(u.id, u.is_banned)}
+                    onClick={() => handleBan(u.id, u.is_banned ?? false)}
                     title={u.is_banned ? "Unban User" : "Ban User"}
                   >
                     {u.is_banned ? <FiCheckCircle /> : <FiSlash />}

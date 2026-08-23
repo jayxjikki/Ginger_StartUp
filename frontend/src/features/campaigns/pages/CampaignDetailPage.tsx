@@ -144,7 +144,7 @@ const CampaignDetailPage: React.FC = () => {
     
     const fetchSubmission = async () => {
       try {
-        const { data, error } = await supabase
+        const { data } = await supabase
           .from('submissions')
           .select('*')
           .eq('campaign_id', campaign.id)

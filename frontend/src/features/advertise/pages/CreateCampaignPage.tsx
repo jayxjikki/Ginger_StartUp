@@ -128,7 +128,7 @@ const CreateCampaignPage: React.FC = () => {
         discount_percent: Number(formData.discountPercent) || 0,
         verification_days: formData.verificationDays,
         image_url: formData.image_url,
-        end_date: formData.endDate ? new Date(formData.endDate).toISOString() : null,
+        end_date: formData.endDate ? new Date(formData.endDate).toISOString() : undefined,
         payout_tiers: formData.tiers.map(t => ({
           min_views: Number(t.minViews) || 0,
           payout_amount: Number(t.amount) || 0,

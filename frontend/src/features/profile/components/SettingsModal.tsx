@@ -12,7 +12,7 @@ interface SettingsModalProps {
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
   const navigate = useNavigate();
-  const { user, profile, signOut } = useAuthStore();
+  const { profile, signOut } = useAuthStore();
   const [isNavigating, setIsNavigating] = useState(false);
   const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);

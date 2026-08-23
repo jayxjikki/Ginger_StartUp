@@ -89,7 +89,7 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
     }
   },
 
-  fetchCampaignById: async (id: string) => {
+  fetchCampaignById: async (_id: string) => {
     // Implementation needed
   },
 
