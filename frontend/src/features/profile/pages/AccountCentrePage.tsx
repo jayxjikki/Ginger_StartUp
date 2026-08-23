@@ -87,9 +87,9 @@ const AccountCentrePage: React.FC = () => {
         const username = url;
         
         if (existingIndex >= 0) {
-          newLinks[existingIndex] = { ...newLinks[existingIndex], username };
+          newLinks[existingIndex] = { ...newLinks[existingIndex], username, url: username };
         } else {
-          newLinks.push({ id: Date.now().toString(), platform: activeLinkPlatform, username, followers: Math.floor(Math.random() * 50000) });
+          newLinks.push({ id: Date.now().toString(), platform: activeLinkPlatform, username, url: username, followers: Math.floor(Math.random() * 50000) });
         }
       }
       updateSocialLinks(newLinks);
@@ -245,36 +245,36 @@ const AccountCentrePage: React.FC = () => {
           <h3 className="account-section-title">Personal Information</h3>
           <div className="glass-panel info-list-container">
             {/* Name */}
-            <div className="info-item liquid-hover">
+            <div className="info-item liquid-hover" onClick={() => navigate('/profile/edit', { state: { fromTransition: true } })} style={{ cursor: 'pointer' }}>
               <div className="info-item-content">
                 <span className="info-item-label">Name</span>
                 <span className="info-item-value">{fullName}</span>
               </div>
               <span className="material-symbols-outlined info-item-icon">edit</span>
             </div>
-            {/* Email */}
-            <div className="info-item liquid-hover">
+            {/* Username */}
+            <div className="info-item liquid-hover" onClick={() => navigate('/profile/edit', { state: { fromTransition: true } })} style={{ cursor: 'pointer' }}>
+              <div className="info-item-content">
+                <span className="info-item-label">Username</span>
+                <span className="info-item-value">{profile?.username || 'Not set'}</span>
+              </div>
+              <span className="material-symbols-outlined info-item-icon">edit</span>
+            </div>
+            {/* Location */}
+            <div className="info-item liquid-hover" onClick={() => navigate('/profile/edit', { state: { fromTransition: true } })} style={{ cursor: 'pointer' }}>
+              <div className="info-item-content">
+                <span className="info-item-label">Location</span>
+                <span className="info-item-value">{profile?.location || 'Not set'}</span>
+              </div>
+              <span className="material-symbols-outlined info-item-icon">edit</span>
+            </div>
+            {/* Email (Read-only typically, or handled by Auth) */}
+            <div className="info-item">
               <div className="info-item-content">
                 <span className="info-item-label">Email</span>
                 <span className="info-item-value">{email}</span>
               </div>
-              <span className="material-symbols-outlined info-item-icon">edit</span>
-            </div>
-            {/* Phone */}
-            <div className="info-item liquid-hover">
-              <div className="info-item-content">
-                <span className="info-item-label">Phone Number</span>
-                <span className="info-item-value">+1 (555) 019-2834</span>
-              </div>
-              <span className="material-symbols-outlined info-item-icon">edit</span>
-            </div>
-            {/* DOB */}
-            <div className="info-item liquid-hover">
-              <div className="info-item-content">
-                <span className="info-item-label">Date of Birth</span>
-                <span className="info-item-value">October 14, 1992</span>
-              </div>
-              <span className="material-symbols-outlined info-item-icon">edit</span>
+              <span className="material-symbols-outlined info-item-icon" style={{ opacity: 0.3 }}>lock</span>
             </div>
           </div>
         </section>
@@ -284,31 +284,23 @@ const AccountCentrePage: React.FC = () => {
           <h3 className="account-section-title">Security</h3>
           <div className="glass-panel info-list-container">
             {/* Password */}
-            <div className="info-item liquid-hover">
-              <div className="security-item">
-                <div className="security-icon-wrap">
-                  <span className="material-symbols-outlined">lock</span>
-                </div>
-                <span className="info-item-value">Change Password</span>
+            <div className="info-item liquid-hover" onClick={() => alert('Password reset emails can be managed via Supabase Auth.')}>
+              <div className="info-item-content">
+                <span className="info-item-label">Password</span>
+                <span className="info-item-value">••••••••</span>
               </div>
               <span className="material-symbols-outlined info-item-icon">chevron_right</span>
             </div>
             {/* 2FA */}
-            <div className="info-item liquid-hover">
-              <div className="security-item">
-                <div className="security-icon-wrap">
-                  <span className="material-symbols-outlined">verified_user</span>
-                </div>
-                <div className="info-item-content">
-                  <span className="info-item-value">Two-Factor Auth</span>
-                  <span className="info-item-label">Enabled via App</span>
-                </div>
+            <div className="info-item liquid-hover" onClick={() => alert('Two-factor authentication coming soon.')}>
+              <div className="info-item-content">
+                <span className="info-item-label">Two-factor authentication</span>
+                <span className="info-item-value" style={{ color: '#c4c7c8' }}>Off</span>
               </div>
               <span className="material-symbols-outlined info-item-icon">chevron_right</span>
             </div>
           </div>
         </section>
-
         {/* 4. Danger Zone */}
         <section className="danger-zone">
           <div className="danger-card">

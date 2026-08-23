@@ -14,11 +14,17 @@ interface CampaignState {
   mySubmissions: Submission[];
   filters: CampaignFilters;
   isLoading: boolean;
+  isSubmitting: boolean;
+  savedCampaignIds: string[];
   error: string | null;
 
   // Actions
   fetchCampaigns: () => Promise<void>;
+  fetchCampaignById: (id: string) => Promise<void>;
   createCampaign: (campaign: Partial<Campaign>) => Promise<void>;
+  submitContent: (campaignId: string, url: string, metadata: any) => Promise<void>;
+  toggleSavedCampaign: (campaignId: string, userId: string) => Promise<void>;
+  fetchSavedCampaigns: (userId: string) => Promise<void>;
   setSelectedCampaign: (campaign: Campaign | null) => void;
   setFilters: (filters: Partial<CampaignFilters>) => void;
   applyFilters: () => void;
@@ -43,6 +49,8 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
   mySubmissions: [],
   filters: defaultFilters,
   isLoading: false,
+  isSubmitting: false,
+  savedCampaignIds: [],
   error: null,
 
   fetchCampaigns: async () => {
@@ -79,6 +87,10 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
     } finally {
       set({ isLoading: false });
     }
+  },
+
+  fetchCampaignById: async (id: string) => {
+    // Implementation needed
   },
 
   createCampaign: async (campaign: Partial<Campaign>) => {
@@ -123,6 +135,62 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
   },
 
   setSelectedCampaign: (campaign) => set({ selectedCampaign: campaign }),
+
+  fetchSavedCampaigns: async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('saved_campaigns')
+        .select('campaign_id')
+        .eq('user_id', userId);
+        
+      if (error) throw error;
+      
+      set({ savedCampaignIds: data ? data.map((d: any) => d.campaign_id) : [] });
+    } catch (error: any) {
+      console.error('Error fetching saved campaigns:', error);
+    }
+  },
+
+  toggleSavedCampaign: async (campaignId: string, userId: string) => {
+    const { savedCampaignIds } = get();
+    const isSaved = savedCampaignIds.includes(campaignId);
+    
+    try {
+      if (isSaved) {
+        const { error } = await supabase
+          .from('saved_campaigns')
+          .delete()
+          .eq('user_id', userId)
+          .eq('campaign_id', campaignId);
+          
+        if (error) throw error;
+        set({ savedCampaignIds: savedCampaignIds.filter(id => id !== campaignId) });
+      } else {
+        const { error } = await supabase
+          .from('saved_campaigns')
+          .insert([{ user_id: userId, campaign_id: campaignId }]);
+          
+        if (error) throw error;
+        set({ savedCampaignIds: [...savedCampaignIds, campaignId] });
+      }
+    } catch (error: any) {
+      console.error('Error toggling saved campaign:', error);
+      throw error;
+    }
+  },
+
+  submitContent: async (campaignId: string, url: string, metadata: any) => {
+    set({ isSubmitting: true });
+    try {
+      // Dummy simulate network
+      await new Promise(r => setTimeout(r, 1500));
+      console.log('Submitted', { campaignId, url, metadata });
+    } catch (err) {
+      console.error(err);
+    } finally {
+      set({ isSubmitting: false });
+    }
+  },
 
   setFilters: (newFilters) => {
     set((state) => ({

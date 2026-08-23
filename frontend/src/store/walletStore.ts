@@ -48,7 +48,7 @@ export const useWalletStore = create<WalletState>((set) => ({
       const { data: txData, error: txError } = await supabase
         .from('wallet_transactions')
         .select('*')
-        .eq('profile_id', userId)
+        .eq('user_id', userId)
         .order('created_at', { ascending: false });
 
       if (txError) throw txError;

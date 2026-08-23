@@ -18,6 +18,7 @@ import ImageUpload from '../../../components/ui/ImageUpload';
 import { useAuthStore } from '../../../store/authStore';
 import { useCampaignStore } from '../../../store/campaignStore';
 import { CAMPAIGN_TYPES, VERIFICATION_PERIODS, SOCIAL_PLATFORMS } from '../../../lib/constants';
+import CampaignCheckoutModal from '../components/CampaignCheckoutModal';
 import './CreateCampaignPage.css';
 
 const steps = [
@@ -34,6 +35,7 @@ const CreateCampaignPage: React.FC = () => {
   
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showCheckoutModal, setShowCheckoutModal] = useState(false);
   const [formData, setFormData] = useState({
     type: 'pool' as string,
     title: '',
@@ -92,12 +94,26 @@ const CreateCampaignPage: React.FC = () => {
     updateField('tiers', newTiers);
   };
 
-  const handleLaunch = async () => {
+  const handleLaunch = () => {
     if (!user) return;
+    
+    // Calculate total cost. Using prizePool as the primary cost for now.
+    const campaignCost = Number(formData.prizePool) || 0;
+    
+    if (campaignCost > 0) {
+      setShowCheckoutModal(true);
+    } else {
+      // If free, just execute immediately
+      executeLaunch();
+    }
+  };
+
+  const executeLaunch = async () => {
     setIsSubmitting(true);
+    setShowCheckoutModal(false);
     try {
       await createCampaign({
-        advertiser_id: user.id,
+        advertiser_id: user!.id,
         title: formData.title,
         description: formData.description,
         type: formData.type as any,
@@ -440,11 +456,18 @@ const CreateCampaignPage: React.FC = () => {
               onClick={handleLaunch}
               disabled={isSubmitting}
             >
-              {isSubmitting ? 'Launching...' : '🚀 Launch Campaign'}
+              {isSubmitting ? 'Processing...' : 'Submit & Pay 🚀'}
             </Button>
           )}
         </div>
       </div>
+      
+      <CampaignCheckoutModal 
+        isOpen={showCheckoutModal}
+        onClose={() => setShowCheckoutModal(false)}
+        onSuccess={executeLaunch}
+        campaignCost={Number(formData.prizePool) || 0}
+      />
     </div>
   );
 };

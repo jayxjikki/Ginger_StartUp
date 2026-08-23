@@ -27,6 +27,15 @@ export function formatCount(count: number): string {
 }
 
 /**
+ * Format a standard date string (e.g., "Aug 24, 2026")
+ */
+export function formatDate(dateString: string | null | undefined): string {
+  if (!dateString) return 'N/A';
+  const date = new Date(dateString);
+  return date.toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+/**
  * Format a relative time string (e.g., "2 hours ago", "3 days left")
  */
 export function formatRelativeTime(dateString: string): string {
@@ -67,9 +76,12 @@ export function formatTimeLeft(dateString: string | null | undefined): string {
 /**
  * Get initials from a name
  */
-export function getInitials(name: string): string {
+export function getInitials(name: string | null | undefined): string {
+  if (!name || typeof name !== 'string') return '?';
   return name
+    .trim()
     .split(' ')
+    .filter(n => n.length > 0)
     .map((n) => n[0])
     .join('')
     .toUpperCase()

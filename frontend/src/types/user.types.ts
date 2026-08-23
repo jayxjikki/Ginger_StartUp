@@ -8,12 +8,15 @@ export interface Profile {
   full_name: string;
   username: string;
   avatar_url: string | null;
+  banner_url: string | null;
   bio: string | null;
   category: string | null;
   location: string | null;
   follower_count: number;
   rates: ProfileRates | null;
   is_verified: boolean;
+  role?: string;
+  is_banned?: boolean;
   created_at: string;
 }
 

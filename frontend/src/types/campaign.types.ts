@@ -66,6 +66,7 @@ export interface SlideshowItem {
   badge_text: string;
   badge_icon: string;
   theme_color: string;
+  link_url?: string;
   order_index: number;
 }
 

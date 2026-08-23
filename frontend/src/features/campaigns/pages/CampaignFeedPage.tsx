@@ -179,26 +179,48 @@ const HomeMenuPage: React.FC = () => {
         {slideshows.length > 0 && (
           <div className="slideshow-wrapper">
             <div className="slideshow-container" ref={slideshowRef}>
-              {slideshows.map((slide) => (
-                <div className="slide" key={slide.id}>
-                  <div className={`slide-gradient ${slide.theme_color}`}></div>
-                  <img
-                    alt={slide.title}
-                    className="slide-img"
-                    src={slide.image_url}
-                  />
-                  <div className="slide-content">
-                    <span className={`slide-badge ${slide.theme_color}`}>
-                      <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>
-                        {slide.badge_icon}
-                      </span>{' '}
-                      {slide.badge_text}
-                    </span>
-                    <h2 className="slide-title">{slide.title}</h2>
-                    <p className="slide-subtitle">{slide.subtitle}</p>
+              {slideshows.map((slide) => {
+                const SlideContent = (
+                  <>
+                    <div className={`slide-gradient ${slide.theme_color}`}></div>
+                    <img
+                      alt={slide.title}
+                      className="slide-img"
+                      src={slide.image_url}
+                    />
+                    <div className="slide-content">
+                      <span className={`slide-badge ${slide.theme_color}`}>
+                        <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>
+                          {slide.badge_icon}
+                        </span>{' '}
+                        {slide.badge_text}
+                      </span>
+                      <h2 className="slide-title">{slide.title}</h2>
+                      <p className="slide-subtitle">{slide.subtitle}</p>
+                    </div>
+                  </>
+                );
+
+                if (slide.link_url) {
+                  return (
+                    <a 
+                      key={slide.id} 
+                      href={slide.link_url} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className="slide cursor-pointer block"
+                    >
+                      {SlideContent}
+                    </a>
+                  );
+                }
+
+                return (
+                  <div className="slide" key={slide.id}>
+                    {SlideContent}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
             
             <div className="slideshow-indicators">

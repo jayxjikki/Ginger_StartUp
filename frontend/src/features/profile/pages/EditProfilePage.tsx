@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../../store/authStore';
 import { supabase } from '../../../lib/supabase';
+import { uploadToCloudinary } from '../../../lib/cloudinary';
 import './EditProfilePage.css';
 
 const EditProfilePage: React.FC = () => {
@@ -13,7 +14,13 @@ const EditProfilePage: React.FC = () => {
   const [pronouns, setPronouns] = useState('');
   const [bio, setBio] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
+  const [bannerUrl, setBannerUrl] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingBanner, setIsUploadingBanner] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+
+  const bannerInputRef = useRef<HTMLInputElement>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (profile) {
@@ -21,6 +28,7 @@ const EditProfilePage: React.FC = () => {
       setUsername(profile.username || '');
       setBio(profile.bio || '');
       setAvatarUrl(profile.avatar_url || 'https://via.placeholder.com/150');
+      setBannerUrl(profile.banner_url || '');
       // pronouns typically aren't in standard DB yet, so leaving blank or mock
       setPronouns('She/Her');
     }
@@ -37,6 +45,7 @@ const EditProfilePage: React.FC = () => {
           username: username,
           bio: bio,
           avatar_url: avatarUrl,
+          banner_url: bannerUrl,
         })
         .eq('id', user.id);
         
@@ -52,10 +61,43 @@ const EditProfilePage: React.FC = () => {
   };
 
   const handleAvatarChange = () => {
-    // In a real app, this would open a file picker or ImageUpload
-    // For now, we'll just mock it or leave it interactive
-    const newUrl = prompt("Enter new Avatar URL:");
-    if (newUrl) setAvatarUrl(newUrl);
+    avatarInputRef.current?.click();
+  };
+
+  const handleBannerChange = () => {
+    bannerInputRef.current?.click();
+  };
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    setIsUploadingAvatar(true);
+    try {
+      const url = await uploadToCloudinary(file);
+      setAvatarUrl(url);
+    } catch (err) {
+      console.error('Failed to upload avatar:', err);
+      alert('Failed to upload image to Cloudinary.');
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
+
+  const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    setIsUploadingBanner(true);
+    try {
+      const url = await uploadToCloudinary(file);
+      setBannerUrl(url);
+    } catch (err) {
+      console.error('Failed to upload banner:', err);
+      alert('Failed to upload image to Cloudinary.');
+    } finally {
+      setIsUploadingBanner(false);
+    }
   };
 
   // Focus effect for inputs
@@ -94,26 +136,40 @@ const EditProfilePage: React.FC = () => {
       <main className="edit-main">
         {/* Profile Picture Section */}
         <section className="banner-section">
-          <div className="banner-bg-wrapper">
-            <img alt="Background" className="banner-bg-img" src={bannerBg} />
+          <input type="file" ref={bannerInputRef} style={{ display: 'none' }} accept="image/*" onChange={handleBannerUpload} />
+          <input type="file" ref={avatarInputRef} style={{ display: 'none' }} accept="image/*" onChange={handleAvatarUpload} />
+          
+          <div className="banner-bg-wrapper" onClick={handleBannerChange} style={{ cursor: 'pointer' }}>
+            <img alt="Background" className="banner-bg-img" src={bannerUrl || bannerBg} />
             <div className="banner-gradient"></div>
+            <div className="banner-overlay" style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0, transition: 'opacity 0.2s', background: 'rgba(0,0,0,0.4)', zIndex: 2 }}>
+              {isUploadingBanner ? (
+                <span className="material-symbols-outlined spin-animation" style={{ color: 'white', fontSize: '32px' }}>sync</span>
+              ) : (
+                <span className="material-symbols-outlined" style={{ color: 'white', fontSize: '32px' }}>photo_camera</span>
+              )}
+            </div>
           </div>
           
           <div className="avatar-wrapper" onClick={handleAvatarChange}>
             <div className="avatar-container">
               <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
-                <img alt="Background" style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.6 }} src={bannerBg} />
+                <img alt="Background" style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.6 }} src={bannerUrl || bannerBg} />
               </div>
               <img alt="Profile Picture" className="avatar-img" src={avatarUrl} />
             </div>
             <div className="avatar-overlay">
-              <span className="material-symbols-outlined" style={{ color: 'white' }}>photo_camera</span>
+              {isUploadingAvatar ? (
+                <span className="material-symbols-outlined spin-animation" style={{ color: 'white' }}>sync</span>
+              ) : (
+                <span className="material-symbols-outlined" style={{ color: 'white' }}>photo_camera</span>
+              )}
             </div>
           </div>
           
           <button className="change-photo-btn" onClick={handleAvatarChange}>
             <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>edit</span>
-            Change profile photo
+            {isUploadingAvatar ? 'Uploading...' : 'Change profile photo'}
           </button>
         </section>
 
@@ -169,48 +225,6 @@ const EditProfilePage: React.FC = () => {
               onFocus={handleFocus}
               onBlur={handleBlur}
             />
-          </div>
-        </section>
-
-        {/* Links Section */}
-        <section className="links-section">
-          <h2 className="edit-input-label" style={{ marginBottom: '0.5rem' }}>Links</h2>
-          <div className="links-list">
-            
-            <div className="glass-card link-item group">
-              <div className="link-info">
-                <div className="link-icon-wrap">
-                  <span className="material-symbols-outlined text-primary">play_circle</span>
-                </div>
-                <span className="link-name">YouTube</span>
-              </div>
-              <span className="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">chevron_right</span>
-            </div>
-            
-            <div className="glass-card link-item group">
-              <div className="link-info">
-                <div className="link-icon-wrap">
-                  <span className="material-symbols-outlined text-primary">photo_camera</span>
-                </div>
-                <span className="link-name">Instagram</span>
-              </div>
-              <span className="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">chevron_right</span>
-            </div>
-
-            <div className="glass-card link-item group">
-              <div className="link-info">
-                <div className="link-icon-wrap">
-                  <span className="material-symbols-outlined text-primary">music_note</span>
-                </div>
-                <span className="link-name">TikTok</span>
-              </div>
-              <span className="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">chevron_right</span>
-            </div>
-            
-            <button className="add-link-btn">
-              <span className="material-symbols-outlined">add</span>
-              Add Link
-            </button>
           </div>
         </section>
       </main>

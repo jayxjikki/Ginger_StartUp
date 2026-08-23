@@ -12,6 +12,8 @@ import Badge from '../../../components/ui/Badge';
 import { formatCurrency, formatRelativeTime } from '../../../utils/formatters';
 import { useAuthStore } from '../../../store/authStore';
 import { useWalletStore } from '../../../store/walletStore';
+import AddMoneyModal from '../components/AddMoneyModal';
+import WithdrawModal from '../components/WithdrawModal';
 import './WalletPage.css';
 
 const stagger = {
@@ -27,6 +29,9 @@ const fadeUp = {
 const WalletPage: React.FC = () => {
   const { user } = useAuthStore();
   const { balance, transactions, isLoading, fetchWalletData } = useWalletStore();
+  
+  const [isAddMoneyOpen, setIsAddMoneyOpen] = React.useState(false);
+  const [isWithdrawOpen, setIsWithdrawOpen] = React.useState(false);
 
   React.useEffect(() => {
     if (user?.id) {
@@ -75,10 +80,22 @@ const WalletPage: React.FC = () => {
             </div>
 
             <div className="balance-actions">
-              <Button variant="primary" size="md" icon={<FiPlus />} className="balance-btn">
+              <Button 
+                variant="primary" 
+                size="md" 
+                icon={<FiPlus />} 
+                className="balance-btn"
+                onClick={() => setIsAddMoneyOpen(true)}
+              >
                 Add Money
               </Button>
-              <Button variant="secondary" size="md" icon={<FiArrowUpRight />} className="balance-btn">
+              <Button 
+                variant="secondary" 
+                size="md" 
+                icon={<FiArrowUpRight />} 
+                className="balance-btn"
+                onClick={() => setIsWithdrawOpen(true)}
+              >
                 Withdraw
               </Button>
             </div>
@@ -140,6 +157,17 @@ const WalletPage: React.FC = () => {
           </div>
         </motion.div>
       </motion.div>
+
+      <AddMoneyModal 
+        isOpen={isAddMoneyOpen} 
+        onClose={() => setIsAddMoneyOpen(false)} 
+      />
+      
+      <WithdrawModal 
+        isOpen={isWithdrawOpen} 
+        onClose={() => setIsWithdrawOpen(false)}
+        availableBalance={balance.available}
+      />
     </div>
   );
 };

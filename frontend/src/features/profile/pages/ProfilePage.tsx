@@ -4,6 +4,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { useAuthStore } from '../../../store/authStore';
 import { useProfileStore } from '../../../store/profileStore';
 import ImageViewer from '../../../components/ui/ImageViewer';
@@ -50,7 +51,10 @@ const ProfilePage: React.FC = () => {
     isLoading, 
     fetchProfileData,
     createPost,
-    createAchievement
+    createAchievement,
+    createMediaKitItem,
+    messages,
+    mediaKitItems
   } = useProfileStore();
 
   const [activeTab, setActiveTab] = useState(1);
@@ -109,7 +113,12 @@ const ProfilePage: React.FC = () => {
     try {
       if (activeTab === 0) {
         // Save Media Kit Item
-        console.log("Saved Media Kit Item:", { title, desc, imageUrl });
+        await createMediaKitItem({
+          title,
+          description: desc,
+          image_url: imageUrl,
+        });
+        toast.success("Media Kit item saved!");
       } else if (activeTab === 1) {
         // Save as Post
         await createPost({
@@ -160,15 +169,58 @@ const ProfilePage: React.FC = () => {
     );
   }
 
-  const bannerStyle = {
-    backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), url("https://lh3.googleusercontent.com/aida-public/AB6AXuAwosNMbFqAsdhEk59Za1nbASUJr88irtJHIJoApwXFXI2habJyNQRj7DjNJChImWA26tsm9xH5Jz1_ttX1BOSBQPMxrcwYajTFB96saVbnc8UddW5CTits1rrJffJogQjUU_kmc4GQgBCBKvFtjrpBXN7o0kh5Ob8oj1W5d6RNxLSoGgF33c2oQ9MneVPyQuvktuSBG1KbEUZFT_GnILLNoa5SVvgZ2qooecdc_vOSFtu2Xgmzuvai")`
-  };
-  
-  const actualBannerUrl = "https://lh3.googleusercontent.com/aida-public/AB6AXuAwosNMbFqAsdhEk59Za1nbASUJr88irtJHIJoApwXFXI2habJyNQRj7DjNJChImWA26tsm9xH5Jz1_ttX1BOSBQPMxrcwYajTFB96saVbnc8UddW5CTits1rrJffJogQjUU_kmc4GQgBCBKvFtjrpBXN7o0kh5Ob8oj1W5d6RNxLSoGgF33c2oQ9MneVPyQuvktuSBG1KbEUZFT_GnILLNoa5SVvgZ2qooecdc_vOSFtu2Xgmzuvai";
+  const actualBannerUrl = profile?.banner_url || "https://lh3.googleusercontent.com/aida-public/AB6AXuAwosNMbFqAsdhEk59Za1nbASUJr88irtJHIJoApwXFXI2habJyNQRj7DjNJChImWA26tsm9xH5Jz1_ttX1BOSBQPMxrcwYajTFB96saVbnc8UddW5CTits1rrJffJogQjUU_kmc4GQgBCBKvFtjrpBXN7o0kh5Ob8oj1W5d6RNxLSoGgF33c2oQ9MneVPyQuvktuSBG1KbEUZFT_GnILLNoa5SVvgZ2qooecdc_vOSFtu2Xgmzuvai";
   const actualAvatarUrl = profile.avatar_url || 'https://via.placeholder.com/150';
+
+  const bannerStyle = {
+    backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), url("${actualBannerUrl}")`
+  };
 
   const isLinked = (platformName: string) => {
     return socialLinks.some(l => l.platform.toLowerCase() === platformName.toLowerCase());
+  };
+
+  const getPlatformUrl = (platformName: string) => {
+    return socialLinks.find(l => l.platform.toLowerCase() === platformName.toLowerCase())?.url;
+  };
+
+  const renderPlatformIcon = (name: string, iconSrc: string, customClass: string = '') => {
+    const url = getPlatformUrl(name);
+    
+    // If not linked and it's public view, don't show it at all
+    if (!url && isPublicView) return null;
+
+    const content = (
+      <img src={iconSrc} alt={name} style={{ width: '20px', height: '20px', objectFit: 'contain' }} />
+    );
+
+    if (url) {
+      return (
+        <a 
+          key={name}
+          href={url} 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          className={`social-stat-item ${customClass}`} 
+          style={{ cursor: 'pointer', overflow: 'hidden' }}
+        >
+          {content}
+        </a>
+      );
+    }
+
+    // Not linked, and it's the owner viewing
+    return (
+      <div 
+        key={name}
+        className={`social-stat-item ${customClass}`} 
+        style={{ overflow: 'hidden', opacity: 0.4, cursor: 'pointer' }}
+        onClick={() => navigate('/profile/account')}
+        title="Link account"
+      >
+        {content}
+      </div>
+    );
   };
 
   const OTHER_PLATFORMS = [
@@ -187,39 +239,9 @@ const ProfilePage: React.FC = () => {
     { name: 'GitHub', icon: githubIcon },
   ];
 
-  const DUMMY_MESSAGES = [
-    {
-      id: 1,
-      name: 'Alex Rivers',
-      avatar: 'https://i.pravatar.cc/150?img=3',
-      time: 'Just now',
-      preview: 'Hey! Are you available for a quick chat about the new project?',
-      unread: true,
-      online: true
-    },
-    {
-      id: 2,
-      name: 'Brands Co.',
-      avatar: 'https://i.pravatar.cc/150?img=4',
-      time: 'Yesterday',
-      preview: "We loved your last video. Let's talk rates.",
-      unread: false,
-      online: false
-    },
-    {
-      id: 3,
-      name: 'Sarah Jenkins',
-      avatar: 'https://i.pravatar.cc/150?img=1',
-      time: '2 days ago',
-      preview: 'Thanks for the shoutout in your last vlog!',
-      unread: false,
-      online: true
-    }
-  ];
-
-  const filteredMessages = DUMMY_MESSAGES.filter(m => 
-    m.name.toLowerCase().includes(messageSearch.toLowerCase()) || 
-    m.preview.toLowerCase().includes(messageSearch.toLowerCase())
+  const filteredMessages = messages.filter(m => 
+    (m.sender?.full_name || '').toLowerCase().includes(messageSearch.toLowerCase()) || 
+    m.content.toLowerCase().includes(messageSearch.toLowerCase())
   );
 
   return (
@@ -252,7 +274,7 @@ const ProfilePage: React.FC = () => {
         </div>
         {!isPublicView && (
           <div className="profile-top-actions">
-            <button className="top-action-btn" onClick={() => setShowMessages(true)}>
+            <button className="top-action-btn" onClick={() => navigate('/inbox')}>
               <span className="material-symbols-outlined">mail</span>
             </button>
             <button className="top-action-btn" onClick={() => setShowNotifications(true)}>
@@ -291,24 +313,47 @@ const ProfilePage: React.FC = () => {
           <p className="profile-bio">
             {profile.bio || 'Tech professional & passionate world traveler. Exploring the intersection of innovation and global culture.'}
           </p>
+          {isPublicView && (
+            <div className="profile-public-actions" style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginTop: '16px' }}>
+              <button 
+                className="btn btn-primary" 
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  alert('Follow feature coming soon (Backend API needed)');
+                }}
+              >
+                Follow
+              </button>
+              <button 
+                className="btn btn-secondary"
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  const content = prompt('Enter your message:');
+                  if (content) {
+                    try {
+                      await useProfileStore.getState().sendMessage(profile.id, content);
+                      alert('Message sent!');
+                    } catch (err) {
+                      alert('Failed to send message.');
+                    }
+                  }
+                }}
+              >
+                Message
+              </button>
+            </div>
+          )}
         </section>
 
         {/* Social Stats Bar */}
         <section className="social-stats-bar">
-          <div className="social-stat-item instagram">
-            <img src={instagramIcon} alt="Instagram" style={{ width: '20px', height: '20px', objectFit: 'contain' }} />
-          </div>
-          <div className="social-stat-item tiktok">
-            <img src={tiktokIcon} alt="TikTok" style={{ width: '20px', height: '20px', objectFit: 'contain' }} />
-          </div>
-          <div className="social-stat-item youtube">
-            <img src={youtubeIcon} alt="YouTube" style={{ width: '20px', height: '20px', objectFit: 'contain' }} />
-          </div>
-          {OTHER_PLATFORMS.filter(p => isLinked(p.name)).map(platform => (
-            <div key={platform.name} className="social-stat-item" style={{ overflow: 'hidden' }}>
-              <img src={platform.icon} alt={platform.name} style={{ width: '20px', height: '20px', objectFit: 'contain' }} />
-            </div>
-          ))}
+          {renderPlatformIcon('Instagram', instagramIcon, 'instagram')}
+          {renderPlatformIcon('TikTok', tiktokIcon, 'tiktok')}
+          {renderPlatformIcon('YouTube', youtubeIcon, 'youtube')}
+          
+          {OTHER_PLATFORMS.filter(p => isLinked(p.name)).map(platform => 
+            renderPlatformIcon(platform.name, platform.icon)
+          )}
           {!isPublicView && (
             <button className="social-add-btn" aria-label="Add Platform" onClick={() => navigate('/profile/account')}>
               <span className="material-symbols-outlined">add</span>
@@ -432,6 +477,22 @@ const ProfilePage: React.FC = () => {
                       )}
                     </div>
                   ))
+                ) : activeTab === 0 && mediaKitItems && mediaKitItems.length > 0 ? (
+                  mediaKitItems.map(item => (
+                    <div 
+                      key={item.id} 
+                      className="liquid-card scroll-card"
+                      onClick={() => item.image_url && setSelectedImage(item.image_url)}
+                      style={{ cursor: item.image_url ? 'zoom-in' : 'default' }}
+                    >
+                      <div className="scroll-card-bg"></div>
+                      {item.image_url ? (
+                        <img src={item.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', zIndex: 5, position: 'relative' }} />
+                      ) : (
+                        <span className="material-symbols-outlined scroll-card-icon">image</span>
+                      )}
+                    </div>
+                  ))
                 ) : (
                   <>
                     <div className="liquid-card scroll-card">
@@ -528,17 +589,16 @@ const ProfilePage: React.FC = () => {
 
               <div className="messages-list">
                 {filteredMessages.map(msg => (
-                  <div key={msg.id} className={`message-item ${msg.unread ? 'unread' : ''}`}>
+                  <div key={msg.id} className={`message-item liquid-hover ${msg.read ? '' : 'unread'}`}>
                     <div className="message-avatar">
-                      <img src={msg.avatar} alt="User" />
-                      {msg.online && <div className="online-indicator"></div>}
+                      <img src={msg.sender?.avatar_url || 'https://via.placeholder.com/150'} alt="Sender" />
                     </div>
                     <div className="message-content">
-                      <div className="message-header-row">
-                        <strong>{msg.name}</strong>
-                        <span className="message-time">{msg.time}</span>
+                      <div className="message-header">
+                        <span className="message-name">{msg.sender?.full_name || 'Unknown'}</span>
+                        <span className="message-time">{new Date(msg.created_at).toLocaleDateString()}</span>
                       </div>
-                      <div className="message-preview">{msg.preview}</div>
+                      <div className="message-preview">{msg.content}</div>
                     </div>
                   </div>
                 ))}

@@ -1,8 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import MediaKitViewer from '../components/MediaKitViewer';
 import DiscoverFilterModal from '../components/DiscoverFilterModal';
 import type { FilterState } from '../components/DiscoverFilterModal';
+import ChatModal from '../../../components/ui/ChatModal';
 import { supabase } from '../../../lib/supabase';
 import youtubeIcon from '../../../assets/youtube.png';
 import instagramIcon from '../../../assets/instagram.png';
@@ -15,12 +15,17 @@ const DiscoverFeedPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   
   // Media Kit state
-  const [isMediaKitOpen, setIsMediaKitOpen] = useState(false);
-  const [mediaUrl, setMediaUrl] = useState('');
-  const [mediaType, setMediaType] = useState<'image' | 'pdf'>('image');
+
+
+
 
   // Filter Modal state
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+
+  // Chat Modal state
+  const [isChatModalOpen, setIsChatModalOpen] = useState(false);
+  const [activeChatUser, setActiveChatUser] = useState<{id: string, name: string, avatar: string | null} | null>(null);
+
   const [activeFilters, setActiveFilters] = useState<FilterState>({
     platforms: [],
     minFollowers: 0,
@@ -30,10 +35,9 @@ const DiscoverFeedPage: React.FC = () => {
     location: ''
   });
 
-  const openMediaKit = (url: string, type: 'image' | 'pdf') => {
-    setMediaUrl(url);
-    setMediaType(type);
-    setIsMediaKitOpen(true);
+  const openChat = (id: string, name: string, avatar: string | null) => {
+    setActiveChatUser({ id, name, avatar });
+    setIsChatModalOpen(true);
   };
 
   const categories = [
@@ -73,6 +77,7 @@ const DiscoverFeedPage: React.FC = () => {
             location: p.location || '',
             avatarUrl: p.avatar_url || 'https://via.placeholder.com/150/333/fff?text=?',
             platforms: userLinks.map((l: any) => l.platform.toLowerCase()),
+            socialLinks: userLinks,
             mediaKit: {
               type: 'image',
               url: 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?q=80&w=1000'
@@ -111,13 +116,13 @@ const DiscoverFeedPage: React.FC = () => {
         if (!hasAllPlatforms) return false;
       }
 
-      // Followers
-      if (creator.followers < activeFilters.minFollowers) return false;
-      if (creator.followers > activeFilters.maxFollowers) return false;
+      // Followers (Filter state is in thousands)
+      if (creator.followers < activeFilters.minFollowers * 1000) return false;
+      if (creator.followers > activeFilters.maxFollowers * 1000) return false;
 
-      // Rate per post
-      if (creator.perPost < activeFilters.minRate) return false;
-      if (creator.perPost > activeFilters.maxRate) return false;
+      // Rate per post (Filter state is in thousands)
+      if (creator.perPost < activeFilters.minRate * 1000) return false;
+      if (creator.perPost > activeFilters.maxRate * 1000) return false;
 
       // Location
       if (activeFilters.location && !creator.location.toLowerCase().includes(activeFilters.location.toLowerCase())) {
@@ -227,29 +232,39 @@ const DiscoverFeedPage: React.FC = () => {
                 </div>
                 
                 <div className="creator-footer">
-                  <div className="creator-platforms" style={{ alignItems: 'center', gap: '16px' }}>
-                    {creator.platforms.includes('youtube') && (
-                      <a href="https://youtube.com" target="_blank" rel="noopener noreferrer" aria-label="YouTube">
-                        <img src={youtubeIcon} alt="YouTube" style={{ width: '22px', height: '22px', objectFit: 'contain' }} />
-                      </a>
-                    )}
-                    {creator.platforms.includes('instagram') && (
-                      <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
-                        <img src={instagramIcon} alt="Instagram" style={{ width: '22px', height: '22px', objectFit: 'contain' }} />
-                      </a>
-                    )}
-                    {creator.platforms.includes('tiktok') && (
-                      <a href="https://tiktok.com" target="_blank" rel="noopener noreferrer" aria-label="TikTok">
-                        <img src={tiktokIcon} alt="TikTok" style={{ width: '22px', height: '22px', objectFit: 'contain' }} />
-                      </a>
-                    )}
+                  <div className="creator-platforms" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                    {creator.socialLinks?.map((link: any) => {
+                      let icon = null;
+                      const platform = link.platform.toLowerCase();
+                      if (platform === 'youtube') icon = youtubeIcon;
+                      else if (platform === 'instagram') icon = instagramIcon;
+                      else if (platform === 'tiktok') icon = tiktokIcon;
+                      
+                      if (!icon) return null;
+                      
+                      return (
+                        <a key={link.id} href={link.url} target="_blank" rel="noopener noreferrer" className="hover-scale">
+                          <img src={icon} alt={link.platform} style={{ width: '32px', height: '32px', objectFit: 'contain' }} />
+                        </a>
+                      );
+                    })}
                   </div>
-                  <button 
-                    className="liquid-btn"
-                    onClick={() => openMediaKit('https://images.unsplash.com/photo-1542204165-65bf26472b9b?q=80&w=1000&auto=format&fit=crop', 'image')}
-                  >
-                    View Media Kit
-                  </button>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button 
+                      className="liquid-btn icon-only"
+                      onClick={() => openChat(creator.id, creator.fullName, creator.avatarUrl)}
+                      title="Send Message"
+                      style={{ padding: '0 12px' }}
+                    >
+                      <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>chat</span>
+                    </button>
+                    <button 
+                      className="liquid-btn"
+                      onClick={() => navigate(`/profile/${creator.id}`)}
+                    >
+                      View Profile
+                    </button>
+                  </div>
                 </div>
               </div>
             ))
@@ -257,18 +272,19 @@ const DiscoverFeedPage: React.FC = () => {
         </div>
       </main>
 
-      <MediaKitViewer 
-        isOpen={isMediaKitOpen}
-        onClose={() => setIsMediaKitOpen(false)}
-        mediaUrl={mediaUrl}
-        mediaType={mediaType}
-      />
-
       <DiscoverFilterModal
         isOpen={isFilterModalOpen}
         onClose={() => setIsFilterModalOpen(false)}
+        onApply={setActiveFilters}
         currentFilters={activeFilters}
-        onApply={(newFilters) => setActiveFilters(newFilters)}
+      />
+
+      <ChatModal 
+        isOpen={isChatModalOpen}
+        onClose={() => setIsChatModalOpen(false)}
+        recipientId={activeChatUser?.id || ''}
+        recipientName={activeChatUser?.name || ''}
+        recipientAvatar={activeChatUser?.avatar || null}
       />
     </div>
   );

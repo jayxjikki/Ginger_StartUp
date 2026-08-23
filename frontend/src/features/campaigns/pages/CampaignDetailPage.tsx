@@ -35,7 +35,7 @@ const stagger = {
 const CampaignDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { campaigns } = useCampaignStore();
+  const { campaigns, savedCampaignIds, fetchSavedCampaigns, toggleSavedCampaign } = useCampaignStore();
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [videoUrl, setVideoUrl] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -64,6 +64,15 @@ const CampaignDetailPage: React.FC = () => {
       else if (lowerUrl.includes('instagram.com')) platform = 'instagram';
       else if (lowerUrl.includes('tiktok.com')) platform = 'tiktok';
       else if (lowerUrl.includes('twitter.com') || lowerUrl.includes('x.com')) platform = 'twitter';
+
+      if (campaign?.required_platforms && campaign.required_platforms.length > 0) {
+        const requiredLower = campaign.required_platforms.map((p: string) => p.toLowerCase());
+        if (!requiredLower.includes(platform)) {
+          toast.error(`Invalid link. This campaign only accepts: ${campaign.required_platforms.join(', ')}`);
+          setIsSubmitting(false);
+          return;
+        }
+      }
 
       const { error } = await supabase.from('submissions').insert({
         campaign_id: campaign!.id,
@@ -151,7 +160,10 @@ const CampaignDetailPage: React.FC = () => {
     };
     
     fetchSubmission();
-  }, [campaign?.id, user?.id]);
+    if (user?.id) {
+      fetchSavedCampaigns(user.id);
+    }
+  }, [campaign?.id, user?.id, fetchSavedCampaigns]);
 
   if (!campaign) {
     return (
@@ -181,9 +193,22 @@ const CampaignDetailPage: React.FC = () => {
           <button className="icon-btn" onClick={() => navigate(-1)} aria-label="Go back">
             <FiArrowLeft />
           </button>
-          <button className="icon-btn" aria-label="Share">
-            <FiShare2 />
-          </button>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button 
+              className="icon-btn" 
+              onClick={() => {
+                if (user?.id) toggleSavedCampaign(campaign.id, user.id);
+              }}
+              style={{ color: savedCampaignIds.includes(campaign.id) ? 'var(--text-accent)' : 'inherit' }}
+            >
+              <span className="material-symbols-outlined" style={{ fontVariationSettings: savedCampaignIds.includes(campaign.id) ? "'FILL' 1" : "'FILL' 0" }}>
+                bookmark
+              </span>
+            </button>
+            <button className="icon-btn" aria-label="Share">
+              <FiShare2 />
+            </button>
+          </div>
         </motion.div>
 
         {/* Campaign Type & Timer */}

@@ -20,6 +20,8 @@ import DiscoverFeedPage from './features/campaigns/pages/DiscoverFeedPage';
 import CampaignDetailPage from './features/campaigns/pages/CampaignDetailPage';
 import CreateCampaignPage from './features/advertise/pages/CreateCampaignPage';
 import WalletPage from './features/wallet/pages/WalletPage';
+import AdminDashboard from './features/admin/pages/AdminDashboard';
+import InboxPage from './features/chat/pages/InboxPage';
 
 // Components
 import BottomNav from './components/ui/BottomNav';
@@ -42,6 +44,25 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   }
   
   if (!user) return <Navigate to="/login" replace />;
+  
+  return <>{children}</>;
+};
+
+// Admin guard wrapper
+const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user, profile, isInitialized } = useAuthStore();
+  
+  if (!isInitialized) return null;
+  if (!user) return <Navigate to="/login" replace />;
+  
+  if (profile?.role !== 'admin') {
+    return (
+      <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
+        <h2>Access Denied</h2>
+        <p>You must be an admin to view this page.</p>
+      </div>
+    );
+  }
   
   return <>{children}</>;
 };
@@ -133,6 +154,24 @@ const App: React.FC = () => {
                   <WalletPage />
                 </AppLayout>
               </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/inbox"
+            element={
+              <ProtectedRoute>
+                <InboxPage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Admin Dashboard */}
+          <Route
+            path="/admin"
+            element={
+              <AdminRoute>
+                <AdminDashboard />
+              </AdminRoute>
             }
           />
           <Route

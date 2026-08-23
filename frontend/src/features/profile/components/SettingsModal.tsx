@@ -12,7 +12,7 @@ interface SettingsModalProps {
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
   const navigate = useNavigate();
-  const { signOut } = useAuthStore();
+  const { user, profile, signOut } = useAuthStore();
   const [isNavigating, setIsNavigating] = useState(false);
   const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
@@ -174,6 +174,23 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
             </a>
 
             <div className="settings-divider" style={{ opacity: 0.5 }}></div>
+
+            {/* Admin Dashboard */}
+            {profile?.role === 'admin' && (
+              <a 
+                className="liquid-card settings-menu-item" 
+                href="#admin" 
+                onClick={(e) => handleNavigate(e, '/admin')}
+              >
+                <div className="settings-menu-item-left">
+                  <div className="glass-icon-container settings-icon" style={{ background: 'rgba(255, 77, 77, 0.1)' }}>
+                    <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1", color: '#ff4d4d' }}>admin_panel_settings</span>
+                  </div>
+                  <span className="settings-menu-text" style={{ color: '#ff4d4d' }}>Admin Control</span>
+                </div>
+                <span className="material-symbols-outlined settings-chevron">chevron_right</span>
+              </a>
+            )}
 
             {/* Sign Out */}
             <a 
