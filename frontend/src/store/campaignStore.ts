@@ -83,16 +83,34 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
 
   createCampaign: async (campaign: Partial<Campaign>) => {
     try {
-      // In a real app we might insert payout tiers too. For now, just insert the campaign.
+      const { payout_tiers, ...campaignData } = campaign;
       const { data, error } = await supabase
         .from('campaigns')
-        .insert([campaign])
+        .insert([campaignData])
         .select(`*, advertiser:profiles(*)`)
         .single();
         
       if (error) throw error;
-      
       const newCampaign = data as unknown as Campaign;
+      
+      // Insert payout tiers if they exist
+      if (payout_tiers && payout_tiers.length > 0) {
+        const tiersToInsert = payout_tiers.map(tier => ({
+          ...tier,
+          campaign_id: newCampaign.id
+        }));
+        
+        const { data: tiersData, error: tiersError } = await supabase
+          .from('payout_tiers')
+          .insert(tiersToInsert)
+          .select('*');
+          
+        if (tiersError) throw tiersError;
+        newCampaign.payout_tiers = tiersData as any;
+      } else {
+        newCampaign.payout_tiers = [];
+      }
+      
       set((state) => {
         const updated = [newCampaign, ...state.campaigns];
         return { campaigns: updated };

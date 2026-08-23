@@ -24,15 +24,30 @@ const MarketplacePage: React.FC = () => {
   React.useEffect(() => {
     const fetchInfluencers = async () => {
       try {
-        const { data, error } = await supabase
+        const { data: profiles, error } = await supabase
           .from('profiles')
           .select('*')
-          // Only show verified influencers in marketplace for now, or you could remove this to show everyone
-          // .eq('is_verified', true) 
           .order('follower_count', { ascending: false });
         
         if (error) throw error;
-        setInfluencers((data || []) as Profile[]);
+
+        // Fetch social links and completed submissions for stats
+        const [{ data: links }, { data: subs }] = await Promise.all([
+          supabase.from('social_links').select('*'),
+          supabase.from('submissions').select('creator_id, status').eq('status', 'paid')
+        ]);
+
+        const mergedProfiles = (profiles || []).map((p: any) => {
+          const userLinks = (links || []).filter(l => l.profile_id === p.id);
+          const userSubs = (subs || []).filter(s => s.creator_id === p.id);
+          return {
+            ...p,
+            platforms: userLinks.map(l => l.platform.toLowerCase()),
+            completedCampaigns: userSubs.length
+          };
+        });
+
+        setInfluencers(mergedProfiles);
       } catch (err) {
         console.error('Error fetching marketplace influencers:', err);
       }
@@ -140,7 +155,7 @@ const MarketplacePage: React.FC = () => {
                     <span className="inf-stat-label">Followers</span>
                   </div>
                   <div className="inf-stat">
-                    <span className="inf-stat-value">-</span>
+                    <span className="inf-stat-value">{(inf as any).completedCampaigns || 0}</span>
                     <span className="inf-stat-label">Campaigns</span>
                   </div>
                   <div className="inf-stat">
@@ -151,8 +166,9 @@ const MarketplacePage: React.FC = () => {
 
                 <div className="inf-footer">
                   <div className="inf-platforms">
-                    <span className="inf-platform-icon platform-instagram"><FaInstagram /></span>
-                    <span className="inf-platform-icon platform-youtube"><FaYoutube /></span>
+                    {!(inf as any).platforms?.length && <span className="text-secondary text-xs">No links</span>}
+                    {(inf as any).platforms?.includes('instagram') && <span className="inf-platform-icon platform-instagram"><FaInstagram /></span>}
+                    {(inf as any).platforms?.includes('youtube') && <span className="inf-platform-icon platform-youtube"><FaYoutube /></span>}
                   </div>
                   {inf.category && <Badge variant="ginger" size="sm">{inf.category}</Badge>}
                 </div>

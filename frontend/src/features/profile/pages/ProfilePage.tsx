@@ -16,6 +16,20 @@ import TransitionLoader from '../../../components/ui/TransitionLoader';
 import youtubeIcon from '../../../assets/youtube.png';
 import instagramIcon from '../../../assets/instagram.png';
 import tiktokIcon from '../../../assets/tiktok.png';
+import facebookIcon from '../../../assets/facebook.png';
+import whatsappIcon from '../../../assets/whatsapp.png';
+import telegramIcon from '../../../assets/telegram.png';
+import twitchIcon from '../../../assets/twitch.png';
+import discordIcon from '../../../assets/dicord.png';
+import xIcon from '../../../assets/x.png';
+import redditIcon from '../../../assets/reddit.png';
+import linkedinIcon from '../../../assets/linkedin.png';
+import quoraIcon from '../../../assets/quora.png';
+import tumblrIcon from '../../../assets/tumblr.png';
+import pinterestIcon from '../../../assets/pinterest.png';
+import snapchatIcon from '../../../assets/snapchat.png';
+import githubIcon from '../../../assets/github.png';
+import { formatCount } from '../../../utils/formatters';
 import './ProfilePage.css';
 
 const ProfilePage: React.FC = () => {
@@ -32,6 +46,7 @@ const ProfilePage: React.FC = () => {
     stats, 
     posts,
     achievements,
+    socialLinks,
     isLoading, 
     fetchProfileData,
     createPost,
@@ -50,6 +65,9 @@ const ProfilePage: React.FC = () => {
   const [desc, setDesc] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [showSettings, setShowSettings] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [showMessages, setShowMessages] = useState(false);
+  const [messageSearch, setMessageSearch] = useState('');
   const [isEntering, setIsEntering] = useState((location.state as any)?.fromTransition || false);
 
   useEffect(() => {
@@ -89,7 +107,10 @@ const ProfilePage: React.FC = () => {
   const handleSave = async () => {
     if (!title) return;
     try {
-      if (activeTab === 1) {
+      if (activeTab === 0) {
+        // Save Media Kit Item
+        console.log("Saved Media Kit Item:", { title, desc, imageUrl });
+      } else if (activeTab === 1) {
         // Save as Post
         await createPost({
           title,
@@ -146,6 +167,61 @@ const ProfilePage: React.FC = () => {
   const actualBannerUrl = "https://lh3.googleusercontent.com/aida-public/AB6AXuAwosNMbFqAsdhEk59Za1nbASUJr88irtJHIJoApwXFXI2habJyNQRj7DjNJChImWA26tsm9xH5Jz1_ttX1BOSBQPMxrcwYajTFB96saVbnc8UddW5CTits1rrJffJogQjUU_kmc4GQgBCBKvFtjrpBXN7o0kh5Ob8oj1W5d6RNxLSoGgF33c2oQ9MneVPyQuvktuSBG1KbEUZFT_GnILLNoa5SVvgZ2qooecdc_vOSFtu2Xgmzuvai";
   const actualAvatarUrl = profile.avatar_url || 'https://via.placeholder.com/150';
 
+  const isLinked = (platformName: string) => {
+    return socialLinks.some(l => l.platform.toLowerCase() === platformName.toLowerCase());
+  };
+
+  const OTHER_PLATFORMS = [
+    { name: 'Facebook', icon: facebookIcon },
+    { name: 'WhatsApp', icon: whatsappIcon },
+    { name: 'Telegram', icon: telegramIcon },
+    { name: 'Twitch', icon: twitchIcon },
+    { name: 'Discord', icon: discordIcon },
+    { name: 'X', icon: xIcon },
+    { name: 'Reddit', icon: redditIcon },
+    { name: 'LinkedIn', icon: linkedinIcon },
+    { name: 'Quora', icon: quoraIcon },
+    { name: 'Tumblr', icon: tumblrIcon },
+    { name: 'Pinterest', icon: pinterestIcon },
+    { name: 'Snapchat', icon: snapchatIcon },
+    { name: 'GitHub', icon: githubIcon },
+  ];
+
+  const DUMMY_MESSAGES = [
+    {
+      id: 1,
+      name: 'Alex Rivers',
+      avatar: 'https://i.pravatar.cc/150?img=3',
+      time: 'Just now',
+      preview: 'Hey! Are you available for a quick chat about the new project?',
+      unread: true,
+      online: true
+    },
+    {
+      id: 2,
+      name: 'Brands Co.',
+      avatar: 'https://i.pravatar.cc/150?img=4',
+      time: 'Yesterday',
+      preview: "We loved your last video. Let's talk rates.",
+      unread: false,
+      online: false
+    },
+    {
+      id: 3,
+      name: 'Sarah Jenkins',
+      avatar: 'https://i.pravatar.cc/150?img=1',
+      time: '2 days ago',
+      preview: 'Thanks for the shoutout in your last vlog!',
+      unread: false,
+      online: true
+    }
+  ];
+
+  const filteredMessages = DUMMY_MESSAGES.filter(m => 
+    m.name.toLowerCase().includes(messageSearch.toLowerCase()) || 
+    m.preview.toLowerCase().includes(messageSearch.toLowerCase())
+  );
+
   return (
     <>
       <TransitionLoader isActive={isEntering} />
@@ -176,6 +252,12 @@ const ProfilePage: React.FC = () => {
         </div>
         {!isPublicView && (
           <div className="profile-top-actions">
+            <button className="top-action-btn" onClick={() => setShowMessages(true)}>
+              <span className="material-symbols-outlined">mail</span>
+            </button>
+            <button className="top-action-btn" onClick={() => setShowNotifications(true)}>
+              <span className="material-symbols-outlined">notifications</span>
+            </button>
             <button className="top-action-btn" onClick={() => navigate('/profile/edit')}>
               <span className="material-symbols-outlined">edit</span>
             </button>
@@ -213,20 +295,22 @@ const ProfilePage: React.FC = () => {
 
         {/* Social Stats Bar */}
         <section className="social-stats-bar">
-          <div className="social-stat-item youtube">
-            <img src={youtubeIcon} alt="YouTube" style={{ width: '18px', height: '18px', objectFit: 'contain' }} />
-            <span>1.2M</span>
-          </div>
           <div className="social-stat-item instagram">
-            <img src={instagramIcon} alt="Instagram" style={{ width: '18px', height: '18px', objectFit: 'contain' }} />
-            <span>500K</span>
+            <img src={instagramIcon} alt="Instagram" style={{ width: '20px', height: '20px', objectFit: 'contain' }} />
           </div>
           <div className="social-stat-item tiktok">
-            <img src={tiktokIcon} alt="TikTok" style={{ width: '18px', height: '18px', objectFit: 'contain' }} />
-            <span>2.1M</span>
+            <img src={tiktokIcon} alt="TikTok" style={{ width: '20px', height: '20px', objectFit: 'contain' }} />
           </div>
+          <div className="social-stat-item youtube">
+            <img src={youtubeIcon} alt="YouTube" style={{ width: '20px', height: '20px', objectFit: 'contain' }} />
+          </div>
+          {OTHER_PLATFORMS.filter(p => isLinked(p.name)).map(platform => (
+            <div key={platform.name} className="social-stat-item" style={{ overflow: 'hidden' }}>
+              <img src={platform.icon} alt={platform.name} style={{ width: '20px', height: '20px', objectFit: 'contain' }} />
+            </div>
+          ))}
           {!isPublicView && (
-            <button className="social-add-btn" aria-label="Add Platform">
+            <button className="social-add-btn" aria-label="Add Platform" onClick={() => navigate('/profile/account')}>
               <span className="material-symbols-outlined">add</span>
             </button>
           )}
@@ -243,7 +327,7 @@ const ProfilePage: React.FC = () => {
             <span className="stat-label">Completed</span>
           </div>
           <div className="liquid-card stat-box">
-            <span className="stat-value text-primary">{stats.totalViews}</span>
+            <span className="stat-value text-primary">{formatCount(stats.totalViews)}</span>
             <span className="stat-label">Total Views</span>
           </div>
         </section>
@@ -271,7 +355,7 @@ const ProfilePage: React.FC = () => {
                 {activeTab === 1 && 'Past Work'}
                 {activeTab === 2 && 'Blog Posts'}
               </h3>
-              {!isPublicView && activeTab !== 0 && (
+              {!isPublicView && (
                 <button className="add-btn" onClick={() => setShowAddForm(!showAddForm)}>
                   <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
                     {showAddForm ? 'close' : 'add'}
@@ -285,7 +369,7 @@ const ProfilePage: React.FC = () => {
             {showAddForm && (
               <Card variant="glass" padding="lg" className="mb-6">
                 <h6 style={{ marginBottom: '1rem', color: 'var(--text-primary)' }}>
-                  Add New {activeTab === 1 ? 'Project' : 'Blog Post'}
+                  Add New {activeTab === 0 ? 'Media Kit Item' : activeTab === 1 ? 'Project' : 'Blog Post'}
                 </h6>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                   <Input 
@@ -307,7 +391,7 @@ const ProfilePage: React.FC = () => {
                     onUploadError={(err) => console.error(err)}
                   />
                   <Button fullWidth onClick={handleSave}>
-                    Save {activeTab === 1 ? 'Project' : 'Blog Post'}
+                    Save {activeTab === 0 ? 'Media Kit Item' : activeTab === 1 ? 'Project' : 'Blog Post'}
                   </Button>
                 </div>
               </Card>
@@ -361,11 +445,13 @@ const ProfilePage: React.FC = () => {
                   </>
                 )}
                 
-                {!isPublicView && activeTab !== 0 && (
+                {!isPublicView && (
                   <div className="liquid-card scroll-card add-new-card" onClick={() => setShowAddForm(true)}>
                     <div className="add-new-content">
                       <span className="material-symbols-outlined add-new-icon">add_circle</span>
-                      <span className="add-new-text">New Project</span>
+                      <span className="add-new-text">
+                        {activeTab === 0 ? 'New Media Kit Item' : activeTab === 1 ? 'New Project' : 'New Blog Post'}
+                      </span>
                     </div>
                   </div>
                 )}
@@ -374,6 +460,99 @@ const ProfilePage: React.FC = () => {
           </div>
         </section>
       </main>
+
+      {/* Notifications Drawer */}
+      {showNotifications && (
+        <div className="drawer-overlay" onClick={() => setShowNotifications(false)}>
+          <div className="drawer-content glass-panel" onClick={(e) => e.stopPropagation()}>
+            <div className="drawer-header">
+              <h3>Notifications</h3>
+              <button className="drawer-close" onClick={() => setShowNotifications(false)}>
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <div className="drawer-body">
+              <div className="notification-item unread">
+                <div className="notification-avatar">
+                  <img src="https://i.pravatar.cc/150?img=1" alt="User" />
+                </div>
+                <div className="notification-text">
+                  <strong>Sarah Jenkins</strong> liked your new Media Kit item.
+                  <div className="notification-time">2m ago</div>
+                </div>
+              </div>
+              <div className="notification-item">
+                <div className="notification-avatar">
+                  <img src="https://i.pravatar.cc/150?img=2" alt="User" />
+                </div>
+                <div className="notification-text">
+                  <strong>TechCorp</strong> sent you a collaboration request!
+                  <div className="notification-time">1h ago</div>
+                </div>
+              </div>
+              <div className="notification-item">
+                <div className="notification-icon-wrap bg-accent">
+                  <span className="material-symbols-outlined">campaign</span>
+                </div>
+                <div className="notification-text">
+                  Your campaign "Summer Vibes" has officially ended.
+                  <div className="notification-time">3h ago</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Messages Drawer */}
+      {showMessages && (
+        <div className="drawer-overlay" onClick={() => setShowMessages(false)}>
+          <div className="drawer-content glass-panel" onClick={(e) => e.stopPropagation()}>
+            <div className="drawer-header">
+              <h3>Messages</h3>
+              <button className="drawer-close" onClick={() => setShowMessages(false)}>
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <div className="drawer-body">
+              <div className="drawer-search-container">
+                <span className="material-symbols-outlined drawer-search-icon">search</span>
+                <input 
+                  type="text" 
+                  className="drawer-search-input" 
+                  placeholder="Search messages..."
+                  value={messageSearch}
+                  onChange={(e) => setMessageSearch(e.target.value)}
+                />
+              </div>
+
+              <div className="messages-list">
+                {filteredMessages.map(msg => (
+                  <div key={msg.id} className={`message-item ${msg.unread ? 'unread' : ''}`}>
+                    <div className="message-avatar">
+                      <img src={msg.avatar} alt="User" />
+                      {msg.online && <div className="online-indicator"></div>}
+                    </div>
+                    <div className="message-content">
+                      <div className="message-header-row">
+                        <strong>{msg.name}</strong>
+                        <span className="message-time">{msg.time}</span>
+                      </div>
+                      <div className="message-preview">{msg.preview}</div>
+                    </div>
+                  </div>
+                ))}
+                {filteredMessages.length === 0 && (
+                  <div style={{ color: 'var(--text-tertiary)', textAlign: 'center', marginTop: '2rem', fontSize: '14px' }}>
+                    No messages found.
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
     </>
   );

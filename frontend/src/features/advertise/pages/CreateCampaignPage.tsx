@@ -48,6 +48,7 @@ const CreateCampaignPage: React.FC = () => {
     discountPercent: '',
     verificationDays: 7,
     image_url: '',
+    endDate: '',
     tiers: [
       { minViews: '1000', amount: '1000', rewardType: 'cash' },
       { minViews: '10000', amount: '10000', rewardType: 'cash' },
@@ -111,6 +112,12 @@ const CreateCampaignPage: React.FC = () => {
         discount_percent: Number(formData.discountPercent) || 0,
         verification_days: formData.verificationDays,
         image_url: formData.image_url,
+        end_date: formData.endDate ? new Date(formData.endDate).toISOString() : null,
+        payout_tiers: formData.tiers.map(t => ({
+          min_views: Number(t.minViews) || 0,
+          payout_amount: Number(t.amount) || 0,
+          reward_type: t.rewardType as any
+        })) as any,
       });
       navigate('/campaigns');
     } catch (err) {
@@ -230,6 +237,14 @@ const CreateCampaignPage: React.FC = () => {
                   value={formData.location}
                   onChange={(e) => updateField('location', e.target.value)}
                   placeholder="City, State or 'Online'"
+                />
+
+                <Input
+                  label="Deadline (End Date)"
+                  type="date"
+                  value={formData.endDate}
+                  onChange={(e) => updateField('endDate', e.target.value)}
+                  placeholder="Select deadline"
                 />
 
                 <Textarea

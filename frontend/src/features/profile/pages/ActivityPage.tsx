@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import TransitionLoader from '../../../components/ui/TransitionLoader';
+import { supabase } from '../../../lib/supabase';
+import { useAuthStore } from '../../../store/authStore';
 import './ActivityPage.css';
 
 const ActivityPage: React.FC = () => {
@@ -8,12 +10,41 @@ const ActivityPage: React.FC = () => {
   const location = useLocation();
   const [isNavigating, setIsNavigating] = useState(false);
   const [isEntering, setIsEntering] = useState((location.state as any)?.fromTransition || false);
+  const { user } = useAuthStore();
+  const [counts, setCounts] = useState({ posts: 0, campaigns: 0, transactions: 0 });
 
   useEffect(() => {
     if (isEntering) {
       setTimeout(() => setIsEntering(false), 400);
     }
   }, [isEntering]);
+
+  useEffect(() => {
+    const fetchCounts = async () => {
+      if (!user) return;
+      
+      try {
+        const [
+          { count: postsCount },
+          { count: campaignsCount },
+          { count: transactionsCount }
+        ] = await Promise.all([
+          supabase.from('posts').select('*', { count: 'exact', head: true }).eq('author_id', user.id),
+          supabase.from('submissions').select('*', { count: 'exact', head: true }).eq('creator_id', user.id),
+          supabase.from('wallet_transactions').select('*', { count: 'exact', head: true }).eq('user_id', user.id)
+        ]);
+
+        setCounts({
+          posts: postsCount || 0,
+          campaigns: campaignsCount || 0,
+          transactions: transactionsCount || 0
+        });
+      } catch (err) {
+        console.error('Error fetching activity counts', err);
+      }
+    };
+    fetchCounts();
+  }, [user]);
 
   const handleBack = () => {
     setIsNavigating(true);
@@ -63,7 +94,7 @@ const ActivityPage: React.FC = () => {
                   <span className="activity-card-text">My Posts</span>
                 </div>
                 <div className="activity-card-right">
-                  <span className="activity-count">142</span>
+                  <span className="activity-count">{counts.posts}</span>
                   <span className="material-symbols-outlined activity-chevron">chevron_right</span>
                 </div>
               </div>
@@ -71,12 +102,12 @@ const ActivityPage: React.FC = () => {
               <div className="activity-glass-card">
                 <div className="activity-card-left">
                   <div className="activity-icon-wrap">
-                    <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>amp_stories</span>
+                    <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>movie</span>
                   </div>
-                  <span className="activity-card-text">My Stories</span>
+                  <span className="activity-card-text">My Campaign Videos</span>
                 </div>
                 <div className="activity-card-right">
-                  <span className="activity-count">89</span>
+                  <span className="activity-count">{counts.campaigns}</span>
                   <span className="material-symbols-outlined activity-chevron">chevron_right</span>
                 </div>
               </div>
@@ -84,12 +115,12 @@ const ActivityPage: React.FC = () => {
               <div className="activity-glass-card">
                 <div className="activity-card-left">
                   <div className="activity-icon-wrap">
-                    <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>article</span>
+                    <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>account_balance_wallet</span>
                   </div>
-                  <span className="activity-card-text">My Blogs</span>
+                  <span className="activity-card-text">Transactions</span>
                 </div>
                 <div className="activity-card-right">
-                  <span className="activity-count">12</span>
+                  <span className="activity-count">{counts.transactions}</span>
                   <span className="material-symbols-outlined activity-chevron">chevron_right</span>
                 </div>
               </div>

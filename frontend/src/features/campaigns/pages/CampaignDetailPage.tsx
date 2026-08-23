@@ -3,13 +3,16 @@
 // Full campaign view with payout tiers, requirements, submit
 // ═══════════════════════════════════════════════════════════
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useParams, useNavigate } from 'react-router-dom';
+import { supabase } from '../../../lib/supabase';
 import {
   FiArrowLeft, FiShare2, FiMapPin, FiClock, FiUsers,
   FiExternalLink, FiCheck, FiAlertCircle
 } from 'react-icons/fi';
+import toast from 'react-hot-toast';
+import { useAuthStore } from '../../../store/authStore';
 import { useCampaignStore } from '../../../store/campaignStore';
 import Card from '../../../components/ui/Card';
 import Button from '../../../components/ui/Button';
@@ -35,8 +38,120 @@ const CampaignDetailPage: React.FC = () => {
   const { campaigns } = useCampaignStore();
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [videoUrl, setVideoUrl] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { user } = useAuthStore();
 
   const campaign = campaigns.find((c) => c.id === id);
+  const isExpired = campaign?.end_date ? new Date(campaign.end_date) < new Date() : false;
+  const [topEarners, setTopEarners] = useState<any[]>([]);
+  const [userSubmission, setUserSubmission] = useState<any | null>(null);
+
+  const handleSubmit = async () => {
+    if (!user) {
+      toast.error('You must be logged in to submit a video.');
+      return;
+    }
+    if (!videoUrl) {
+      toast.error('Please enter a video URL.');
+      return;
+    }
+    
+    setIsSubmitting(true);
+    try {
+      let platform = 'other';
+      const lowerUrl = videoUrl.toLowerCase();
+      if (lowerUrl.includes('youtube.com') || lowerUrl.includes('youtu.be')) platform = 'youtube';
+      else if (lowerUrl.includes('instagram.com')) platform = 'instagram';
+      else if (lowerUrl.includes('tiktok.com')) platform = 'tiktok';
+      else if (lowerUrl.includes('twitter.com') || lowerUrl.includes('x.com')) platform = 'twitter';
+
+      const { error } = await supabase.from('submissions').insert({
+        campaign_id: campaign!.id,
+        creator_id: user.id,
+        video_url: videoUrl,
+        platform: platform,
+        video_id: 'auto-' + Math.random().toString(36).substring(7)
+      });
+
+      if (error) {
+        if (error.code === '23505') { // Unique constraint violation
+          throw new Error('You have already submitted a video for this campaign.');
+        }
+        throw error;
+      }
+
+      toast.success('Video submitted successfully!');
+      setShowSubmitModal(false);
+      setVideoUrl('');
+      
+      // Update local state to hide button immediately
+      setUserSubmission({
+        status: 'pending',
+        current_views: 0,
+        earned_amount: 0,
+        video_url: videoUrl
+      });
+    } catch (err: any) {
+      console.error('Submit error:', err);
+      toast.error(err.message || 'Failed to submit video');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!campaign) return;
+    const fetchTopEarners = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('submissions')
+          .select('*, creator:profiles(*)')
+          .eq('campaign_id', campaign.id)
+          .order('earned_amount', { ascending: false })
+          .limit(3);
+
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          setTopEarners(data.map((sub, index) => ({
+            rank: index + 1,
+            name: sub.creator?.full_name || 'Unknown',
+            views: sub.current_views || 0,
+            earned: sub.earned_amount || 0
+          })));
+        } else {
+          setTopEarners([]);
+        }
+      } catch (err) {
+        console.error('Error fetching top earners:', err);
+      }
+    };
+    fetchTopEarners();
+  }, [campaign?.id]);
+
+  // Fetch User's Submission
+  useEffect(() => {
+    if (!campaign || !user) return;
+    
+    const fetchSubmission = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('submissions')
+          .select('*')
+          .eq('campaign_id', campaign.id)
+          .eq('creator_id', user.id)
+          .single();
+        
+        if (data) {
+          setUserSubmission(data);
+        }
+      } catch (err) {
+        // Ignored, user just hasn't submitted yet
+      }
+    };
+    
+    fetchSubmission();
+  }, [campaign?.id, user?.id]);
 
   if (!campaign) {
     return (
@@ -47,7 +162,11 @@ const CampaignDetailPage: React.FC = () => {
     );
   }
 
-  const poolUsedPercent = ((campaign.prize_pool - campaign.remaining_pool) / campaign.prize_pool) * 100;
+  const safePrizePool = campaign.prize_pool || 0;
+  const safeRemainingPool = campaign.remaining_pool != null ? campaign.remaining_pool : safePrizePool;
+  const poolUsedPercent = safePrizePool > 0 
+    ? Math.max(0, Math.min(100, ((safePrizePool - safeRemainingPool) / safePrizePool) * 100))
+    : 0;
 
   return (
     <div className="page-content">
@@ -122,7 +241,7 @@ const CampaignDetailPage: React.FC = () => {
                 <div className="prize-pool-remaining">
                   <span className="text-xs text-tertiary">Remaining</span>
                   <span className="font-bold text-ginger">
-                    {formatCurrency(campaign.remaining_pool, true)}
+                    {formatCurrency(safeRemainingPool, true)}
                   </span>
                 </div>
               </div>
@@ -256,22 +375,22 @@ const CampaignDetailPage: React.FC = () => {
           <h5 className="section-title">🏆 Top Earners</h5>
           <Card variant="default" padding="md">
             <div className="top-earners">
-              {[
-                { rank: 1, name: 'Rohan Vlogs', views: 450000, earned: 200000 },
-                { rank: 2, name: 'TravelWithMeera', views: 125000, earned: 100000 },
-                { rank: 3, name: 'FoodieAnkit', views: 78000, earned: 50000 },
-              ].map((earner) => (
-                <div key={earner.rank} className="earner-row">
-                  <span className={`earner-rank rank-${earner.rank}`}>#{earner.rank}</span>
-                  <div className="earner-info">
-                    <span className="font-semibold text-sm">{earner.name}</span>
-                    <span className="text-xs text-tertiary">{formatCount(earner.views)} views</span>
+              {topEarners.length > 0 ? (
+                topEarners.map((earner) => (
+                  <div key={earner.rank} className="earner-row">
+                    <span className={`earner-rank rank-${earner.rank}`}>#{earner.rank}</span>
+                    <div className="earner-info">
+                      <span className="font-semibold text-sm">{earner.name}</span>
+                      <span className="text-xs text-tertiary">{formatCount(earner.views)} views</span>
+                    </div>
+                    <span className="earner-amount gradient-text font-bold">
+                      {formatCurrency(earner.earned, true)}
+                    </span>
                   </div>
-                  <span className="earner-amount gradient-text font-bold">
-                    {formatCurrency(earner.earned, true)}
-                  </span>
-                </div>
-              ))}
+                ))
+              ) : (
+                <div className="text-center text-sm text-tertiary py-4">No top earners yet. Be the first!</div>
+              )}
             </div>
           </Card>
         </motion.div>
@@ -285,17 +404,82 @@ const CampaignDetailPage: React.FC = () => {
           </div>
         </motion.div>
 
-        {/* Submit CTA */}
+        {/* Submit CTA or Submission Status */}
         <motion.div className="detail-cta" variants={fadeUp}>
-          <Button
-            variant="primary"
-            size="lg"
-            fullWidth
-            onClick={() => setShowSubmitModal(true)}
-            id="btn-submit-video"
-          >
-            Submit Your Video
-          </Button>
+          {userSubmission ? (
+            (() => {
+              // Calculate expected earning (next tier)
+              let nextTier: any = null;
+              if (campaign.payout_tiers && campaign.payout_tiers.length > 0) {
+                const sortedTiers = [...campaign.payout_tiers].sort((a, b) => a.min_views - b.min_views);
+                const currentViews = userSubmission.current_views || 0;
+                for (const tier of sortedTiers) {
+                  if (tier.min_views > currentViews) {
+                    nextTier = tier;
+                    break;
+                  }
+                }
+                if (!nextTier && currentViews >= sortedTiers[sortedTiers.length - 1].min_views) {
+                  nextTier = 'max';
+                }
+              }
+
+              return (
+                <Card variant="ginger" padding="md">
+                  <h5 className="section-title" style={{ color: 'var(--text-primary)' }}>Your Submission</h5>
+                  <div className="flex flex-col gap-3 mt-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-secondary">Status</span>
+                      <Badge variant={userSubmission.status === 'verified' ? 'success' : 'default'} size="sm">
+                        {userSubmission.status.toUpperCase()}
+                      </Badge>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-secondary">Views Tracked</span>
+                      <span className="font-bold">{formatCount(userSubmission.current_views || 0)}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-secondary">Earned Amount</span>
+                      <span className="font-bold text-ginger">{formatCurrency(userSubmission.earned_amount || 0, true)}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-secondary">Expected Earning</span>
+                      {nextTier === 'max' ? (
+                        <span className="font-bold text-success text-sm">Max Reached! 🏆</span>
+                      ) : nextTier ? (
+                        <div className="text-right">
+                          <span className="font-bold">{formatCurrency(nextTier.payout_amount, true)}</span>
+                          <span className="block text-[10px] text-tertiary uppercase tracking-wider mt-0.5">at {formatCount(nextTier.min_views)} views</span>
+                        </div>
+                      ) : (
+                        <span className="text-sm text-tertiary">No Tiers</span>
+                      )}
+                    </div>
+                    <a 
+                      href={userSubmission.video_url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-center text-xs mt-3 pt-3 border-t border-white/5"
+                      style={{ color: 'var(--text-tertiary)', textDecoration: 'none' }}
+                    >
+                      <span style={{ borderBottom: '1px solid rgba(255,255,255,0.2)', paddingBottom: '1px' }}>View Submitted Video</span>
+                    </a>
+                  </div>
+                </Card>
+              );
+            })()
+          ) : (
+            <Button
+              variant="primary"
+              size="lg"
+              fullWidth
+              onClick={() => setShowSubmitModal(true)}
+              id="btn-submit-video"
+              disabled={isExpired}
+            >
+              {isExpired ? 'Campaign Expired' : 'Submit Your Video'}
+            </Button>
+          )}
         </motion.div>
 
         {/* Submit Modal */}
@@ -322,8 +506,8 @@ const CampaignDetailPage: React.FC = () => {
                 />
               </div>
               <div className="modal-actions mt-6">
-                <Button variant="ghost" onClick={() => setShowSubmitModal(false)}>Cancel</Button>
-                <Button variant="primary" onClick={() => setShowSubmitModal(false)}>
+                <Button variant="ghost" onClick={() => setShowSubmitModal(false)} disabled={isSubmitting}>Cancel</Button>
+                <Button variant="primary" onClick={handleSubmit} disabled={isSubmitting} isLoading={isSubmitting}>
                   Submit
                 </Button>
               </div>

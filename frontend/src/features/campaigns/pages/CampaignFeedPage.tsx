@@ -239,53 +239,55 @@ const HomeMenuPage: React.FC = () => {
                       />
                     </div>
                   )}
-
-                  <div className="campaign-header-row">
-                    <div className="campaign-tags">
-                      <span className={`tag-badge ${themeColor}`}>
-                        <span className="material-symbols-outlined" style={{ fontSize: '12px' }}>
-                          {getCampaignTypeIcon(campaign.type)}
-                        </span>{' '}
-                        {getCampaignTypeLabel(campaign.type)}
-                      </span>
-                      <span className="tag-expired">{formatTimeLeft(campaign.end_date)}</span>
+                  
+                  <div className="campaign-content">
+                    <div className="campaign-header-row">
+                      <div className="campaign-tags">
+                        <span className={`tag-badge ${themeColor}`}>
+                          <span className="material-symbols-outlined" style={{ fontSize: '12px' }}>
+                            {getCampaignTypeIcon(campaign.type)}
+                          </span>{' '}
+                          {getCampaignTypeLabel(campaign.type)}
+                        </span>
+                        <span className="tag-expired">{formatTimeLeft(campaign.end_date)}</span>
+                      </div>
+                      {campaign.prize_pool > 0 && (
+                        <div className="campaign-prize-col">
+                          <div className="campaign-prize-label">PRIZE POOL</div>
+                          <div className="campaign-prize-amount">{formatCurrency(campaign.prize_pool, true)}</div>
+                        </div>
+                      )}
                     </div>
-                    {campaign.prize_pool > 0 && (
-                      <div className="campaign-prize-col">
-                        <div className="campaign-prize-label">PRIZE POOL</div>
-                        <div className="campaign-prize-amount">{formatCurrency(campaign.prize_pool, true)}</div>
-                      </div>
-                    )}
-                  </div>
 
-                  <h3 className="campaign-card-title">{campaign.title}</h3>
-                  <p className="campaign-card-desc">{campaign.description}</p>
+                    <h3 className="campaign-card-title">{campaign.title}</h3>
+                    <p className="campaign-card-desc">{campaign.description}</p>
 
-                  <div className="campaign-footer-row">
-                    <div className="campaign-brand">
-                      <div className="brand-logo">
-                        {campaign.advertiser?.avatar_url ? (
-                          <img
-                            alt={campaign.advertiser.full_name}
-                            src={campaign.advertiser.avatar_url}
-                          />
-                        ) : (
-                          <span className="material-symbols-outlined" style={{ fontSize: '14px', color: 'white' }}>
-                            store
-                          </span>
-                        )}
+                    <div className="campaign-footer-row">
+                      <div className="campaign-brand">
+                        <div className="brand-logo">
+                          {campaign.advertiser?.avatar_url ? (
+                            <img
+                              alt={campaign.advertiser.full_name}
+                              src={campaign.advertiser.avatar_url}
+                            />
+                          ) : (
+                            <span className="material-symbols-outlined" style={{ fontSize: '14px', color: 'white' }}>
+                              store
+                            </span>
+                          )}
+                        </div>
+                        <span className="brand-name">{campaign.advertiser?.full_name || 'Advertiser'}</span>
                       </div>
-                      <span className="brand-name">{campaign.advertiser?.full_name || 'Advertiser'}</span>
+                      {campaign.payout_tiers && campaign.payout_tiers.length > 0 && (
+                        <div className="campaign-payout-tiers">
+                          {campaign.payout_tiers.slice(0, 2).map((tier) => (
+                            <span className="payout-tier" key={tier.id}>
+                              {formatCount(tier.min_views)} -&gt; {formatCurrency(tier.payout_amount, true)}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                    {campaign.payout_tiers && campaign.payout_tiers.length > 0 && (
-                      <div className="campaign-payout-tiers">
-                        {campaign.payout_tiers.slice(0, 2).map((tier) => (
-                          <span className="payout-tier" key={tier.id}>
-                            {formatCount(tier.min_views)} -&gt; {formatCurrency(tier.payout_amount, true)}
-                          </span>
-                        ))}
-                      </div>
-                    )}
                   </div>
                 </article>
               );

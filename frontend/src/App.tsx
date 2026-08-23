@@ -19,7 +19,6 @@ import CampaignFeedPage from './features/campaigns/pages/CampaignFeedPage';
 import DiscoverFeedPage from './features/campaigns/pages/DiscoverFeedPage';
 import CampaignDetailPage from './features/campaigns/pages/CampaignDetailPage';
 import CreateCampaignPage from './features/advertise/pages/CreateCampaignPage';
-import MarketplacePage from './features/marketplace/pages/MarketplacePage';
 import WalletPage from './features/wallet/pages/WalletPage';
 
 // Components
