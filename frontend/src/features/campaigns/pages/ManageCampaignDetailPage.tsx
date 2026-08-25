@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FiArrowLeft, FiFlag, FiVideo, FiDollarSign, FiCheck } from 'react-icons/fi';
+import { FiArrowLeft, FiFlag, FiVideo, FiCheck } from 'react-icons/fi';
 import { useAuthStore } from '../../../store/authStore';
 import { useCampaignStore } from '../../../store/campaignStore';
 import { useGlobalModalStore } from '../../../store/globalModalStore';

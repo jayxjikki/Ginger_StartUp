@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiArrowLeft, FiTarget, FiVideo, FiDollarSign, FiPlusCircle } from 'react-icons/fi';
+import { FiArrowLeft, FiTarget, FiPlusCircle } from 'react-icons/fi';
 import { useAuthStore } from '../../../store/authStore';
 import { useCampaignStore } from '../../../store/campaignStore';
 import Badge from '../../../components/ui/Badge';

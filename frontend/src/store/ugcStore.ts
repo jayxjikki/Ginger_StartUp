@@ -12,7 +12,7 @@ interface UgcState {
   checkIfBlockedByThem: (otherUserId: string) => Promise<boolean>;
 }
 
-export const useUgcStore = create<UgcState>((set, get) => ({
+export const useUgcStore = create<UgcState>((set) => ({
   blockedUserIds: [],
 
   fetchBlockedUsers: async () => {

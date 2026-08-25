@@ -12,6 +12,7 @@ import {
 import toast from 'react-hot-toast';
 import { useAdminStore } from '../../../store/adminStore';
 import { useAuthStore } from '../../../store/authStore';
+import { useGlobalModalStore } from '../../../store/globalModalStore';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
 import Badge from '../../../components/ui/Badge';
 import Avatar from '../../../components/ui/Avatar';
@@ -38,7 +39,7 @@ const AdminDashboard: React.FC = () => {
   const { 
     users, campaigns, submissions, withdrawals, slideshows, isLoading,
     fetchAllData, toggleUserBan, rejectSubmission,
-    processWithdrawal, deleteSlideshow, createSlideshow, deleteCampaign, deleteSubmission, approveAndPayCampaign 
+    processWithdrawal, deleteSlideshow, createSlideshow, deleteCampaign, approveAndPayCampaign 
   } = useAdminStore();
 
   const [isSlideModalOpen, setIsSlideModalOpen] = useState(false);
@@ -84,7 +85,8 @@ const AdminDashboard: React.FC = () => {
   };
 
   const handleRejectSubmission = async (subId: string) => {
-    if (!window.confirm('Reject this submission?')) return;
+    const confirmed = await useGlobalModalStore.getState().showConfirm('Reject this submission?');
+    if (!confirmed) return;
     try {
       await rejectSubmission(subId);
       toast.success('Submission rejected');
@@ -93,8 +95,20 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
+  const handleDeleteCampaign = async (id: string) => {
+    const confirmed = await useGlobalModalStore.getState().showConfirm('Delete this campaign completely? This action cannot be undone.');
+    if (!confirmed) return;
+    try {
+      await deleteCampaign(id);
+      toast.success('Campaign deleted permanently');
+    } catch (err: any) {
+      toast.error(err.message);
+    }
+  };
+
   const handleProcessWithdrawal = async (txId: string) => {
-    if (!window.confirm('Mark this withdrawal as completed?')) return;
+    const confirmed = await useGlobalModalStore.getState().showConfirm('Mark this withdrawal as completed?');
+    if (!confirmed) return;
     try {
       await processWithdrawal(txId);
       toast.success('Withdrawal marked as completed');

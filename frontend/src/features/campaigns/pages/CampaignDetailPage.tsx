@@ -43,7 +43,7 @@ const CampaignDetailPage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { user } = useAuthStore();
   const { reportItem } = useUgcStore();
-  const { showConfirm, showAlert } = useGlobalModalStore();
+  const { showConfirm } = useGlobalModalStore();
 
   const campaign = campaigns.find((c) => c.id === id);
   const isExpired = campaign?.end_date ? new Date(campaign.end_date) < new Date() : false;
