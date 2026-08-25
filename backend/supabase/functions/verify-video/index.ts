@@ -30,6 +30,8 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const youtubeApiKey = Deno.env.get('YOUTUBE_API_KEY');
+    const instagramApiKey = Deno.env.get('INSTAGRAM_API_KEY');
+    const tiktokApiKey = Deno.env.get('TIKTOK_API_KEY');
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
@@ -66,8 +68,51 @@ Deno.serve(async (req) => {
         }
       }
 
-      // TODO: Add Instagram Graph API verification
-      // TODO: Add TikTok API verification
+      // Instagram verification (Graph API / Scraper placeholder)
+      if (submission.platform === 'instagram' && instagramApiKey && submission.video_id) {
+        try {
+          // Placeholder for Instagram Graph API fetch
+          const igResponse = await fetch(
+            `https://graph.instagram.com/${submission.video_id}?fields=media_type,media_url,shortcode,view_count&access_token=${instagramApiKey}`
+          );
+          if (igResponse.ok) {
+            const igData = await igResponse.json();
+            if (igData && igData.view_count) {
+              viewCount = parseInt(igData.view_count, 10);
+            }
+          }
+        } catch (err) {
+          console.error(`Instagram API error for ${submission.video_id}:`, err);
+        }
+      }
+
+      // TikTok verification (API placeholder)
+      if (submission.platform === 'tiktok' && tiktokApiKey && submission.video_id) {
+        try {
+          // Placeholder for TikTok fetch logic
+          const ttResponse = await fetch(
+            `https://open.tiktokapis.com/v2/video/query/?fields=view_count`,
+            {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${tiktokApiKey}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                filters: { video_ids: [submission.video_id] }
+              })
+            }
+          );
+          if (ttResponse.ok) {
+            const ttData = await ttResponse.json();
+            if (ttData.data && ttData.data.videos && ttData.data.videos.length > 0) {
+              viewCount = parseInt(ttData.data.videos[0].view_count, 10);
+            }
+          }
+        } catch (err) {
+          console.error(`TikTok API error for ${submission.video_id}:`, err);
+        }
+      }
 
       // Update submission with current views
       if (viewCount > 0) {

@@ -4,6 +4,7 @@ import { useAuthStore } from '../../../store/authStore';
 import TransitionLoader from '../../../components/ui/TransitionLoader';
 import LoginBackground from '../components/LoginBackground';
 import TermsModal from '../components/TermsModal';
+import { motion, AnimatePresence } from 'framer-motion';
 import './LoginPage.css';
 
 const LoginPage: React.FC = () => {
@@ -13,6 +14,14 @@ const LoginPage: React.FC = () => {
   const [isEntering, setIsEntering] = useState((location.state as any)?.fromTransition || false);
   const [isTermsAccepted, setIsTermsAccepted] = useState(false);
   const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
+  const [isBannedPopupOpen, setIsBannedPopupOpen] = useState(false);
+
+  useEffect(() => {
+    if (sessionStorage.getItem('showBannedPopup')) {
+      setIsBannedPopupOpen(true);
+      sessionStorage.removeItem('showBannedPopup');
+    }
+  }, []);
 
   const handleTermsCheckboxClick = () => {
     if (isTermsAccepted) {
@@ -130,6 +139,37 @@ const LoginPage: React.FC = () => {
       onClose={() => setIsTermsModalOpen(false)} 
       onAccept={handleAcceptTerms} 
     />
+
+    <AnimatePresence>
+      {isBannedPopupOpen && (
+        <motion.div 
+          className="admin-modal-overlay"
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          style={{ zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(5px)' }}
+        >
+          <motion.div 
+            className="admin-modal-content glass-strong"
+            initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }}
+            style={{ maxWidth: '400px', width: '90%', padding: '2rem', textAlign: 'center', borderRadius: '16px', background: 'rgba(20,20,20,0.8)' }}
+          >
+            <div style={{ fontSize: '48px', color: '#ff3b30', marginBottom: '16px' }}>
+              <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>block</span>
+            </div>
+            <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '12px', color: '#fff' }}>Account Suspended</h2>
+            <p style={{ color: '#8c90a0', marginBottom: '32px', fontSize: '15px', lineHeight: '1.5' }}>
+              Your account has been permanently banned by an administrator for violating our terms of service. You can no longer access this platform.
+            </p>
+            <button 
+              className="btn-primary" 
+              style={{ width: '100%', padding: '12px', borderRadius: '8px', background: '#ff3b30', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}
+              onClick={() => setIsBannedPopupOpen(false)}
+            >
+              Acknowledge
+            </button>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
     </>
   );
 };

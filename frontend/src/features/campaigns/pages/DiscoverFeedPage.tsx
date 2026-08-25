@@ -4,9 +4,7 @@ import DiscoverFilterModal from '../components/DiscoverFilterModal';
 import type { FilterState } from '../components/DiscoverFilterModal';
 import ChatModal from '../../../components/ui/ChatModal';
 import { supabase } from '../../../lib/supabase';
-import youtubeIcon from '../../../assets/youtube.png';
-import instagramIcon from '../../../assets/instagram.png';
-import tiktokIcon from '../../../assets/tiktok.png';
+import { getSocialIcon } from '../../../utils/socialHelpers';
 import './DiscoverFeedPage.css';
 
 const DiscoverFeedPage: React.FC = () => {
@@ -52,10 +50,12 @@ const DiscoverFeedPage: React.FC = () => {
   ];
 
   const [creators, setCreators] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   React.useEffect(() => {
     const fetchCreators = async () => {
       try {
+        setIsLoading(true);
         const { data: profiles, error } = await supabase
           .from('profiles')
           .select('*')
@@ -88,6 +88,8 @@ const DiscoverFeedPage: React.FC = () => {
         setCreators(mappedCreators);
       } catch (err) {
         console.error('Error fetching discover creators:', err);
+      } finally {
+        setIsLoading(false);
       }
     };
     fetchCreators();
@@ -131,7 +133,7 @@ const DiscoverFeedPage: React.FC = () => {
 
       return true;
     });
-  }, [activeCategory, searchQuery, activeFilters]);
+  }, [creators, activeCategory, searchQuery, activeFilters]);
 
   return (
     <div className="discover-page">
@@ -177,7 +179,11 @@ const DiscoverFeedPage: React.FC = () => {
 
         {/* Creator Cards List */}
         <div className="creator-list">
-          {filteredCreators.length === 0 ? (
+          {isLoading ? (
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '60px 0', width: '100%' }}>
+              <span className="material-symbols-outlined spin-animation" style={{ fontSize: '32px', color: '#34d399' }}>sync</span>
+            </div>
+          ) : filteredCreators.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px 20px', color: '#c4c7c8' }}>
               <span className="material-symbols-outlined" style={{ fontSize: '48px', marginBottom: '16px', opacity: 0.5 }}>sentiment_dissatisfied</span>
               <p>No creators match your current filters.</p>
@@ -189,8 +195,13 @@ const DiscoverFeedPage: React.FC = () => {
             </div>
           ) : (
             filteredCreators.map(creator => (
-              <div key={creator.id} className="discover-glass-card">
-                <div className="creator-header" onClick={() => navigate(`/profile/${creator.id}`)} style={{ cursor: 'pointer' }}>
+              <div 
+                key={creator.id} 
+                className="discover-glass-card" 
+                onClick={() => navigate(`/profile/${creator.id}`)}
+                style={{ cursor: 'pointer' }}
+              >
+                <div className="creator-header">
                   {creator.avatarUrl.includes('placeholder.com') ? (
                     <div className="creator-avatar-placeholder">
                       {creator.fullName.split(' ').map((n: string) => n[0]).join('').substring(0, 2)}
@@ -207,63 +218,70 @@ const DiscoverFeedPage: React.FC = () => {
                       )}
                     </div>
                     <p className="creator-handle">{creator.handle}</p>
-                    <div className="creator-location">
-                      <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>location_on</span>
-                      <span>{creator.location}</span>
-                    </div>
                   </div>
-                </div>
-                
-                <p className="creator-bio">{creator.bio}</p>
-                
-                <div className="creator-stats-grid">
-                  <div className="creator-stat-box">
-                    <div className="stat-value">{creator.followersStr}</div>
-                    <div className="stat-label">Followers</div>
-                  </div>
-                  <div className="creator-stat-box bordered">
-                    <div className="stat-value">{creator.campaigns}</div>
-                    <div className="stat-label">Campaigns</div>
-                  </div>
-                  <div className="creator-stat-box">
-                    <div className="stat-value gold">{creator.perPostStr}</div>
-                    <div className="stat-label gold">Per Post</div>
-                  </div>
-                </div>
-                
-                <div className="creator-footer">
-                  <div className="creator-platforms" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                    {creator.socialLinks?.map((link: any) => {
-                      let icon = null;
-                      const platform = link.platform.toLowerCase();
-                      if (platform === 'youtube') icon = youtubeIcon;
-                      else if (platform === 'instagram') icon = instagramIcon;
-                      else if (platform === 'tiktok') icon = tiktokIcon;
-                      
-                      if (!icon) return null;
-                      
-                      return (
-                        <a key={link.id} href={link.url} target="_blank" rel="noopener noreferrer" className="hover-scale">
-                          <img src={icon} alt={link.platform} style={{ width: '32px', height: '32px', objectFit: 'contain' }} />
-                        </a>
-                      );
-                    })}
-                  </div>
-                  <div style={{ display: 'flex', gap: '8px' }}>
+                  
+                  <div style={{ marginLeft: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '12px' }}>
                     <button 
                       className="liquid-btn icon-only"
-                      onClick={() => openChat(creator.id, creator.fullName, creator.avatarUrl)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openChat(creator.id, creator.fullName, creator.avatarUrl);
+                      }}
                       title="Send Message"
-                      style={{ padding: '0 12px' }}
+                      style={{ padding: '8px', minWidth: 'unset', height: 'unset', borderRadius: '50%' }}
                     >
                       <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>chat</span>
                     </button>
-                    <button 
-                      className="liquid-btn"
-                      onClick={() => navigate(`/profile/${creator.id}`)}
-                    >
-                      View Profile
-                    </button>
+                    
+                    {creator.socialLinks && creator.socialLinks.length > 0 && (
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        {creator.socialLinks.slice(0, 2).map((link: any) => (
+                          <button
+                            key={link.id || link.platform}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              window.open(link.url, '_blank');
+                            }}
+                            title={link.platform}
+                            style={{ 
+                              background: 'rgba(255,255,255,0.05)', 
+                              border: 'none',
+                              borderRadius: '50%',
+                              width: '32px', 
+                              height: '32px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: 'pointer',
+                              transition: 'background 0.2s'
+                            }}
+                            onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+                            onMouseOut={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                          >
+                            <img 
+                              src={getSocialIcon(link.platform)} 
+                              alt={link.platform} 
+                              style={{ width: '18px', height: '18px', objectFit: 'contain' }} 
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                                e.currentTarget.parentElement!.innerHTML = '<span class="material-symbols-outlined" style="font-size: 16px; color: #a1a1aa">link</span>';
+                              }} 
+                            />
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="creator-stats-grid" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                  <div className="creator-stat-box" style={{ flex: 1, textAlign: 'left', padding: '0 8px' }}>
+                    <div className="stat-value">{creator.followersStr}</div>
+                    <div className="stat-label">Followers</div>
+                  </div>
+                  <div className="creator-location" style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#8fa696', fontSize: '12px', padding: '0 8px', paddingBottom: '4px' }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>location_on</span>
+                    <span>{creator.location || 'Unknown'}</span>
                   </div>
                 </div>
               </div>

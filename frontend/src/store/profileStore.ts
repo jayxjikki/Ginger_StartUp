@@ -229,13 +229,15 @@ export const useProfileStore = create<ProfileState>()(
             if (deleteError) throw deleteError;
             
             if (links.length > 0) {
-              const linksToInsert = links.map(link => ({
-                profile_id: profile.id,
-                platform: link.platform,
-                username: link.username,
-                url: link.username.startsWith('http') ? link.username : `https://${link.platform.toLowerCase()}.com/${link.username}`,
-                followers: link.followers || 0
-              }));
+              const linksToInsert = links.map((link) => {
+                return {
+                  profile_id: profile.id,
+                  platform: link.platform,
+                  username: link.username,
+                  url: link.username.startsWith('http') ? link.username : `https://${link.platform.toLowerCase()}.com/${link.username}`,
+                  followers: 0 // Edge function will update this later
+                };
+              });
               
               const { error: insertError } = await supabase
                 .from('social_links')
@@ -244,7 +246,22 @@ export const useProfileStore = create<ProfileState>()(
               if (insertError) throw insertError;
             }
             
-            set({ socialLinks: links });
+            // Invoke edge function to sync actual followers
+            try {
+              const { error: invokeError } = await supabase.functions.invoke('sync-followers', {
+                body: { targetUserId: profile.id }
+              });
+              
+              if (invokeError) {
+                console.error('Error invoking sync-followers:', invokeError);
+              }
+            } catch (invokeErr) {
+              console.error('Failed to sync followers via edge function:', invokeErr);
+            }
+
+            // Reload profile data to get the updated links and max followers
+            await get().fetchProfileData(profile.id);
+            
           } catch (err: any) {
             console.error('Error updating social links:', err);
             throw err;

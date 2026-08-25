@@ -11,6 +11,8 @@ export interface Campaign {
   prize_pool: number;
   remaining_pool: number;
   status: CampaignStatus;
+  total_budget?: number; // Alias for prize_pool
+  platform?: string; // Alias for required_platforms
   required_platforms: string[];
   video_requirements: string | null;
   slogan: string | null;
@@ -32,6 +34,7 @@ export interface Campaign {
   };
   payout_tiers?: PayoutTier[];
   submission_count?: number;
+  submissions?: Submission[];
 }
 
 export type CampaignType = 'pool' | 'discount' | 'hybrid';

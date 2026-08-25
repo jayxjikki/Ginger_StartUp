@@ -26,14 +26,20 @@ interface ChatState {
 
   // Active chat context
   activeRecipientId: string | null;
+  partnerTyping: boolean;
 
   // Actions
   setActiveRecipient: (id: string | null) => void;
   fetchInbox: (currentUserId: string) => Promise<void>;
   fetchHistory: (currentUserId: string, recipientId: string) => Promise<void>;
+  markMessagesRead: (currentUserId: string, recipientId: string) => Promise<void>;
   sendMessage: (senderId: string, receiverId: string, content: string) => Promise<void>;
   subscribeToMessages: (currentUserId: string) => void;
   unsubscribeFromMessages: () => void;
+  
+  // Presence
+  subscribeToPresence: (currentUserId: string, recipientId: string) => void;
+  setTypingStatus: (isTyping: boolean) => Promise<void>;
 }
 
 // Keep track of the active channel so we can unsubscribe
@@ -45,9 +51,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
   isLoading: false,
   error: null,
   activeRecipientId: null,
+  partnerTyping: false,
 
   setActiveRecipient: (id: string | null) => {
-    set({ activeRecipientId: id, messages: [] }); // clear messages on switch
+    set({ activeRecipientId: id, messages: [], partnerTyping: false }); // clear messages on switch
   },
 
   fetchInbox: async (currentUserId: string) => {
@@ -123,11 +130,36 @@ export const useChatStore = create<ChatState>((set, get) => ({
       
       if (error) throw error;
       set({ messages: data as Message[] });
+      
+      // Mark as read after fetching history
+      await get().markMessagesRead(currentUserId, recipientId);
     } catch (err: any) {
       console.error('Failed to fetch chat history:', err);
       set({ error: err.message });
     } finally {
       set({ isLoading: false });
+    }
+  },
+
+  markMessagesRead: async (currentUserId: string, recipientId: string) => {
+    try {
+      await supabase
+        .from('messages')
+        .update({ read: true })
+        .eq('receiver_id', currentUserId)
+        .eq('sender_id', recipientId)
+        .eq('read', false);
+        
+      // Update local state
+      set((state) => ({
+        messages: state.messages.map(m => 
+          m.receiver_id === currentUserId && m.sender_id === recipientId 
+            ? { ...m, read: true } 
+            : m
+        )
+      }));
+    } catch (err) {
+      console.error('Failed to mark messages read:', err);
     }
   },
 
@@ -167,34 +199,41 @@ export const useChatStore = create<ChatState>((set, get) => ({
           event: 'INSERT', 
           schema: 'public', 
           table: 'messages',
-          // Supabase Realtime filters can only filter on one column easily, so we listen to all inserts 
-          // and filter locally if RLS allows receiving them, OR we can omit the filter and let RLS block unauthorized payloads.
-          // Wait, RLS applies to Realtime if set up correctly, but filtering locally is safer for the active chat window.
         },
         (payload) => {
           const newMessage = payload.new as Message;
           const { activeRecipientId, messages } = get();
           
-          // Verify it belongs to the current user's session
           if (newMessage.sender_id === currentUserId || newMessage.receiver_id === currentUserId) {
-            
-            // Only append if it belongs to the CURRENT open chat
             if (activeRecipientId) {
               const belongsToActiveChat = 
                 (newMessage.sender_id === currentUserId && newMessage.receiver_id === activeRecipientId) ||
                 (newMessage.sender_id === activeRecipientId && newMessage.receiver_id === currentUserId);
                 
               if (belongsToActiveChat) {
-                // Prevent duplicate if already optimistically added
                 if (!messages.find(m => m.id === newMessage.id)) {
                   set({ messages: [...messages, newMessage] });
+                  if (newMessage.receiver_id === currentUserId) {
+                    get().markMessagesRead(currentUserId, activeRecipientId);
+                  }
                 }
-              } else {
-                // Belongs to another chat. We could show a notification toast here!
-                // For now, silently ignore in the active chat view.
               }
             }
           }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { 
+          event: 'UPDATE', 
+          schema: 'public', 
+          table: 'messages',
+        },
+        (payload) => {
+          const updatedMessage = payload.new as Message;
+          set((state) => ({
+            messages: state.messages.map(m => m.id === updatedMessage.id ? updatedMessage : m)
+          }));
         }
       )
       .subscribe();
@@ -204,6 +243,50 @@ export const useChatStore = create<ChatState>((set, get) => ({
     if (messageChannel) {
       supabase.removeChannel(messageChannel);
       messageChannel = null;
+    }
+  },
+
+  subscribeToPresence: (currentUserId: string, recipientId: string) => {
+    const roomName = `chat_presence_${[currentUserId, recipientId].sort().join('_')}`;
+    
+    const existingChannel = supabase.getChannels().find(c => c.topic === `realtime:${roomName}`);
+    if (existingChannel) {
+      supabase.removeChannel(existingChannel);
+    }
+    
+    const presenceChannel = supabase.channel(roomName);
+
+    presenceChannel
+      .on('presence', { event: 'sync' }, () => {
+        const state = presenceChannel.presenceState();
+        let isPartnerTyping = false;
+        
+        for (const [key, value] of Object.entries(state)) {
+          if (key !== currentUserId) {
+            // Check if partner is typing
+            if (value.some((presence: any) => presence.typing)) {
+              isPartnerTyping = true;
+            }
+          }
+        }
+        
+        set({ partnerTyping: isPartnerTyping });
+      })
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          // Track initial status
+          await presenceChannel.track({ typing: false });
+        }
+      });
+      
+    // Store it so we can update typing status
+    (window as any).__chatPresenceChannel = presenceChannel;
+  },
+
+  setTypingStatus: async (isTyping: boolean) => {
+    const channel = (window as any).__chatPresenceChannel;
+    if (channel) {
+      await channel.track({ typing: isTyping });
     }
   }
 }));

@@ -37,8 +37,8 @@ const AdminDashboard: React.FC = () => {
   
   const { 
     users, campaigns, submissions, withdrawals, slideshows, isLoading,
-    fetchAllData, toggleUserBan, approveSubmission, rejectSubmission,
-    processWithdrawal, deleteSlideshow, createSlideshow 
+    fetchAllData, toggleUserBan, rejectSubmission,
+    processWithdrawal, deleteSlideshow, createSlideshow, deleteCampaign, deleteSubmission, approveAndPayCampaign 
   } = useAdminStore();
 
   const [isSlideModalOpen, setIsSlideModalOpen] = useState(false);
@@ -68,12 +68,16 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  const handleApproveSubmission = async (subId: string) => {
-    const earned = parseFloat(prompt('Enter earned amount to credit the creator:', '0') || '0');
-    if (isNaN(earned) || earned < 0) return toast.error('Invalid amount');
+  const handleApproveAndPayCampaign = async (campaignId: string) => {
+    const payout = parseFloat(prompt('Enter payout amount per verified creator for this campaign:', '0') || '0');
+    if (isNaN(payout) || payout < 0) return toast.error('Invalid payout amount');
+    
+    const confirmed = await useGlobalModalStore.getState().showConfirm(`Approve this campaign and pay ${formatCurrency(payout)} to each verified creator? The remaining budget will be refunded to the advertiser.`);
+    if (!confirmed) return;
+    
     try {
-      await approveSubmission(subId, earned);
-      toast.success('Submission approved and amount credited!');
+      await approveAndPayCampaign(campaignId, payout);
+      toast.success('Campaign completed, creators paid, and advertiser refunded!');
     } catch (err: any) {
       toast.error(err.message);
     }
@@ -240,11 +244,8 @@ const AdminDashboard: React.FC = () => {
               </td>
               <td>{s.earned_amount > 0 ? formatCurrency(s.earned_amount) : '-'}</td>
               <td>
-                {s.status === 'pending' && (
+                {(s.status === 'pending' || s.status === 'flagged' || s.status === 'verified') && (
                   <div className="action-buttons">
-                    <button className="icon-btn approve" onClick={() => handleApproveSubmission(s.id)} title="Approve">
-                      <FiCheckCircle />
-                    </button>
                     <button className="icon-btn reject" onClick={() => handleRejectSubmission(s.id)} title="Reject">
                       <FiXCircle />
                     </button>
@@ -262,6 +263,76 @@ const AdminDashboard: React.FC = () => {
       </table>
     </motion.div>
   );
+
+  const renderCampaigns = () => {
+    // Sort campaigns so 'paused' (pending admin approval) appear first
+    const sortedCampaigns = [...campaigns].sort((a, b) => {
+      if (a.status === 'paused' && b.status !== 'paused') return -1;
+      if (b.status === 'paused' && a.status !== 'paused') return 1;
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+    
+    return (
+      <motion.div variants={listVariants} initial="hidden" animate="show" className="admin-table-container">
+        <table className="admin-table">
+          <thead>
+            <tr>
+              <th>Advertiser</th>
+              <th>Total Budget</th>
+              <th>Platform</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sortedCampaigns.map(c => (
+              <motion.tr variants={itemVariants} key={c.id} className="admin-table-row">
+                <td className="user-cell">
+                  <Avatar 
+                    src={Array.isArray(c.advertiser) ? c.advertiser[0]?.avatar_url : c.advertiser?.avatar_url} 
+                    name={Array.isArray(c.advertiser) ? (c.advertiser[0]?.full_name || '?') : (c.advertiser?.full_name || '?')} 
+                    size="sm" 
+                  />
+                  <span className="user-cell-name">
+                    {Array.isArray(c.advertiser) ? c.advertiser[0]?.full_name : c.advertiser?.full_name}
+                  </span>
+                </td>
+                <td className="text-accent font-bold">{formatCurrency(c.prize_pool || 0)}</td>
+                <td><Badge variant="default">{(c.platform || 'all').toUpperCase()}</Badge></td>
+                <td>
+                  <Badge variant={c.status === 'active' ? 'success' : c.status === 'paused' ? 'warning' : 'default'}>
+                    {c.status === 'paused' ? 'NEEDS PAYMENT' : c.status.toUpperCase()}
+                  </Badge>
+                </td>
+                <td>
+                  <div className="action-buttons">
+                    {c.status === 'paused' && (
+                      <button 
+                        className="btn btn-primary" 
+                        style={{ padding: '4px 8px', fontSize: '12px', background: '#34c759', borderColor: '#34c759' }}
+                        onClick={(e) => { e.stopPropagation(); handleApproveAndPayCampaign(c.id); }} 
+                        title="Approve & Pay All"
+                      >
+                        Approve & Pay
+                      </button>
+                    )}
+                    <button className="icon-btn reject" onClick={(e) => { e.stopPropagation(); handleDeleteCampaign(c.id); }} title="Delete Campaign">
+                      <FiTrash2 />
+                    </button>
+                  </div>
+                </td>
+              </motion.tr>
+            ))}
+            {campaigns.length === 0 && (
+              <tr>
+                <td colSpan={5} className="empty-state">No campaigns found.</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </motion.div>
+    );
+  };
 
   const renderWithdrawals = () => (
     <motion.div variants={listVariants} initial="hidden" animate="show" className="admin-table-container">
@@ -358,6 +429,7 @@ const AdminDashboard: React.FC = () => {
   const tabs = [
     { id: 'overview', label: 'Overview', icon: FiTarget },
     { id: 'users', label: 'Users', icon: FiUsers },
+    { id: 'campaigns', label: 'Campaigns', icon: FiTarget },
     { id: 'submissions', label: 'Submissions', icon: FiVideo },
     { id: 'withdrawals', label: 'Payouts', icon: FiDollarSign },
     { id: 'slideshows', label: 'Slideshows', icon: FiImage },
@@ -410,6 +482,7 @@ const AdminDashboard: React.FC = () => {
             >
               {activeTab === 'overview' && renderOverview()}
               {activeTab === 'users' && renderUsers()}
+              {activeTab === 'campaigns' && renderCampaigns()}
               {activeTab === 'submissions' && renderSubmissions()}
               {activeTab === 'withdrawals' && renderWithdrawals()}
               {activeTab === 'slideshows' && renderSlideshows()}

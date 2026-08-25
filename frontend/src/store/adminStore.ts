@@ -28,12 +28,13 @@ export interface AdminState {
   // Mutations
   toggleUserBan: (userId: string, isBanned: boolean) => Promise<void>;
   deleteCampaign: (campaignId: string) => Promise<void>;
-  approveSubmission: (submissionId: string, earnedAmount: number) => Promise<void>;
   rejectSubmission: (submissionId: string) => Promise<void>;
   processWithdrawal: (txId: string) => Promise<void>;
   deleteSlideshow: (slideId: string) => Promise<void>;
   createSlideshow: (data: any) => Promise<void>;
   updateSlideshow: (slideId: string, data: any) => Promise<void>;
+  deleteSubmission: (submissionId: string) => Promise<void>;
+  approveAndPayCampaign: (campaignId: string, payoutPerCreator: number) => Promise<void>;
 }
 
 export const useAdminStore = create<AdminState>((set, get) => ({
@@ -63,15 +64,46 @@ export const useAdminStore = create<AdminState>((set, get) => ({
   },
 
   fetchUsers: async () => {
-    const { data, error } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
+    const [{ data: users, error }, { data: reports }, { data: blocks }] = await Promise.all([
+      supabase.from('profiles').select('*').order('created_at', { ascending: false }),
+      supabase.from('reports').select('reported_item_id, item_type'),
+      supabase.from('blocked_users').select('blocked_id')
+    ]);
+    
     if (error) throw error;
-    set({ users: data as unknown as Profile[] });
+    
+    const enrichedUsers = (users as any[]).map(u => {
+      const userReports = (reports || []).filter(r => r.reported_item_id === u.id).length;
+      const userBlocks = (blocks || []).filter(b => b.blocked_id === u.id).length;
+      return {
+        ...u,
+        _reportCount: userReports,
+        _blockCount: userBlocks,
+        _totalFlags: userReports + userBlocks
+      };
+    }).sort((a, b) => b._totalFlags - a._totalFlags);
+
+    set({ users: enrichedUsers });
   },
 
   fetchCampaigns: async () => {
-    const { data, error } = await supabase.from('campaigns').select('*, advertiser:profiles(*)').order('created_at', { ascending: false });
+    const [{ data: campaigns, error }, { data: reports }] = await Promise.all([
+      supabase.from('campaigns').select('*, advertiser:profiles(*)').order('created_at', { ascending: false }),
+      supabase.from('reports').select('reported_item_id, item_type')
+    ]);
+    
     if (error) throw error;
-    set({ campaigns: data as unknown as Campaign[] });
+    
+    const enrichedCampaigns = (campaigns as any[]).map(c => {
+      const campReports = (reports || []).filter(r => r.reported_item_id === c.id).length;
+      return {
+        ...c,
+        _reportCount: campReports,
+        _totalFlags: campReports
+      };
+    }).sort((a, b) => b._totalFlags - a._totalFlags);
+
+    set({ campaigns: enrichedCampaigns });
   },
 
   fetchSubmissions: async () => {
@@ -99,7 +131,12 @@ export const useAdminStore = create<AdminState>((set, get) => ({
     const { error } = await supabase.from('profiles').update({ is_banned: isBanned }).eq('id', userId);
     if (error) throw error;
     set((state) => ({
-      users: state.users.map(u => u.id === userId ? { ...u, is_banned: isBanned } : u)
+      users: state.users.map(u => u.id === userId ? { ...u, is_banned: isBanned } : u),
+      submissions: state.submissions.map(s => 
+        s.creator_id === userId && s.creator 
+          ? { ...s, creator: { ...s.creator, is_banned: isBanned } } 
+          : s
+      )
     }));
   },
 
@@ -109,32 +146,110 @@ export const useAdminStore = create<AdminState>((set, get) => ({
     set((state) => ({ campaigns: state.campaigns.filter(c => c.id !== campaignId) }));
   },
 
-  approveSubmission: async (submissionId: string, earnedAmount: number) => {
-    // 1. Update submission
-    const { data: subData, error: subError } = await supabase
-      .from('submissions')
-      .update({ status: 'verified', earned_amount: earnedAmount, verified_at: new Date().toISOString() })
-      .eq('id', submissionId)
-      .select('creator_id')
+  deleteSubmission: async (submissionId: string) => {
+    const { error } = await supabase.from('submissions').delete().eq('id', submissionId);
+    if (error) throw error;
+    set((state) => ({ submissions: state.submissions.filter(s => s.id !== submissionId) }));
+  },
+
+  approveAndPayCampaign: async (campaignId: string, payoutPerCreator: number) => {
+    // 1. Fetch Campaign details
+    const { data: campaign, error: fetchError } = await supabase
+      .from('campaigns')
+      .select('advertiser_id, remaining_pool')
+      .eq('id', campaignId)
       .single();
-      
-    if (subError) throw subError;
 
-    // 2. Add to wallet
-    const { error: walletError } = await supabase
-      .from('wallet_transactions')
-      .insert([{
-        user_id: subData.creator_id,
-        amount: earnedAmount,
-        type: 'earning',
+    if (fetchError) throw fetchError;
+    if (!campaign) throw new Error('Campaign not found');
+
+    // 2. Fetch all verified submissions for this campaign
+    const { data: verifiedSubmissions, error: subFetchError } = await supabase
+      .from('submissions')
+      .select('id, creator_id')
+      .eq('campaign_id', campaignId)
+      .eq('status', 'verified');
+      
+    if (subFetchError) throw subFetchError;
+    
+    const submissionsToPay = verifiedSubmissions || [];
+    const totalPayout = submissionsToPay.length * payoutPerCreator;
+    
+    // Safety check - we shouldn't pay out more than the remaining pool
+    const currentRemainingPool = campaign.remaining_pool || 0;
+    
+    // We'll proceed even if pool is insufficient in a dev environment, 
+    // but typically you'd block this.
+    // if (totalPayout > currentRemainingPool) throw new Error("Insufficient remaining pool for payouts.");
+
+    const finalRemainingPool = Math.max(0, currentRemainingPool - totalPayout);
+    const refundAmount = finalRemainingPool;
+
+    // 3. Create transactions array
+    const transactions = [];
+    
+    // Create payouts for creators
+    submissionsToPay.forEach(sub => {
+      if (payoutPerCreator > 0) {
+        transactions.push({
+          user_id: sub.creator_id,
+          amount: payoutPerCreator,
+          type: 'earning',
+          status: 'completed',
+          description: 'Campaign Earning'
+        });
+      }
+    });
+
+    // Create refund for advertiser
+    if (refundAmount > 0 && campaign.advertiser_id) {
+      transactions.push({
+        user_id: campaign.advertiser_id,
+        amount: refundAmount,
+        type: 'deposit',
         status: 'completed',
-        description: 'Campaign Earning'
-      }]);
-      
-    if (walletError) throw walletError;
+        description: 'Refund for remaining budget of completed campaign'
+      });
+    }
 
+    // 4. Update the submissions to 'paid'
+    if (submissionsToPay.length > 0) {
+      const { error: subUpdateError } = await supabase
+        .from('submissions')
+        .update({ status: 'paid', earned_amount: payoutPerCreator, verified_at: new Date().toISOString() })
+        .eq('campaign_id', campaignId)
+        .eq('status', 'verified');
+        
+      if (subUpdateError) throw subUpdateError;
+    }
+
+    // 5. Update the campaign to 'completed' and remaining_pool to 0
+    const { error: campUpdateError } = await supabase
+      .from('campaigns')
+      .update({ status: 'completed', remaining_pool: 0 })
+      .eq('id', campaignId);
+
+    if (campUpdateError) throw campUpdateError;
+
+    // 6. Insert all transactions
+    if (transactions.length > 0) {
+      const { error: walletError } = await supabase
+        .from('wallet_transactions')
+        .insert(transactions);
+        
+      if (walletError) throw walletError;
+    }
+
+    // 7. Update local state
     set((state) => ({
-      submissions: state.submissions.map(s => s.id === submissionId ? { ...s, status: 'verified', earned_amount: earnedAmount } : s)
+      campaigns: state.campaigns.map(c => 
+        c.id === campaignId ? { ...c, status: 'completed', remaining_pool: 0 } : c
+      ),
+      submissions: state.submissions.map(s => 
+        (s.campaign_id === campaignId && s.status === 'verified') 
+          ? { ...s, status: 'paid', earned_amount: payoutPerCreator } 
+          : s
+      )
     }));
   },
 

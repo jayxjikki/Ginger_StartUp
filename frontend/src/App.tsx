@@ -10,11 +10,14 @@ import { useAuthStore } from './store/authStore';
 
 // Pages
 import LoginPage from './features/auth/pages/LoginPage';
+import OnboardingPage from './features/auth/pages/OnboardingPage';
 import ProfilePage from './features/profile/pages/ProfilePage';
 import EditProfilePage from './features/profile/pages/EditProfilePage';
 import ActivityPage from './features/profile/pages/ActivityPage';
 import AccountCentrePage from './features/profile/pages/AccountCentrePage';
 import PaymentVerificationPage from './features/profile/pages/PaymentVerificationPage';
+import PrivacyPolicyPage from './features/legal/pages/PrivacyPolicyPage';
+import TermsOfServicePage from './features/legal/pages/TermsOfServicePage';
 import CampaignFeedPage from './features/campaigns/pages/CampaignFeedPage';
 import DiscoverFeedPage from './features/campaigns/pages/DiscoverFeedPage';
 import CampaignDetailPage from './features/campaigns/pages/CampaignDetailPage';
@@ -22,9 +25,13 @@ import CreateCampaignPage from './features/advertise/pages/CreateCampaignPage';
 import WalletPage from './features/wallet/pages/WalletPage';
 import AdminDashboard from './features/admin/pages/AdminDashboard';
 import InboxPage from './features/chat/pages/InboxPage';
+import JoinedCampaignsPage from './features/campaigns/pages/JoinedCampaignsPage';
+import ManageCampaignsPage from './features/campaigns/pages/ManageCampaignsPage';
+import ManageCampaignDetailPage from './features/campaigns/pages/ManageCampaignDetailPage';
 
 // Components
 import BottomNav from './components/ui/BottomNav';
+import GlobalModal from './components/ui/GlobalModal';
 
 // Styles
 import './styles/index.css';
@@ -32,10 +39,10 @@ import './styles/animations.css';
 import './styles/utilities.css';
 
 // Auth guard wrapper
-const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, isInitialized } = useAuthStore();
+const ProtectedRoute: React.FC<{ children: React.ReactNode, requireOnboarding?: boolean }> = ({ children, requireOnboarding = true }) => {
+  const { user, profile, isInitialized, isLoading } = useAuthStore();
   
-  if (!isInitialized) {
+  if (!isInitialized || isLoading) {
     return (
       <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center' }}>
         <div className="btn-spinner" style={{ width: '40px', height: '40px', borderColor: 'rgba(247, 147, 30, 0.3)', borderTopColor: '#F7931E' }} />
@@ -44,6 +51,14 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   }
   
   if (!user) return <Navigate to="/login" replace />;
+
+  if (requireOnboarding && profile && !profile.onboarding_completed) {
+    return <Navigate to="/onboarding" replace />;
+  }
+
+  if (profile?.is_banned) {
+    return <Navigate to="/login" replace />;
+  }
   
   return <>{children}</>;
 };
@@ -53,7 +68,7 @@ const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, profile, isInitialized } = useAuthStore();
   
   if (!isInitialized) return null;
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user || profile?.is_banned) return <Navigate to="/login" replace />;
   
   if (profile?.role !== 'admin') {
     return (
@@ -99,11 +114,15 @@ const App: React.FC = () => {
           },
         }}
       />
+      <GlobalModal />
 
       <AnimatePresence mode="wait">
         <Routes>
           {/* Auth */}
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/onboarding" element={<ProtectedRoute requireOnboarding={false}><OnboardingPage /></ProtectedRoute>} />
+          <Route path="/privacy-policy" element={<AppLayout><PrivacyPolicyPage /></AppLayout>} />
+          <Route path="/terms-of-service" element={<AppLayout><TermsOfServicePage /></AppLayout>} />
 
           {/* Main App — Protected */}
           <Route
@@ -112,6 +131,36 @@ const App: React.FC = () => {
               <ProtectedRoute>
                 <AppLayout>
                   <CampaignFeedPage />
+                </AppLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/campaigns/joined"
+            element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <JoinedCampaignsPage />
+                </AppLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/manage-campaigns"
+            element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <ManageCampaignsPage />
+                </AppLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/manage-campaigns/:id"
+            element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <ManageCampaignDetailPage />
                 </AppLayout>
               </ProtectedRoute>
             }

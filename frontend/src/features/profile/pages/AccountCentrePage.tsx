@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { useAuthStore } from '../../../store/authStore';
 import { useProfileStore } from '../../../store/profileStore';
+import { useGlobalModalStore } from '../../../store/globalModalStore';
+import { supabase } from '../../../lib/supabase';
 import TransitionLoader from '../../../components/ui/TransitionLoader';
 import instagramIcon from '../../../assets/instagram.png';
 import tiktokIcon from '../../../assets/tiktok.png';
@@ -95,6 +98,41 @@ const AccountCentrePage: React.FC = () => {
       updateSocialLinks(newLinks);
     }
     closeLinkModal();
+  };
+
+  const handleDeleteAccount = async () => {
+    const { showConfirm, showAlert } = useGlobalModalStore.getState();
+    const confirmed = await showConfirm(
+      "Are you absolutely sure you want to delete your account? This action cannot be undone and all your data will be permanently lost.", 
+      "Delete Account"
+    );
+    
+    if (confirmed) {
+      try {
+        setIsEntering(true);
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) throw new Error("Not authenticated");
+        
+        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-user`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`
+          }
+        });
+        
+        if (!response.ok) {
+          const errData = await response.json();
+          throw new Error(errData.error || 'Failed to delete account');
+        }
+        
+        toast.success("Account deleted successfully.");
+        useAuthStore.getState().signOut();
+      } catch (err: any) {
+        console.error(err);
+        setIsEntering(false);
+        showAlert(err.message || "Failed to delete account. Please contact support.", "Error");
+      }
+    }
   };
 
   const isLinked = (platform: string) => {
@@ -301,9 +339,29 @@ const AccountCentrePage: React.FC = () => {
             </div>
           </div>
         </section>
-        {/* 4. Danger Zone */}
+
+        {/* 4. Legal */}
+        <section className="account-section">
+          <h3 className="account-section-title">Legal</h3>
+          <div className="glass-panel info-list-container">
+            <div className="info-item liquid-hover" onClick={() => navigate('/privacy-policy')} style={{ cursor: 'pointer' }}>
+              <div className="info-item-content">
+                <span className="info-item-label">Privacy Policy</span>
+              </div>
+              <span className="material-symbols-outlined info-item-icon">chevron_right</span>
+            </div>
+            <div className="info-item liquid-hover" onClick={() => navigate('/terms-of-service')} style={{ cursor: 'pointer' }}>
+              <div className="info-item-content">
+                <span className="info-item-label">Terms of Service</span>
+              </div>
+              <span className="material-symbols-outlined info-item-icon">chevron_right</span>
+            </div>
+          </div>
+        </section>
+
+        {/* 5. Danger Zone */}
         <section className="danger-zone">
-          <div className="danger-card">
+          <div className="danger-card" onClick={handleDeleteAccount} style={{ cursor: 'pointer' }}>
             <div className="danger-content">
               <span className="danger-title">Delete Account</span>
               <span className="danger-subtitle">Permanently remove your data</span>

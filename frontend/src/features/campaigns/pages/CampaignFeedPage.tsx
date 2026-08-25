@@ -121,10 +121,37 @@ const HomeMenuPage: React.FC = () => {
   return (
     <div className="home-menu-page">
       {/* Header Section */}
-      <header className="home-header">
+      <header className="home-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <h1 className="home-title">Campaigns</h1>
           <p className="home-subtitle">Create videos & earn money</p>
+        </div>
+        <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+          <button 
+            className="icon-btn" 
+            style={{ width: '40px', height: '40px', background: 'rgba(255,255,255,0.05)', borderRadius: '50%', color: '#e5e2e1' }}
+            onClick={() => navigate('/campaigns/joined')} 
+            title="Recent Joined Campaigns"
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>assignment_turned_in</span>
+          </button>
+          <button 
+            className="icon-btn" 
+            style={{ width: '40px', height: '40px', background: 'rgba(255,255,255,0.05)', borderRadius: '50%', color: '#e5e2e1' }}
+            onClick={() => navigate('/manage-campaigns')} 
+            title="Manage Created Campaigns"
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>store</span>
+          </button>
+          <button 
+            className="icon-btn" 
+            style={{ position: 'relative', width: '40px', height: '40px', background: 'rgba(255,255,255,0.05)', borderRadius: '50%', color: '#e5e2e1' }}
+            onClick={() => navigate('/inbox')}
+            title="Chats"
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>chat</span>
+            <span style={{ position: 'absolute', top: '8px', right: '8px', width: '8px', height: '8px', background: '#34d399', borderRadius: '50%', border: '2px solid #0C0C0C' }}></span>
+          </button>
         </div>
       </header>
 

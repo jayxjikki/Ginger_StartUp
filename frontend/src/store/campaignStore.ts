@@ -12,6 +12,7 @@ interface CampaignState {
   slideshows: SlideshowItem[];
   selectedCampaign: Campaign | null;
   mySubmissions: Submission[];
+  myCreatedCampaigns: Campaign[];
   filters: CampaignFilters;
   isLoading: boolean;
   isSubmitting: boolean;
@@ -25,9 +26,15 @@ interface CampaignState {
   submitContent: (campaignId: string, url: string, metadata: any) => Promise<void>;
   toggleSavedCampaign: (campaignId: string, userId: string) => Promise<void>;
   fetchSavedCampaigns: (userId: string) => Promise<void>;
+  fetchMySubmissions: (userId: string) => Promise<void>;
   setSelectedCampaign: (campaign: Campaign | null) => void;
   setFilters: (filters: Partial<CampaignFilters>) => void;
   applyFilters: () => void;
+  raiseDispute: (submissionId: string) => Promise<void>;
+  fetchMyCreatedCampaigns: (userId: string) => Promise<void>;
+  flagSubmissionByAdvertiser: (submissionId: string) => Promise<void>;
+  approveSubmissionByAdvertiser: (submissionId: string) => Promise<void>;
+  submitCampaignToAdmin: (campaignId: string) => Promise<void>;
 }
 
 const defaultFilters: CampaignFilters = {
@@ -47,6 +54,7 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
   slideshows: [],
   selectedCampaign: null,
   mySubmissions: [],
+  myCreatedCampaigns: [],
   filters: defaultFilters,
   isLoading: false,
   isSubmitting: false,
@@ -151,6 +159,27 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
     }
   },
 
+  fetchMySubmissions: async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('submissions')
+        .select(`
+          *,
+          campaign:campaigns(
+            *,
+            advertiser:profiles(*)
+          )
+        `)
+        .eq('creator_id', userId)
+        .order('submitted_at', { ascending: false });
+
+      if (error) throw error;
+      set({ mySubmissions: data as unknown as Submission[] });
+    } catch (err: any) {
+      console.error('Error fetching my submissions:', err);
+    }
+  },
+
   toggleSavedCampaign: async (campaignId: string, userId: string) => {
     const { savedCampaignIds } = get();
     const isSaved = savedCampaignIds.includes(campaignId);
@@ -189,6 +218,131 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
       console.error(err);
     } finally {
       set({ isSubmitting: false });
+    }
+  },
+
+  raiseDispute: async (submissionId: string) => {
+    try {
+      const { error } = await supabase
+        .from('submissions')
+        .update({ status: 'disputed' })
+        .eq('id', submissionId);
+      
+      if (error) throw error;
+      
+      // Update local state
+      set((state) => ({
+        mySubmissions: state.mySubmissions.map(sub => 
+          sub.id === submissionId ? { ...sub, status: 'disputed' } : sub
+        )
+      }));
+    } catch (error) {
+      console.error('Error raising dispute:', error);
+      throw error;
+    }
+  },
+
+  fetchMyCreatedCampaigns: async (userId: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      const { data, error } = await supabase
+        .from('campaigns')
+        .select(`
+          *,
+          advertiser:profiles!campaigns_advertiser_id_fkey(*),
+          submissions(*)
+        `)
+        .eq('advertiser_id', userId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      
+      // Map submissions nested data appropriately
+      const campaignsWithSubmissions = await Promise.all((data as any[]).map(async (c) => {
+        // Fetch creator profiles for each submission to display in the UI
+        const submissionsWithProfiles = await Promise.all((c.submissions || []).map(async (sub: any) => {
+          const { data: creatorData } = await supabase.from('profiles').select('*').eq('id', sub.creator_id).single();
+          return { ...sub, creator: creatorData };
+        }));
+        return { ...c, submissions: submissionsWithProfiles };
+      }));
+
+      set({ myCreatedCampaigns: campaignsWithSubmissions as unknown as Campaign[] });
+    } catch (err: any) {
+      console.error('Error fetching created campaigns:', err);
+      set({ error: err.message });
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  flagSubmissionByAdvertiser: async (submissionId: string) => {
+    try {
+      const { error } = await supabase
+        .from('submissions')
+        .update({ status: 'flagged' })
+        .eq('id', submissionId);
+      
+      if (error) throw error;
+
+      // Update local state for myCreatedCampaigns
+      set((state) => ({
+        myCreatedCampaigns: state.myCreatedCampaigns.map(campaign => ({
+          ...campaign,
+          submissions: (campaign.submissions as any[] || []).map(sub => 
+            sub.id === submissionId ? { ...sub, status: 'flagged' } : sub
+          )
+        }))
+      }));
+    } catch (error) {
+      console.error('Error flagging submission:', error);
+      throw error;
+    }
+  },
+
+  approveSubmissionByAdvertiser: async (submissionId: string) => {
+    try {
+      const { error } = await supabase
+        .from('submissions')
+        .update({ status: 'verified' })
+        .eq('id', submissionId);
+      
+      if (error) throw error;
+
+      // Update local state for myCreatedCampaigns
+      set((state) => ({
+        myCreatedCampaigns: state.myCreatedCampaigns.map(campaign => ({
+          ...campaign,
+          submissions: (campaign.submissions as any[] || []).map(sub => 
+            sub.id === submissionId ? { ...sub, status: 'verified' } : sub
+          )
+        }))
+      }));
+    } catch (error) {
+      console.error('Error approving submission by advertiser:', error);
+      throw error;
+    }
+  },
+
+  submitCampaignToAdmin: async (campaignId: string) => {
+    try {
+      // Using 'paused' as the status to represent 'pending_admin_approval' 
+      // without needing to alter database constraints.
+      const { error } = await supabase
+        .from('campaigns')
+        .update({ status: 'paused' })
+        .eq('id', campaignId);
+        
+      if (error) throw error;
+
+      set((state) => ({
+        myCreatedCampaigns: state.myCreatedCampaigns.map(c => 
+          c.id === campaignId ? { ...c, status: 'paused' } : c
+        )
+      }));
+    } catch (error) {
+      console.error('Error submitting campaign to admin:', error);
+      throw error;
     }
   },
 

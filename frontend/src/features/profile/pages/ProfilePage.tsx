@@ -6,6 +6,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../../store/authStore';
+import { useGlobalModalStore } from '../../../store/globalModalStore';
+import { useUgcStore } from '../../../store/ugcStore';
 import { useProfileStore } from '../../../store/profileStore';
 import ImageViewer from '../../../components/ui/ImageViewer';
 import Input, { Textarea } from '../../../components/ui/Input';
@@ -13,6 +15,7 @@ import ImageUpload from '../../../components/ui/ImageUpload';
 import Button from '../../../components/ui/Button';
 import Card from '../../../components/ui/Card';
 import SettingsModal from '../components/SettingsModal';
+import ChatModal from '../../../components/ui/ChatModal';
 import TransitionLoader from '../../../components/ui/TransitionLoader';
 import youtubeIcon from '../../../assets/youtube.png';
 import instagramIcon from '../../../assets/instagram.png';
@@ -62,6 +65,16 @@ const ProfilePage: React.FC = () => {
 
   // Fullscreen Viewer State
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [isChatModalOpen, setIsChatModalOpen] = useState(false);
+  const [isBlockedByThem, setIsBlockedByThem] = useState(false);
+
+  const { 
+    blockedUserIds, 
+    fetchBlockedUsers, 
+    blockUser, 
+    unblockUser, 
+    checkIfBlockedByThem 
+  } = useUgcStore();
 
   // Form states
   const [showAddForm, setShowAddForm] = useState(false);
@@ -92,6 +105,15 @@ const ProfilePage: React.FC = () => {
       fetchProfileData(targetUserId);
     }
   }, [targetUserId, fetchProfileData]);
+
+  useEffect(() => {
+    if (user && isPublicView && targetUserId) {
+      fetchBlockedUsers();
+      checkIfBlockedByThem(targetUserId).then(setIsBlockedByThem);
+    }
+  }, [user, isPublicView, targetUserId, fetchBlockedUsers, checkIfBlockedByThem]);
+
+  const isBlockedByMe = profile ? blockedUserIds.includes(profile.id) : false;
 
   const handleTabClick = (index: number, e: React.MouseEvent<HTMLButtonElement>) => {
     setActiveTab(index);
@@ -257,6 +279,17 @@ const ProfilePage: React.FC = () => {
 
       {/* Settings Modal */}
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
+      
+      {/* Chat Modal */}
+      {isPublicView && profile && (
+        <ChatModal 
+          isOpen={isChatModalOpen}
+          onClose={() => setIsChatModalOpen(false)}
+          recipientId={profile.id}
+          recipientName={profile.full_name}
+          recipientAvatar={actualAvatarUrl}
+        />
+      )}
 
       {/* Top App Bar */}
       <header className="profile-top-bar">
@@ -288,6 +321,34 @@ const ProfilePage: React.FC = () => {
             </button>
           </div>
         )}
+        {isPublicView && profile && (
+          <div className="profile-top-actions">
+            {isBlockedByMe ? (
+              <button className="top-action-btn" aria-label="Unblock User" onClick={async (e) => { 
+                e.stopPropagation(); 
+                const c = await useGlobalModalStore.getState().showConfirm('Are you sure you want to unblock this user?', 'Unblock User'); 
+                if (c) unblockUser(profile.id); 
+              }}>
+                <span className="material-symbols-outlined" style={{ color: '#4caf50' }}>how_to_reg</span>
+              </button>
+            ) : (
+              <button className="top-action-btn" aria-label="Block User" onClick={async (e) => { 
+                e.stopPropagation(); 
+                const c = await useGlobalModalStore.getState().showConfirm('Are you sure you want to block this user? They will not be able to interact with you.', 'Block User'); 
+                if (c) blockUser(profile.id); 
+              }}>
+                <span className="material-symbols-outlined" style={{ color: '#ff4444' }}>block</span>
+              </button>
+            )}
+            <button className="top-action-btn" aria-label="Report User" onClick={async (e) => { 
+              e.stopPropagation(); 
+              const c = await useGlobalModalStore.getState().showConfirm('Are you sure you want to report this profile to moderation?', 'Report Profile'); 
+              if (c) useUgcStore.getState().reportItem(profile.id, 'profile', 'Inappropriate profile content'); 
+            }}>
+              <span className="material-symbols-outlined" style={{ color: '#ffb74d' }}>report</span>
+            </button>
+          </div>
+        )}
       </header>
 
       <main className="profile-main">
@@ -310,35 +371,40 @@ const ProfilePage: React.FC = () => {
               {profile.username.startsWith('@') ? profile.username : `@${profile.username}`}
             </p>
           )}
+
+          <div className="profile-meta-info" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', color: '#c4c7c8', fontSize: '14px', marginTop: '4px', marginBottom: '12px' }}>
+            {profile.location && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>location_on</span>
+                <span>{profile.location}</span>
+              </div>
+            )}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>group</span>
+              <span><strong style={{ color: '#fff' }}>{formatCount(profile.follower_count || 0)}</strong> Followers</span>
+            </div>
+          </div>
           <p className="profile-bio">
             {profile.bio || 'Tech professional & passionate world traveler. Exploring the intersection of innovation and global culture.'}
           </p>
           {isPublicView && (
-            <div className="profile-public-actions" style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginTop: '16px' }}>
+            <div className="profile-public-actions" style={{ display: 'flex', justifyContent: 'center', marginTop: '24px' }}>
               <button 
-                className="btn btn-primary" 
-                onClick={async (e) => {
+                className="fancy-message-btn"
+                onClick={(e) => {
                   e.stopPropagation();
-                  alert('Follow feature coming soon (Backend API needed)');
-                }}
-              >
-                Follow
-              </button>
-              <button 
-                className="btn btn-secondary"
-                onClick={async (e) => {
-                  e.stopPropagation();
-                  const content = prompt('Enter your message:');
-                  if (content) {
-                    try {
-                      await useProfileStore.getState().sendMessage(profile.id, content);
-                      alert('Message sent!');
-                    } catch (err) {
-                      alert('Failed to send message.');
-                    }
+                  if (isBlockedByMe) {
+                    toast.error("You have blocked this user. Unblock them to send a message.");
+                    return;
                   }
+                  if (isBlockedByThem) {
+                    toast.error("You cannot send messages to this user.");
+                    return;
+                  }
+                  setIsChatModalOpen(true);
                 }}
               >
+                <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>chat_bubble</span>
                 Message
               </button>
             </div>

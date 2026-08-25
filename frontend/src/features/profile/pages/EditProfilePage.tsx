@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { useAuthStore } from '../../../store/authStore';
 import { supabase } from '../../../lib/supabase';
 import { uploadToCloudinary } from '../../../lib/cloudinary';
@@ -11,7 +12,8 @@ const EditProfilePage: React.FC = () => {
   
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
-  const [pronouns, setPronouns] = useState('');
+  const [gender, setGender] = useState('Male');
+  const [mobile, setMobile] = useState('');
   const [bio, setBio] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
   const [bannerUrl, setBannerUrl] = useState('');
@@ -29,8 +31,8 @@ const EditProfilePage: React.FC = () => {
       setBio(profile.bio || '');
       setAvatarUrl(profile.avatar_url || 'https://via.placeholder.com/150');
       setBannerUrl(profile.banner_url || '');
-      // pronouns typically aren't in standard DB yet, so leaving blank or mock
-      setPronouns('She/Her');
+      setGender(profile.gender || 'Male');
+      setMobile(profile.mobile_number || '');
     }
   }, [profile]);
 
@@ -46,6 +48,8 @@ const EditProfilePage: React.FC = () => {
           bio: bio,
           avatar_url: avatarUrl,
           banner_url: bannerUrl,
+          gender: gender,
+          mobile_number: mobile,
         })
         .eq('id', user.id);
         
@@ -78,7 +82,7 @@ const EditProfilePage: React.FC = () => {
       setAvatarUrl(url);
     } catch (err) {
       console.error('Failed to upload avatar:', err);
-      alert('Failed to upload image to Cloudinary.');
+      toast.error('Failed to upload image to Cloudinary.');
     } finally {
       setIsUploadingAvatar(false);
     }
@@ -94,21 +98,21 @@ const EditProfilePage: React.FC = () => {
       setBannerUrl(url);
     } catch (err) {
       console.error('Failed to upload banner:', err);
-      alert('Failed to upload image to Cloudinary.');
+      toast.error('Failed to upload image to Cloudinary.');
     } finally {
       setIsUploadingBanner(false);
     }
   };
 
   // Focus effect for inputs
-  const handleFocus = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleFocus = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const label = e.currentTarget.parentElement?.querySelector('label');
     if (label) {
-      label.style.color = '#34d399'; // Emerald color
+      label.style.color = '#34d399'; // Active color
     }
   };
 
-  const handleBlur = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const label = e.currentTarget.parentElement?.querySelector('label');
     if (label) {
       label.style.color = '#8fa696'; // Revert to inactive color
@@ -204,15 +208,30 @@ const EditProfilePage: React.FC = () => {
             />
           </div>
           <div className="input-group">
-            <label className="edit-input-label">Pronouns</label>
+            <label className="edit-input-label">Mobile Number</label>
             <input 
               className="glass-input" 
-              type="text" 
-              value={pronouns} 
-              onChange={e => setPronouns(e.target.value)}
+              type="tel" 
+              value={mobile} 
+              onChange={e => setMobile(e.target.value)}
               onFocus={handleFocus}
               onBlur={handleBlur}
             />
+          </div>
+          <div className="input-group">
+            <label className="edit-input-label">Gender / Pronouns</label>
+            <select 
+              className="glass-input" 
+              value={gender} 
+              onChange={e => setGender(e.target.value)}
+              onFocus={handleFocus}
+              onBlur={handleBlur}
+              style={{ appearance: 'none' }}
+            >
+              <option value="Male" style={{ color: '#000' }}>Male (He/Him)</option>
+              <option value="Female" style={{ color: '#000' }}>Female (She/Her)</option>
+              <option value="Other" style={{ color: '#000' }}>Other / Prefer not to say</option>
+            </select>
           </div>
           <div className="input-group">
             <label className="edit-input-label">Bio</label>

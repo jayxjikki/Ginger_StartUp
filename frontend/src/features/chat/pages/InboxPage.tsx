@@ -37,49 +37,70 @@ const InboxPage: React.FC = () => {
   return (
     <div className="inbox-page">
       <header className="inbox-header">
-        <button className="icon-btn" onClick={() => navigate(-1)} aria-label="Go Back">
-          <span className="material-symbols-outlined">arrow_back</span>
+        <button className="inbox-icon-btn" onClick={() => navigate(-1)} aria-label="Go Back">
+          <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 0" }}>arrow_back</span>
         </button>
         <h1 className="inbox-title">Messages</h1>
-        <div style={{ width: '40px' }} /> {/* Spacer for centering */}
+        <div style={{ width: '40px' }} /> {/* Spacer */}
       </header>
 
       <main className="inbox-content">
-        {isLoading ? (
-          <div className="inbox-loading">
-            <div className="btn-spinner" style={{ width: '30px', height: '30px', borderColor: 'rgba(255,255,255,0.1)', borderTopColor: '#F7931E' }} />
-          </div>
-        ) : inboxChats.length === 0 ? (
-          <div className="inbox-empty">
-            <span className="material-symbols-outlined" style={{ fontSize: '48px', color: 'rgba(255,255,255,0.2)', marginBottom: '16px' }}>forum</span>
-            <p>No messages yet.</p>
-            <span style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.4)' }}>Start a conversation from the Discover page!</span>
-          </div>
-        ) : (
-          <div className="inbox-list">
-            {inboxChats.map((chat) => (
-              <div 
+        <div className="inbox-search-container">
+          <span className="material-symbols-outlined inbox-search-icon">search</span>
+          <input 
+            className="inbox-search-input" 
+            placeholder="Search messages..." 
+            type="text"
+          />
+        </div>
+
+        <div className="inbox-list">
+          {isLoading ? (
+            <>
+              <div className="inbox-skeleton-item">
+                <div className="inbox-skeleton-avatar shimmer-bg"></div>
+                <div className="inbox-skeleton-lines">
+                  <div className="inbox-skeleton-line short shimmer-bg"></div>
+                  <div className="inbox-skeleton-line long shimmer-bg"></div>
+                </div>
+              </div>
+              <div className="inbox-skeleton-item" style={{ opacity: 0.5 }}>
+                <div className="inbox-skeleton-avatar shimmer-bg"></div>
+                <div className="inbox-skeleton-lines">
+                  <div className="inbox-skeleton-line short shimmer-bg" style={{ width: '25%' }}></div>
+                  <div className="inbox-skeleton-line long shimmer-bg" style={{ width: '50%' }}></div>
+                </div>
+              </div>
+            </>
+          ) : inboxChats.length === 0 ? (
+            <div className="inbox-empty">
+              <span className="material-symbols-outlined" style={{ fontSize: '48px', color: '#8c90a0', marginBottom: '16px' }}>forum</span>
+              <p style={{ color: '#c2c6d7' }}>No messages yet.</p>
+            </div>
+          ) : (
+            inboxChats.map((chat) => (
+              <button 
                 key={chat.userId} 
-                className={`inbox-item ${chat.unread ? 'unread' : ''}`}
+                className="chat-item-hover"
                 onClick={() => handleOpenChat(chat.userId, chat.name, chat.avatar)}
               >
-                <Avatar src={chat.avatar} name={chat.name} size="md" />
-                <div className="inbox-item-content">
-                  <div className="inbox-item-header">
-                    <span className="inbox-item-name">{chat.name}</span>
-                    <span className="inbox-item-time">
+                <div className="chat-item-avatar-wrap">
+                  <Avatar src={chat.avatar} name={chat.name} size="md" />
+                  {chat.unread && <div className="chat-item-online-dot"></div>}
+                </div>
+                <div className="chat-item-content">
+                  <div className="chat-item-header">
+                    <h2 className="chat-item-name">{chat.name}</h2>
+                    <span className="chat-item-time">
                       {formatDistanceToNow(new Date(chat.timestamp), { addSuffix: false }).replace('about ', '')}
                     </span>
                   </div>
-                  <div className="inbox-item-preview">
-                    <span className="inbox-item-msg">{chat.lastMessage}</span>
-                    {chat.unread && <span className="inbox-unread-dot" />}
-                  </div>
+                  <p className="chat-item-msg">{chat.lastMessage}</p>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
+              </button>
+            ))
+          )}
+        </div>
       </main>
 
       <ChatModal 

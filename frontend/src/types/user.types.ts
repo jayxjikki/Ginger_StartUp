@@ -12,6 +12,9 @@ export interface Profile {
   bio: string | null;
   category: string | null;
   location: string | null;
+  mobile_number?: string;
+  gender?: string;
+  onboarding_completed?: boolean;
   follower_count: number;
   rates: ProfileRates | null;
   is_verified: boolean;

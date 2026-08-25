@@ -14,6 +14,8 @@ import {
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../../store/authStore';
 import { useCampaignStore } from '../../../store/campaignStore';
+import { useGlobalModalStore } from '../../../store/globalModalStore';
+import { useUgcStore } from '../../../store/ugcStore';
 import Card from '../../../components/ui/Card';
 import Button from '../../../components/ui/Button';
 import Badge from '../../../components/ui/Badge';
@@ -40,6 +42,8 @@ const CampaignDetailPage: React.FC = () => {
   const [videoUrl, setVideoUrl] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { user } = useAuthStore();
+  const { reportItem } = useUgcStore();
+  const { showConfirm, showAlert } = useGlobalModalStore();
 
   const campaign = campaigns.find((c) => c.id === id);
   const isExpired = campaign?.end_date ? new Date(campaign.end_date) < new Date() : false;
@@ -207,6 +211,18 @@ const CampaignDetailPage: React.FC = () => {
             </button>
             <button className="icon-btn" aria-label="Share">
               <FiShare2 />
+            </button>
+            <button 
+              className="icon-btn" 
+              aria-label="Report Campaign"
+              onClick={async () => {
+                const confirmed = await showConfirm("Are you sure you want to report this campaign? Our moderation team will review it.", "Report Campaign");
+                if (confirmed && campaign) {
+                  await reportItem(campaign.id, 'campaign', 'Inappropriate content or spam');
+                }
+              }}
+            >
+              <FiAlertCircle />
             </button>
           </div>
         </motion.div>
