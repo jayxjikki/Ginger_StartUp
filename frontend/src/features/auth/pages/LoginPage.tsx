@@ -78,8 +78,10 @@ const LoginPage: React.FC = () => {
         {/* Hero Section / Text */}
         <div className="login-hero">
           <div>
-            <h1 className="login-hero-title">Welcome</h1>
-            <p className="login-hero-subtitle">Experience fluid precision.</p>
+            <h1 className="login-hero-title">Welcome to gingerproject</h1>
+            <p className="login-hero-subtitle" style={{ fontSize: '0.9rem', opacity: 0.8, marginTop: '12px', lineHeight: '1.4' }}>
+              GINGER is a UGC marketing platform connecting brands with creators.<br/>Participate in campaigns, submit videos, and earn rewards.
+            </p>
           </div>
         </div>
 
