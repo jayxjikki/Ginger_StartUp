@@ -98,8 +98,21 @@ const LandingPage: React.FC = () => {
             <h3>Secure Payments</h3>
             <p>Automated batch payments and escrow systems ensure that creators are paid fairly and advertisers' budgets are handled transparently.</p>
           </motion.div>
-
         </div>
+
+        {/* Data Transparency Notice for Google OAuth */}
+        <motion.div 
+          className="landing-transparency-notice"
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          style={{ marginTop: '4rem', textAlign: 'center', maxWidth: '800px', margin: '4rem auto 0', padding: '0 2rem' }}
+        >
+          <h3 style={{ fontSize: '1.2rem', marginBottom: '1rem', color: 'var(--color-text-secondary)' }}>How We Use Your Data</h3>
+          <p style={{ fontSize: '0.9rem', color: 'var(--color-text-secondary)', lineHeight: '1.6', opacity: 0.8 }}>
+            GINGER requests access to your YouTube and social media profile data solely to verify your identity as a creator. This helps us prevent fake profiles, maintain a trusted community for brands, and ensure that your campaign rewards are fairly distributed based on authentic engagement. We do not sell or share your data with third parties.
+          </p>
+        </motion.div>
       </section>
 
       {/* Footer */}
