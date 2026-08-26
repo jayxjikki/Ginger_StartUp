@@ -380,16 +380,17 @@ const DiscoverFeedPage: React.FC = () => {
       />
 
       {telegramModalUser && (
-        <div className="discover-modal-overlay" onClick={() => setTelegramModalUser(null)}>
-          <div className="discover-modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '400px', width: '90%' }}>
-            <div className="modal-header">
-              <h2>Verified Channels</h2>
-              <button className="icon-btn" onClick={() => setTelegramModalUser(null)}>
+        <div className="drawer-overlay" onClick={() => setTelegramModalUser(null)}>
+          <div className="drawer-content glass-panel" onClick={e => e.stopPropagation()}>
+            <div className="drawer-header">
+              <h3>Verified Channels</h3>
+              <button className="drawer-close" onClick={() => setTelegramModalUser(null)}>
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
             
-            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div className="drawer-body">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {telegramModalUser.telegramUsername && (
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.05)', padding: '12px', borderRadius: '12px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -430,6 +431,7 @@ const DiscoverFeedPage: React.FC = () => {
                   </button>
                 </div>
               ))}
+              </div>
             </div>
           </div>
         </div>
