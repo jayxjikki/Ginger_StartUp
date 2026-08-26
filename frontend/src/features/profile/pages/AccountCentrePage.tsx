@@ -169,7 +169,7 @@ const AccountCentrePage: React.FC = () => {
 
   // Listen for auth state changes to capture OAuth linking callback
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session && session.user) {
         const identities = session.user.identities || [];
         

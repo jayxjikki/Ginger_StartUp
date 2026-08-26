@@ -297,7 +297,7 @@ export const useProfileStore = create<ProfileState>()(
             }
             
             // Reload profile data to get updated links
-            get().fetchProfile(profile.id);
+            get().fetchProfileData(profile.id);
           } catch (err: any) {
             console.error('Error adding verified social link:', err);
             throw err;
