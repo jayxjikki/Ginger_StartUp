@@ -45,7 +45,17 @@ const InstagramCallbackPage: React.FC = () => {
           }
         });
 
-        if (functionError) throw functionError;
+        if (functionError) {
+          // Try to extract the real error message from the response body
+          let errorMsg = functionError.message;
+          try {
+            if (functionError.context && typeof functionError.context.json === 'function') {
+              const errorBody = await functionError.context.json();
+              errorMsg = errorBody?.message || errorMsg;
+            }
+          } catch { /* ignore parse errors */ }
+          throw new Error(errorMsg);
+        }
 
         if (data && data.success) {
           await addVerifiedSocialLink(

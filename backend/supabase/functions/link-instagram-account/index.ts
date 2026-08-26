@@ -12,6 +12,9 @@ serve(async (req) => {
   try {
     const { code, redirect_uri, profile_id } = await req.json();
 
+    console.log("Received request:", { code: code?.substring(0, 10) + '...', redirect_uri, profile_id });
+    console.log("Client ID present:", !!INSTAGRAM_CLIENT_ID, "Secret present:", !!INSTAGRAM_CLIENT_SECRET);
+
     if (!code || !redirect_uri || !profile_id) {
       throw new Error("Missing required parameters: code, redirect_uri, or profile_id");
     }
@@ -28,52 +31,83 @@ serve(async (req) => {
     tokenFormData.append('redirect_uri', redirect_uri);
     tokenFormData.append('code', code);
 
+    console.log("Exchanging code for token...");
+    console.log("Token request body:", tokenFormData.toString());
+
     const tokenRes = await fetch('https://api.instagram.com/oauth/access_token', {
       method: 'POST',
-      body: tokenFormData,
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: tokenFormData.toString(),
     });
 
-    const tokenData = await tokenRes.json();
+    const tokenText = await tokenRes.text();
+    console.log("Token response status:", tokenRes.status);
+    console.log("Token response body:", tokenText);
+
+    let tokenData;
+    try {
+      tokenData = JSON.parse(tokenText);
+    } catch {
+      throw new Error(`Instagram returned non-JSON response: ${tokenText}`);
+    }
     
-    if (!tokenRes.ok) {
-      console.error("Token Exchange Error:", tokenData);
-      throw new Error(`Failed to exchange code: ${tokenData.error_message || tokenData.error?.message || 'Unknown error'}`);
+    if (tokenData.error_type || tokenData.error_message || !tokenData.access_token) {
+      throw new Error(`Token exchange failed: ${tokenData.error_message || tokenData.error_type || 'No access_token in response'}`);
     }
 
     const shortLivedToken = tokenData.access_token;
+    const igUserId = tokenData.user_id;
+    console.log("Got short-lived token, user_id:", igUserId);
+
+    // 2. Exchange short-lived token for long-lived token
+    const longLivedRes = await fetch(
+      `https://graph.instagram.com/access_token?grant_type=ig_exchange_token&client_secret=${INSTAGRAM_CLIENT_SECRET}&access_token=${shortLivedToken}`
+    );
+    const longLivedData = await longLivedRes.json();
+    console.log("Long-lived token response:", JSON.stringify(longLivedData));
     
-    // Note: To be fully compliant long-term, you would exchange shortLivedToken for a long-lived token
-    // via https://graph.instagram.com/access_token?grant_type=ig_exchange_token
-    // For now, we will just use the short-lived token to get the user data immediately.
+    const finalToken = longLivedData.access_token || shortLivedToken;
 
-    // 2. Fetch user profile data and followers using the token
-    const profileRes = await fetch(`https://graph.instagram.com/v20.0/me?fields=username,followers_count&access_token=${shortLivedToken}`);
-    const profileData = await profileRes.json();
+    // 3. Fetch user profile data and followers using the token
+    const profileRes = await fetch(`https://graph.instagram.com/v22.0/me?fields=user_id,username,account_type,followers_count,media_count&access_token=${finalToken}`);
+    const profileText = await profileRes.text();
+    console.log("Profile response status:", profileRes.status);
+    console.log("Profile response body:", profileText);
 
-    if (!profileRes.ok) {
-      console.error("Profile Fetch Error:", profileData);
-      throw new Error(`Failed to fetch Instagram profile: ${profileData.error?.message || 'Unknown error'}`);
+    let profileData;
+    try {
+      profileData = JSON.parse(profileText);
+    } catch {
+      throw new Error(`Instagram profile API returned non-JSON: ${profileText}`);
+    }
+
+    if (profileData.error) {
+      throw new Error(`Failed to fetch Instagram profile: ${profileData.error.message || JSON.stringify(profileData.error)}`);
     }
 
     const finalUsername = profileData.username;
     const finalFollowers = profileData.followers_count || 0;
 
     if (!finalUsername) {
-      throw new Error("Could not retrieve username from Instagram API");
+      throw new Error("Could not retrieve username from Instagram API. Response: " + profileText);
     }
+
+    console.log("Success! Username:", finalUsername, "Followers:", finalFollowers);
 
     return new Response(
       JSON.stringify({
         success: true,
         username: finalUsername,
         followers: finalFollowers,
-        access_token: shortLivedToken
+        access_token: finalToken
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
     );
 
   } catch (error: any) {
-    console.error("Function Error:", error);
+    console.error("Function Error:", error.message);
     return new Response(
       JSON.stringify({ success: false, message: error.message }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
