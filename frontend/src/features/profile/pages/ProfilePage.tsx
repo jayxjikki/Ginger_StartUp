@@ -33,8 +33,30 @@ import tumblrIcon from '../../../assets/tumblr.png';
 import pinterestIcon from '../../../assets/pinterest.png';
 import snapchatIcon from '../../../assets/snapchat.png';
 import githubIcon from '../../../assets/github.png';
+import brandBg from '../../../assets/brand.jpg';
+import businessBg from '../../../assets/bussiness.jpg';
+import clothingBg from '../../../assets/clothing.jpg';
+import entrepreneurBg from '../../../assets/Entrepreneur.jpg';
+import foodieBg from '../../../assets/foodie.png';
+import influencerBg from '../../../assets/Influencer.jpg';
+import gamingBg from '../../../assets/gaming.jpg';
+import travelBg from '../../../assets/travel.jpg';
 import { formatCount } from '../../../utils/formatters';
 import './ProfilePage.css';
+
+export const getCategoryBanner = (category?: string | null) => {
+  switch (category) {
+    case 'Brand': return brandBg;
+    case 'Business': return businessBg;
+    case 'Clothing': return clothingBg;
+    case 'Entrepreneur': return entrepreneurBg;
+    case 'Foodie': return foodieBg;
+    case 'Influencer': return influencerBg;
+    case 'Gaming': return gamingBg;
+    case 'Travel': return travelBg;
+    default: return "https://lh3.googleusercontent.com/aida-public/AB6AXuAwosNMbFqAsdhEk59Za1nbASUJr88irtJHIJoApwXFXI2habJyNQRj7DjNJChImWA26tsm9xH5Jz1_ttX1BOSBQPMxrcwYajTFB96saVbnc8UddW5CTits1rrJffJogQjUU_kmc4GQgBCBKvFtjrpBXN7o0kh5Ob8oj1W5d6RNxLSoGgF33c2oQ9MneVPyQuvktuSBG1KbEUZFT_GnILLNoa5SVvgZ2qooecdc_vOSFtu2Xgmzuvai";
+  }
+};
 
 const ProfilePage: React.FC = () => {
   const { user } = useAuthStore();
@@ -57,7 +79,8 @@ const ProfilePage: React.FC = () => {
     createAchievement,
     createMediaKitItem,
     messages,
-    mediaKitItems
+    mediaKitItems,
+    verifiedChannels
   } = useProfileStore();
 
   const [activeTab, setActiveTab] = useState(1);
@@ -84,6 +107,7 @@ const ProfilePage: React.FC = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showMessages, setShowMessages] = useState(false);
+  const [showTelegramChannels, setShowTelegramChannels] = useState(false);
   const [messageSearch, setMessageSearch] = useState('');
   const [isEntering, setIsEntering] = useState((location.state as any)?.fromTransition || false);
 
@@ -191,11 +215,13 @@ const ProfilePage: React.FC = () => {
     );
   }
 
-  const actualBannerUrl = profile?.banner_url || "https://lh3.googleusercontent.com/aida-public/AB6AXuAwosNMbFqAsdhEk59Za1nbASUJr88irtJHIJoApwXFXI2habJyNQRj7DjNJChImWA26tsm9xH5Jz1_ttX1BOSBQPMxrcwYajTFB96saVbnc8UddW5CTits1rrJffJogQjUU_kmc4GQgBCBKvFtjrpBXN7o0kh5Ob8oj1W5d6RNxLSoGgF33c2oQ9MneVPyQuvktuSBG1KbEUZFT_GnILLNoa5SVvgZ2qooecdc_vOSFtu2Xgmzuvai";
+  const actualBannerUrl = profile?.banner_url || getCategoryBanner(profile?.category);
   const actualAvatarUrl = profile.avatar_url || 'https://via.placeholder.com/150';
 
   const bannerStyle = {
-    backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), url("${actualBannerUrl}")`
+    backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), url("${actualBannerUrl}")`,
+    backgroundSize: 'cover',
+    backgroundPosition: 'center'
   };
 
   const isLinked = (platformName: string) => {
@@ -248,7 +274,6 @@ const ProfilePage: React.FC = () => {
   const OTHER_PLATFORMS = [
     { name: 'Facebook', icon: facebookIcon },
     { name: 'WhatsApp', icon: whatsappIcon },
-    { name: 'Telegram', icon: telegramIcon },
     { name: 'Twitch', icon: twitchIcon },
     { name: 'Discord', icon: discordIcon },
     { name: 'X', icon: xIcon },
@@ -417,6 +442,18 @@ const ProfilePage: React.FC = () => {
           {renderPlatformIcon('TikTok', tiktokIcon, 'tiktok')}
           {renderPlatformIcon('YouTube', youtubeIcon, 'youtube')}
           
+          {profile?.telegram_id && (
+            <div 
+              key="Telegram"
+              className="social-stat-item telegram" 
+              style={{ cursor: 'pointer', overflow: 'hidden' }}
+              onClick={() => setShowTelegramChannels(true)}
+              title="Verified Channels"
+            >
+              <img src={telegramIcon} alt="Telegram" style={{ width: '20px', height: '20px', objectFit: 'contain' }} />
+            </div>
+          )}
+
           {OTHER_PLATFORMS.filter(p => isLinked(p.name)).map(platform => 
             renderPlatformIcon(platform.name, platform.icon)
           )}
@@ -440,6 +477,13 @@ const ProfilePage: React.FC = () => {
           <div className="liquid-card stat-box">
             <span className="stat-value text-primary">{formatCount(stats.totalViews)}</span>
             <span className="stat-label">Total Views</span>
+          </div>
+          <div className="liquid-card stat-box">
+            <span className="stat-value text-primary">{formatCount(stats.telegramMembers)}</span>
+            <span className="stat-label" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <img src={telegramIcon} alt="Telegram" style={{ width: '12px', height: '12px', objectFit: 'contain' }} />
+              Members
+            </span>
           </div>
         </section>
 
@@ -674,6 +718,46 @@ const ProfilePage: React.FC = () => {
                   </div>
                 )}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Telegram Channels Drawer */}
+      {showTelegramChannels && (
+        <div className="drawer-overlay" onClick={() => setShowTelegramChannels(false)}>
+          <div className="drawer-content glass-panel" onClick={(e) => e.stopPropagation()}>
+            <div className="drawer-header">
+              <h3>Verified Channels</h3>
+              <button className="drawer-close" onClick={() => setShowTelegramChannels(false)}>
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <div className="drawer-body">
+              {verifiedChannels && verifiedChannels.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {verifiedChannels.map(ch => (
+                    <div key={ch.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.05)', padding: '12px', borderRadius: '12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span className="material-symbols-outlined" style={{ color: '#4ade80' }}>verified</span>
+                        <span style={{ fontWeight: '500' }}>{ch.channel_username}</span>
+                      </div>
+                      <a 
+                        href={`https://t.me/${ch.channel_username.replace('@', '')}`} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        style={{ background: '#0088cc', color: 'white', padding: '6px 12px', borderRadius: '6px', fontSize: '13px', textDecoration: 'none', fontWeight: '500' }}
+                      >
+                        Visit
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ color: 'var(--text-tertiary)', textAlign: 'center', marginTop: '2rem', fontSize: '14px' }}>
+                  No channels verified yet.
+                </div>
+              )}
             </div>
           </div>
         </div>

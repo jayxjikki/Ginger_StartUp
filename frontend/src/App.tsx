@@ -7,6 +7,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import { Toaster } from 'react-hot-toast';
 import { useAuthStore } from './store/authStore';
+import { useCampaignStore } from './store/campaignStore';
+import { useLocation } from 'react-router-dom';
 
 // Pages
 import LoginPage from './features/auth/pages/LoginPage';
@@ -82,6 +84,25 @@ const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return <>{children}</>;
 };
 
+// Global listener to forcefully reset filters when switching tabs
+const RouteChangeListener: React.FC = () => {
+  const location = useLocation();
+  const { setFilters } = useCampaignStore();
+
+  useEffect(() => {
+    if (location.pathname === '/marketplace') {
+      // Force DiscoverFeedPage to reset
+      window.dispatchEvent(new Event('reset-feed-filters'));
+    } else if (location.pathname === '/campaigns') {
+      // Force CampaignFeedPage to reset
+      setFilters({ search: '', location: '', type: '', minPayout: 0, maxPayout: 0, platform: '', category: '', sortBy: 'newest' });
+      window.dispatchEvent(new Event('reset-clipping-filters'));
+    }
+  }, [location.pathname, setFilters]);
+
+  return null;
+};
+
 // Layout with bottom nav
 const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return (
@@ -92,15 +113,13 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   );
 };
 
-const App: React.FC = () => {
-  const { initialize } = useAuthStore();
 
-  useEffect(() => {
-    initialize();
-  }, [initialize]);
 
+const AppRoutes: React.FC = () => {
+  const location = useLocation();
+  
   return (
-    <BrowserRouter>
+    <>
       <Toaster
         position="top-center"
         toastOptions={{
@@ -115,9 +134,10 @@ const App: React.FC = () => {
         }}
       />
       <GlobalModal />
+      <RouteChangeListener />
 
       <AnimatePresence mode="wait">
-        <Routes>
+        <Routes location={location} key={location.pathname}>
           {/* Auth */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/onboarding" element={<ProtectedRoute requireOnboarding={false}><OnboardingPage /></ProtectedRoute>} />
@@ -130,7 +150,7 @@ const App: React.FC = () => {
             element={
               <ProtectedRoute>
                 <AppLayout>
-                  <CampaignFeedPage />
+                  <CampaignFeedPage key={`clipping-${location.key}`} />
                 </AppLayout>
               </ProtectedRoute>
             }
@@ -180,7 +200,7 @@ const App: React.FC = () => {
             element={
               <ProtectedRoute>
                 <AppLayout>
-                  <DiscoverFeedPage />
+                  <DiscoverFeedPage key={`feed-${location.key}`} />
                 </AppLayout>
               </ProtectedRoute>
             }
@@ -281,6 +301,20 @@ const App: React.FC = () => {
           <Route path="*" element={<Navigate to="/campaigns" replace />} />
         </Routes>
       </AnimatePresence>
+    </>
+  );
+};
+
+const App: React.FC = () => {
+  const { initialize } = useAuthStore();
+
+  useEffect(() => {
+    initialize();
+  }, [initialize]);
+
+  return (
+    <BrowserRouter>
+      <AppRoutes />
     </BrowserRouter>
   );
 };

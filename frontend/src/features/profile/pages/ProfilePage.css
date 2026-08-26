@@ -255,13 +255,24 @@
 
 /* Stats Grid */
 .profile-stats-grid {
-  display: grid;
+  display: flex;
   gap: 1rem;
-  grid-template-columns: repeat(3, 1fr);
   margin-bottom: 2rem;
+  overflow-x: auto;
+  padding-bottom: 8px; /* Room for scrollbar/shadows */
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  scroll-snap-type: x mandatory;
+}
+
+.profile-stats-grid::-webkit-scrollbar {
+  display: none;
 }
 
 .stat-box {
+  flex: 1;
+  min-width: 90px;
+  scroll-snap-align: center;
   padding: 0.5rem;
   display: flex;
   flex-direction: column;
@@ -271,6 +282,7 @@
   -webkit-backdrop-filter: blur(12px);
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
 }
 
 .stat-value {

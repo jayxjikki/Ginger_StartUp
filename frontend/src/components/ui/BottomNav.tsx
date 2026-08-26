@@ -14,7 +14,13 @@ const BottomNav: React.FC = () => {
     <nav className="bottom-nav-container" id="bottom-nav">
       <button 
         className={`bottom-nav-btn ${location.pathname === '/campaigns' ? 'active' : ''}`}
-        onClick={() => navigate('/campaigns')}
+        onClick={() => {
+          if (location.pathname === '/campaigns') {
+            window.dispatchEvent(new Event('reset-clipping-filters'));
+          } else {
+            navigate('/campaigns');
+          }
+        }}
       >
         <span 
           className="material-symbols-outlined bottom-nav-icon" 
@@ -27,7 +33,13 @@ const BottomNav: React.FC = () => {
 
       <button 
         className={`bottom-nav-btn ${location.pathname === '/marketplace' ? 'active' : ''}`}
-        onClick={() => navigate('/marketplace')}
+        onClick={() => {
+          if (location.pathname === '/marketplace') {
+            window.dispatchEvent(new Event('reset-feed-filters'));
+          } else {
+            navigate('/marketplace');
+          }
+        }}
       >
         <span 
           className="material-symbols-outlined bottom-nav-icon"

@@ -21,24 +21,30 @@ import tumblrIcon from '../../../assets/tumblr.png';
 import pinterestIcon from '../../../assets/pinterest.png';
 import snapchatIcon from '../../../assets/snapchat.png';
 import githubIcon from '../../../assets/github.png';
+import ConnectTelegram from '../components/ConnectTelegram';
 import './AccountCentrePage.css';
 
 const AccountCentrePage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuthStore();
-  const { profile, socialLinks, updateSocialLinks } = useProfileStore();
+  const { profile, socialLinks, updateSocialLinks, updateProfile } = useProfileStore();
 
   const actualAvatarUrl = profile?.avatar_url || 'https://via.placeholder.com/150';
   const fullName = profile?.full_name || 'Jikki Thakur';
-  const email = user?.email || 'jikki@example.com';
   
+  const [localEmail, setLocalEmail] = useState(user?.email || 'manis108hkumar@gmail.com');
+  const [localPhone, setLocalPhone] = useState('+1 (555) 019-2834');
+  const [localDob, setLocalDob] = useState('October 14, 1992');
+
   const [isNavigating, setIsNavigating] = useState(false);
   const [isEntering, setIsEntering] = useState((location.state as any)?.fromTransition || false);
 
   const [activeLinkPlatform, setActiveLinkPlatform] = useState<string | null>(null);
   const [linkUrl, setLinkUrl] = useState('');
   const [showPlatformMenu, setShowPlatformMenu] = useState(false);
+
+  const [editField, setEditField] = useState<{ key: string, label: string, value: string } | null>(null);
 
   useEffect(() => {
     if (isEntering) {
@@ -139,10 +145,32 @@ const AccountCentrePage: React.FC = () => {
     return socialLinks.some(l => l.platform.toLowerCase() === platform.toLowerCase());
   };
 
+  const openEditModal = (key: string, label: string, value: string) => {
+    setEditField({ key, label, value });
+  };
+
+  const handleSaveEdit = () => {
+    if (editField) {
+      if (editField.key === 'name') {
+        updateProfile({ full_name: editField.value });
+      } else if (editField.key === 'username') {
+        updateProfile({ username: editField.value });
+      } else if (editField.key === 'location') {
+        updateProfile({ location: editField.value });
+      } else if (editField.key === 'email') {
+        setLocalEmail(editField.value);
+      } else if (editField.key === 'phone') {
+        setLocalPhone(editField.value);
+      } else if (editField.key === 'dob') {
+        setLocalDob(editField.value);
+      }
+    }
+    setEditField(null);
+  };
+
   const OTHER_PLATFORMS = [
     { name: 'Facebook', icon: facebookIcon },
     { name: 'WhatsApp', icon: whatsappIcon },
-    { name: 'Telegram', icon: telegramIcon },
     { name: 'Twitch', icon: twitchIcon },
     { name: 'Discord', icon: discordIcon },
     { name: 'X', icon: xIcon },
@@ -249,6 +277,27 @@ const AccountCentrePage: React.FC = () => {
               </div>
             </div>
 
+            {/* Telegram Card */}
+            <div className="glass-panel liquid-hover account-card" onClick={() => openLinkModal('Telegram')}>
+              <div className="account-icon-wrap">
+                <img 
+                  src={telegramIcon} 
+                  alt="Telegram" 
+                  style={{ width: '24px', height: '24px', opacity: 0.8 }} 
+                />
+              </div>
+              <div>
+                <div className="account-card-name">Telegram</div>
+                <div className="account-status">
+                  {profile?.telegram_id ? (
+                    <><span className="status-dot"></span> Linked</>
+                  ) : (
+                    <span style={{ color: '#c4c7c8' }}>Not linked</span>
+                  )}
+                </div>
+              </div>
+            </div>
+
             {/* Dynamically Rendered Linked Other Platforms */}
             {OTHER_PLATFORMS.filter(p => isLinked(p.name)).map(platform => (
               <div key={platform.name} className="glass-panel liquid-hover account-card" onClick={() => openLinkModal(platform.name)}>
@@ -268,13 +317,43 @@ const AccountCentrePage: React.FC = () => {
               </div>
             ))}
 
-            {/* Add New Card */}
-            <div className="add-account-card" onClick={() => setShowPlatformMenu(true)}>
-              <div className="add-icon-wrap">
-                <span className="material-symbols-outlined">add</span>
+            {/* Add New Card or Horizontal Scroll Menu */}
+            {!showPlatformMenu ? (
+              <div className="add-account-card" onClick={() => setShowPlatformMenu(true)}>
+                <div className="add-icon-wrap">
+                  <span className="material-symbols-outlined">add</span>
+                </div>
+                <div className="add-account-text">Connect new platform</div>
               </div>
-              <div className="add-account-text">Connect new platform</div>
-            </div>
+            ) : (
+              <div className="platform-scroll-menu">
+                <div className="platform-scroll-header">
+                  <span style={{ fontSize: '14px', color: '#c4c7c8' }}>Select Platform</span>
+                  <button className="close-scroll-menu" onClick={() => setShowPlatformMenu(false)}>
+                    <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>close</span>
+                  </button>
+                </div>
+                <div className="platform-scroll-container vertical-list">
+                  {OTHER_PLATFORMS.filter(p => !isLinked(p.name)).length > 0 ? (
+                    OTHER_PLATFORMS.filter(p => !isLinked(p.name)).map(platform => (
+                      <div 
+                        key={platform.name} 
+                        className="platform-list-item glass-panel liquid-hover" 
+                        onClick={() => { setShowPlatformMenu(false); openLinkModal(platform.name); }}
+                      >
+                        <div className="platform-list-icon">
+                          <img src={platform.icon} alt={platform.name} />
+                        </div>
+                        <span className="platform-list-name">{platform.name}</span>
+                        <span className="material-symbols-outlined platform-list-chevron">chevron_right</span>
+                      </div>
+                    ))
+                  ) : (
+                    <div style={{ color: '#c4c7c8', fontSize: '14px', padding: '10px' }}>All platforms connected!</div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </section>
 
@@ -283,7 +362,7 @@ const AccountCentrePage: React.FC = () => {
           <h3 className="account-section-title">Personal Information</h3>
           <div className="glass-panel info-list-container">
             {/* Name */}
-            <div className="info-item liquid-hover" onClick={() => navigate('/profile/edit', { state: { fromTransition: true } })} style={{ cursor: 'pointer' }}>
+            <div className="info-item liquid-hover" onClick={() => openEditModal('name', 'Name', fullName)}>
               <div className="info-item-content">
                 <span className="info-item-label">Name</span>
                 <span className="info-item-value">{fullName}</span>
@@ -291,7 +370,7 @@ const AccountCentrePage: React.FC = () => {
               <span className="material-symbols-outlined info-item-icon">edit</span>
             </div>
             {/* Username */}
-            <div className="info-item liquid-hover" onClick={() => navigate('/profile/edit', { state: { fromTransition: true } })} style={{ cursor: 'pointer' }}>
+            <div className="info-item liquid-hover" onClick={() => openEditModal('username', 'Username', profile?.username || '')}>
               <div className="info-item-content">
                 <span className="info-item-label">Username</span>
                 <span className="info-item-value">{profile?.username || 'Not set'}</span>
@@ -299,20 +378,29 @@ const AccountCentrePage: React.FC = () => {
               <span className="material-symbols-outlined info-item-icon">edit</span>
             </div>
             {/* Location */}
-            <div className="info-item liquid-hover" onClick={() => navigate('/profile/edit', { state: { fromTransition: true } })} style={{ cursor: 'pointer' }}>
+            <div className="info-item liquid-hover" onClick={() => openEditModal('location', 'Location', profile?.location || '')}>
               <div className="info-item-content">
                 <span className="info-item-label">Location</span>
                 <span className="info-item-value">{profile?.location || 'Not set'}</span>
               </div>
               <span className="material-symbols-outlined info-item-icon">edit</span>
             </div>
-            {/* Email (Read-only typically, or handled by Auth) */}
-            <div className="info-item">
+            {/* Email */}
+            <div className="info-item liquid-hover" onClick={() => openEditModal('email', 'Email', localEmail)}>
               <div className="info-item-content">
                 <span className="info-item-label">Email</span>
-                <span className="info-item-value">{email}</span>
+                <span className="info-item-value">{localEmail}</span>
               </div>
-              <span className="material-symbols-outlined info-item-icon" style={{ opacity: 0.3 }}>lock</span>
+              <span className="material-symbols-outlined info-item-icon">edit</span>
+            </div>
+
+            {/* DOB */}
+            <div className="info-item liquid-hover" onClick={() => openEditModal('dob', 'Date of Birth', localDob)}>
+              <div className="info-item-content">
+                <span className="info-item-label">Date of Birth</span>
+                <span className="info-item-value">{localDob}</span>
+              </div>
+              <span className="material-symbols-outlined info-item-icon">edit</span>
             </div>
           </div>
         </section>
@@ -321,14 +409,7 @@ const AccountCentrePage: React.FC = () => {
         <section className="account-section">
           <h3 className="account-section-title">Security</h3>
           <div className="glass-panel info-list-container">
-            {/* Password */}
-            <div className="info-item liquid-hover" onClick={() => alert('Password reset emails can be managed via Supabase Auth.')}>
-              <div className="info-item-content">
-                <span className="info-item-label">Password</span>
-                <span className="info-item-value">••••••••</span>
-              </div>
-              <span className="material-symbols-outlined info-item-icon">chevron_right</span>
-            </div>
+
             {/* 2FA */}
             <div className="info-item liquid-hover" onClick={() => alert('Two-factor authentication coming soon.')}>
               <div className="info-item-content">
@@ -372,7 +453,7 @@ const AccountCentrePage: React.FC = () => {
       </main>
 
     {/* Link Platform Modal */}
-      {activeLinkPlatform && (
+      {activeLinkPlatform && activeLinkPlatform !== 'Telegram' && (
         <div className="link-platform-modal-overlay" onClick={closeLinkModal}>
           <div className="link-platform-modal-content glass-panel" onClick={(e) => e.stopPropagation()}>
             <div className="link-modal-header">
@@ -400,37 +481,49 @@ const AccountCentrePage: React.FC = () => {
         </div>
       )}
 
-      {/* Select Platform Menu Modal */}
-      {showPlatformMenu && (
-        <div className="platform-menu-overlay" onClick={() => setShowPlatformMenu(false)}>
-          <div className="platform-menu-content glass-panel" onClick={(e) => e.stopPropagation()}>
-            <div className="platform-menu-header">
-              <h3>Select Platform</h3>
-              <button className="link-modal-close" onClick={() => setShowPlatformMenu(false)}>
+      {/* Telegram Link Modal */}
+      {activeLinkPlatform === 'Telegram' && (
+        <div className="link-platform-modal-overlay" onClick={closeLinkModal}>
+          <div className="link-platform-modal-content glass-panel" onClick={(e) => e.stopPropagation()}>
+            <div className="link-modal-header">
+              <h3>Link Telegram</h3>
+              <button className="link-modal-close" onClick={closeLinkModal}>
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
-            <div className="platform-menu-list">
-              {OTHER_PLATFORMS.filter(p => !isLinked(p.name)).length > 0 ? (
-                OTHER_PLATFORMS.filter(p => !isLinked(p.name)).map(platform => (
-                  <div key={platform.name} className="platform-menu-item" onClick={() => { setShowPlatformMenu(false); openLinkModal(platform.name); }}>
-                    <div className="platform-menu-icon">
-                      <img src={platform.icon} alt={platform.name} />
-                    </div>
-                    <span className="platform-menu-text">{platform.name}</span>
-                    <span className="material-symbols-outlined platform-menu-chevron">chevron_right</span>
-                  </div>
-                ))
-              ) : (
-                <div style={{ color: '#c4c7c8', textAlign: 'center', padding: '16px' }}>
-                  All platforms connected
-                </div>
-              )}
+            <div className="link-modal-body">
+              <ConnectTelegram />
             </div>
           </div>
         </div>
       )}
 
+      {/* Edit Field Modal */}
+      {editField && (
+        <div className="link-platform-modal-overlay" onClick={() => setEditField(null)}>
+          <div className="link-platform-modal-content glass-panel" onClick={(e) => e.stopPropagation()}>
+            <div className="link-modal-header">
+              <h3>Edit {editField.label}</h3>
+              <button className="link-modal-close" onClick={() => setEditField(null)}>
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <div className="link-modal-body">
+              <label>New {editField.label}</label>
+              <input 
+                type={editField.key === 'email' ? 'email' : 'text'}
+                value={editField.value}
+                onChange={(e) => setEditField({ ...editField, value: e.target.value })}
+                className="link-url-input"
+              />
+            </div>
+            <div className="link-modal-footer">
+              <button className="link-btn-cancel" onClick={() => setEditField(null)}>Cancel</button>
+              <button className="link-btn-save" onClick={handleSaveEdit}>Save</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
     </>
   );

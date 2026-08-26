@@ -23,8 +23,35 @@ const HomeMenuPage: React.FC = () => {
   } = useCampaignStore();
 
   useEffect(() => {
+    // Reset filters on mount to ensure clean slate when switching tabs
+    setFilters({
+      search: '',
+      location: '',
+      type: '',
+      minPayout: 0,
+      maxPayout: 0,
+      platform: '',
+      category: '',
+      sortBy: 'newest',
+    });
     fetchCampaigns();
-  }, [fetchCampaigns]);
+    
+    // Also reset if the tab is clicked again
+    const handleTabReset = () => {
+      setFilters({
+        search: '',
+        location: '',
+        type: '',
+        minPayout: 0,
+        maxPayout: 0,
+        platform: '',
+        category: '',
+        sortBy: 'newest',
+      });
+    };
+    window.addEventListener('reset-clipping-filters', handleTabReset);
+    return () => window.removeEventListener('reset-clipping-filters', handleTabReset);
+  }, [fetchCampaigns, setFilters]);
 
   // Slideshow Logic
   useEffect(() => {
@@ -175,27 +202,27 @@ const HomeMenuPage: React.FC = () => {
         </div>
 
         {/* Filter Chips */}
-        <div className="filter-chips">
+        <div className="home-filter-chips">
           <button 
-            className={`filter-chip ${filters.sortBy === 'newest' ? 'active' : ''}`}
+            className={`home-filter-chip ${filters.sortBy === 'newest' ? 'active' : ''}`}
             onClick={() => setFilters({ sortBy: 'newest' })}
           >
             Newest
           </button>
           <button 
-            className={`filter-chip ${filters.sortBy === 'highest_pool' ? 'active' : ''}`}
+            className={`home-filter-chip ${filters.sortBy === 'highest_pool' ? 'active' : ''}`}
             onClick={() => setFilters({ sortBy: 'highest_pool' })}
           >
             Top Prize
           </button>
           <button 
-            className={`filter-chip ${filters.sortBy === 'ending_soon' ? 'active' : ''}`}
+            className={`home-filter-chip ${filters.sortBy === 'ending_soon' ? 'active' : ''}`}
             onClick={() => setFilters({ sortBy: 'ending_soon' })}
           >
             Ending Soon
           </button>
           <button 
-            className={`filter-chip ${filters.sortBy === 'most_submissions' ? 'active' : ''}`}
+            className={`home-filter-chip ${filters.sortBy === 'most_submissions' ? 'active' : ''}`}
             onClick={() => setFilters({ sortBy: 'most_submissions' })}
           >
             Popular

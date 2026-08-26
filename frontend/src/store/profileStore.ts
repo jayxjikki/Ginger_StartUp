@@ -24,6 +24,13 @@ interface BlogPost {
   created_at: string;
 }
 
+export interface VerifiedChannel {
+  id: string;
+  channel_username: string;
+  is_verified: boolean;
+  created_at: string;
+}
+
 interface SocialLink {
   id: string;
   platform: string;
@@ -60,11 +67,13 @@ export interface ProfileState {
   socialLinks: SocialLink[];
   messages: Message[];
   mediaKitItems: MediaKitItem[];
+  verifiedChannels: VerifiedChannel[];
   stats: {
     totalEarnings: number;
     activeCampaigns: number;
     completedCampaigns: number;
     totalViews: number;
+    telegramMembers: number;
   };
   isLoading: boolean;
   error: string | null;
@@ -75,6 +84,7 @@ export interface ProfileState {
   updateSocialLinks: (links: SocialLink[]) => Promise<void>;
   createMediaKitItem: (item: { title: string; description: string; image_url: string }) => Promise<void>;
   sendMessage: (receiverId: string, content: string) => Promise<void>;
+  updateProfile: (updates: Partial<Profile>) => Promise<void>;
 }
 
 export const useProfileStore = create<ProfileState>()(
@@ -87,11 +97,13 @@ export const useProfileStore = create<ProfileState>()(
         socialLinks: [],
         messages: [],
         mediaKitItems: [],
+        verifiedChannels: [],
         stats: {
           totalEarnings: 0,
           activeCampaigns: 0,
           completedCampaigns: 0,
           totalViews: 0,
+          telegramMembers: 0,
         },
         isLoading: false,
         error: null,
@@ -127,11 +139,13 @@ export const useProfileStore = create<ProfileState>()(
                 socialLinks: [],
                 messages: [],
                 mediaKitItems: [],
+                verifiedChannels: [],
                 stats: {
                   totalEarnings: 12000,
                   activeCampaigns: 5,
                   completedCampaigns: 50,
-                  totalViews: 1200000
+                  totalViews: 1200000,
+                  telegramMembers: 15400
                 },
                 isLoading: false
               });
@@ -179,10 +193,18 @@ export const useProfileStore = create<ProfileState>()(
               .or(`receiver_id.eq.${userId},sender_id.eq.${userId}`)
               .order('created_at', { ascending: false });
 
+            // Fetch Verified Channels
+            const { data: channelsData } = await supabase
+              .from('verified_channels')
+              .select('*')
+              .eq('profile_id', userId)
+              .order('created_at', { ascending: false });
+
             let totalEarnings = 0;
             let activeCampaigns = 0;
             let completedCampaigns = 0;
             let totalViews = 0;
+            let telegramMembers = 0;
 
             if (submissionsData) {
               submissionsData.forEach((sub: any) => {
@@ -196,17 +218,25 @@ export const useProfileStore = create<ProfileState>()(
               });
             }
 
+            if (channelsData) {
+              channelsData.forEach((ch: any) => {
+                telegramMembers += (ch.member_count || 0);
+              });
+            }
+
             set({
               profile: profileData as Profile,
               achievements: achievementsData || [],
               posts: postsData || [],
               socialLinks: socialData || [],
               messages: messagesData || [],
+              verifiedChannels: channelsData || [],
               stats: {
                 totalEarnings,
                 activeCampaigns,
                 completedCampaigns,
                 totalViews,
+                telegramMembers,
               }
             });
           } catch (err: any) {
@@ -335,6 +365,11 @@ export const useProfileStore = create<ProfileState>()(
             console.error('Error sending message:', err);
             throw err;
           }
+        },
+        updateProfile: async (updates) => {
+          set((state) => ({
+            profile: state.profile ? { ...state.profile, ...updates } : null
+          }));
         }
       }),
       {

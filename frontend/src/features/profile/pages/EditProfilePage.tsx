@@ -5,6 +5,7 @@ import { useAuthStore } from '../../../store/authStore';
 import { supabase } from '../../../lib/supabase';
 import { uploadToCloudinary } from '../../../lib/cloudinary';
 import './EditProfilePage.css';
+import { getCategoryBanner } from './ProfilePage';
 
 const EditProfilePage: React.FC = () => {
   const navigate = useNavigate();
@@ -15,6 +16,8 @@ const EditProfilePage: React.FC = () => {
   const [gender, setGender] = useState('Male');
   const [mobile, setMobile] = useState('');
   const [bio, setBio] = useState('');
+  const [location, setLocation] = useState('');
+  const [category, setCategory] = useState('Personal Use');
   const [avatarUrl, setAvatarUrl] = useState('');
   const [bannerUrl, setBannerUrl] = useState('');
   const [isSaving, setIsSaving] = useState(false);
@@ -33,6 +36,8 @@ const EditProfilePage: React.FC = () => {
       setBannerUrl(profile.banner_url || '');
       setGender(profile.gender || 'Male');
       setMobile(profile.mobile_number || '');
+      setLocation(profile.location || '');
+      setCategory(profile.category || 'Personal Use');
     }
   }, [profile]);
 
@@ -50,6 +55,8 @@ const EditProfilePage: React.FC = () => {
           banner_url: bannerUrl,
           gender: gender,
           mobile_number: mobile,
+          location: location,
+          category: category,
         })
         .eq('id', user.id);
         
@@ -119,7 +126,7 @@ const EditProfilePage: React.FC = () => {
     }
   };
 
-  const bannerBg = "https://lh3.googleusercontent.com/aida-public/AB6AXuDifATJQAZTpi5ddzaL2NmTbVC0DfuJaSEqidhed2JqlqZbyfG9xRu-2jYAht-VkgnHjNmxqnWsMkLCoTmBwqkzE8idZwsO6AAMOgUGJR4B4o05dPx1zHXZ4NK93rvJ0Nn2h_ZmlcIZV3FfjM1bSfBhAVycAU1LVh5HfVaEEBd78WgT5aUNoUsvTPNxU-kaaayozD1CxOE0nZys7SX4GTj9mCkr89a46V_BOkcjPAVMJQIHoBKE2QUZ";
+  const bannerBg = getCategoryBanner(category);
 
   return (
     <div className="edit-profile-wrapper liquid-bg">
@@ -207,17 +214,7 @@ const EditProfilePage: React.FC = () => {
               onBlur={handleBlur}
             />
           </div>
-          <div className="input-group">
-            <label className="edit-input-label">Mobile Number</label>
-            <input 
-              className="glass-input" 
-              type="tel" 
-              value={mobile} 
-              onChange={e => setMobile(e.target.value)}
-              onFocus={handleFocus}
-              onBlur={handleBlur}
-            />
-          </div>
+
           <div className="input-group">
             <label className="edit-input-label">Gender / Pronouns</label>
             <select 
@@ -234,6 +231,18 @@ const EditProfilePage: React.FC = () => {
             </select>
           </div>
           <div className="input-group">
+            <label className="edit-input-label">Location</label>
+            <input 
+              className="glass-input" 
+              type="text" 
+              value={location} 
+              onChange={e => setLocation(e.target.value)}
+              onFocus={handleFocus}
+              onBlur={handleBlur}
+              placeholder="e.g. New York, USA"
+            />
+          </div>
+          <div className="input-group">
             <label className="edit-input-label">Bio</label>
             <textarea 
               className="glass-input" 
@@ -244,6 +253,21 @@ const EditProfilePage: React.FC = () => {
               onFocus={handleFocus}
               onBlur={handleBlur}
             />
+          </div>
+          <div className="input-group">
+            <label className="edit-input-label">Category</label>
+            <div className="category-scroll-container">
+              {['Personal Use', 'Brand', 'Influencer', 'Travel', 'Foodie', 'Entrepreneur', 'Clothing', 'Business', 'Gaming', 'Other'].map((cat) => (
+                <button
+                  key={cat}
+                  type="button"
+                  className={`category-chip ${category === cat ? 'active' : ''}`}
+                  onClick={() => setCategory(cat)}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
           </div>
         </section>
       </main>

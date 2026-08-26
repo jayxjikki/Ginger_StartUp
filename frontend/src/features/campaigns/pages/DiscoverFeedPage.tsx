@@ -54,6 +54,7 @@ const DiscoverFeedPage: React.FC = () => {
 
   React.useEffect(() => {
     const fetchCreators = async () => {
+      setIsLoading(true);
       try {
         setIsLoading(true);
         const { data: profiles, error } = await supabase
@@ -118,11 +119,11 @@ const DiscoverFeedPage: React.FC = () => {
         if (!hasAllPlatforms) return false;
       }
 
-      // Followers (Filter state is in thousands)
+      // Followers (filter inputs are in thousands)
       if (creator.followers < activeFilters.minFollowers * 1000) return false;
       if (creator.followers > activeFilters.maxFollowers * 1000) return false;
 
-      // Rate per post (Filter state is in thousands)
+      // Rate per post (filter inputs are in thousands)
       if (creator.perPost < activeFilters.minRate * 1000) return false;
       if (creator.perPost > activeFilters.maxRate * 1000) return false;
 
@@ -134,6 +135,51 @@ const DiscoverFeedPage: React.FC = () => {
       return true;
     });
   }, [creators, activeCategory, searchQuery, activeFilters]);
+
+  // Reset filters when the category tab changes, or when 'reset-feed-filters' event fires
+  React.useEffect(() => {
+    const resetFilters = () => {
+      setSearchQuery('');
+      setActiveFilters({
+        platforms: [],
+        minFollowers: 0,
+        maxFollowers: 10000, // 10M
+        minRate: 0,
+        maxRate: 500, // 500K
+        location: ''
+      });
+    };
+
+    const handleTabReset = () => {
+      setActiveCategory('All');
+      resetFilters();
+    };
+
+    // Force reset on mount in case state is cached
+    handleTabReset();
+
+    window.addEventListener('reset-feed-filters', handleTabReset);
+    
+    return () => {
+      window.removeEventListener('reset-feed-filters', handleTabReset);
+    };
+  }, []);
+
+  // Also reset search and advanced filters when clicking a different category chip
+  const handleCategoryChange = (cat: string) => {
+    setActiveCategory(cat);
+    setSearchQuery('');
+    setActiveFilters({
+      platforms: [],
+      minFollowers: 0,
+      maxFollowers: 10000,
+      minRate: 0,
+      maxRate: 500,
+      location: ''
+    });
+  };
+
+
 
   return (
     <div className="discover-page">
@@ -170,7 +216,7 @@ const DiscoverFeedPage: React.FC = () => {
             <button 
               key={cat}
               className={`discover-chip ${activeCategory === cat ? 'active' : ''}`}
-              onClick={() => setActiveCategory(cat)}
+              onClick={() => handleCategoryChange(cat)}
             >
               {cat}
             </button>
@@ -182,6 +228,11 @@ const DiscoverFeedPage: React.FC = () => {
           {isLoading ? (
             <div style={{ display: 'flex', justifyContent: 'center', padding: '60px 0', width: '100%' }}>
               <span className="material-symbols-outlined spin-animation" style={{ fontSize: '32px', color: '#34d399' }}>sync</span>
+            </div>
+          ) : creators.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '40px 20px', color: '#c4c7c8' }}>
+              <span className="material-symbols-outlined" style={{ fontSize: '48px', marginBottom: '16px', opacity: 0.5 }}>inbox</span>
+              <p>No creators available yet.</p>
             </div>
           ) : filteredCreators.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px 20px', color: '#c4c7c8' }}>
