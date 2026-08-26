@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { useAuthStore } from '../../../store/authStore';
 import { useProfileStore } from '../../../store/profileStore';
 import { supabase } from '../../../lib/supabase';
+import { useGoogleLogin } from '@react-oauth/google';
 import { uploadToCloudinary } from '../../../lib/cloudinary';
 import instagramIcon from '../../../assets/instagram.png';
 import telegramIcon from '../../../assets/telegram.png';
@@ -64,15 +65,6 @@ const OnboardingPage: React.FC = () => {
         
         const isLinked = (platform: string) => socialLinks.some(l => l.platform.toLowerCase() === platform.toLowerCase());
         
-        // Handle Google (YouTube) linking
-        const googleIdentity = identities.find(id => id.provider === 'google');
-        if (googleIdentity && !isLinked('YouTube')) {
-          let rawName = googleIdentity.identity_data?.name || googleIdentity.identity_data?.full_name || googleIdentity.identity_data?.email || 'YouTubeUser';
-          let username = rawName.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '');
-          await addVerifiedSocialLink('YouTube', username, `https://youtube.com/@${username}`, 0);
-          toast.success("YouTube account linked successfully!");
-        }
-
         // Handle Facebook (Instagram) linking
         const facebookIdentity = identities.find(id => id.provider === 'facebook');
         if (facebookIdentity && !isLinked('Instagram')) {
@@ -88,6 +80,35 @@ const OnboardingPage: React.FC = () => {
       subscription.unsubscribe();
     };
   }, [socialLinks, step, addVerifiedSocialLink]);
+
+  const loginWithGoogle = useGoogleLogin({
+    scope: 'https://www.googleapis.com/auth/youtube.readonly',
+    onSuccess: async (tokenResponse) => {
+      try {
+        const res = await fetch('https://youtube.googleapis.com/youtube/v3/channels?part=snippet,statistics&mine=true', {
+          headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
+        });
+        const data = await res.json();
+        if (data.items && data.items.length > 0) {
+          const channel = data.items[0];
+          let username = channel.snippet.customUrl || channel.snippet.title;
+          const url = `https://youtube.com/${channel.snippet.customUrl || '@' + username}`;
+          const followers = parseInt(channel.statistics.subscriberCount, 10) || 0;
+          if (username.startsWith('@')) username = username.slice(1);
+          await addVerifiedSocialLink('YouTube', username, url, followers);
+          toast.success("YouTube account linked successfully!");
+        } else {
+          toast.error("No YouTube channel found for this Google account.");
+        }
+      } catch (err) {
+        console.error('Failed to fetch YouTube channel info:', err);
+        toast.error("Failed to verify YouTube channel.");
+      }
+    },
+    onError: () => {
+      toast.error("Google authentication failed.");
+    }
+  });
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -144,6 +165,11 @@ const OnboardingPage: React.FC = () => {
   };
 
   const handleOAuthLink = async (platform: 'google' | 'facebook') => {
+    if (platform === 'google') {
+      loginWithGoogle();
+      return;
+    }
+
     try {
       const { error } = await supabase.auth.linkIdentity({
         provider: platform,

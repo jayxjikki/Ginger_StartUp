@@ -5,6 +5,7 @@ import { useAuthStore } from '../../../store/authStore';
 import { useProfileStore } from '../../../store/profileStore';
 import { useGlobalModalStore } from '../../../store/globalModalStore';
 import { supabase } from '../../../lib/supabase';
+import { useGoogleLogin } from '@react-oauth/google';
 import TransitionLoader from '../../../components/ui/TransitionLoader';
 import instagramIcon from '../../../assets/instagram.png';
 import tiktokIcon from '../../../assets/tiktok.png';
@@ -72,6 +73,10 @@ const AccountCentrePage: React.FC = () => {
   };
 
   const openLinkModal = (platform: string) => {
+    if (platform === 'YouTube') {
+      loginWithGoogle();
+      return;
+    }
     setActiveLinkPlatform(platform);
     setLinkUrl(getPlatformLink(platform));
   };
@@ -144,6 +149,35 @@ const AccountCentrePage: React.FC = () => {
   const isLinked = (platform: string) => {
     return socialLinks.some(l => l.platform.toLowerCase() === platform.toLowerCase());
   };
+
+  const loginWithGoogle = useGoogleLogin({
+    scope: 'https://www.googleapis.com/auth/youtube.readonly',
+    onSuccess: async (tokenResponse) => {
+      try {
+        const res = await fetch('https://youtube.googleapis.com/youtube/v3/channels?part=snippet,statistics&mine=true', {
+          headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
+        });
+        const data = await res.json();
+        if (data.items && data.items.length > 0) {
+          const channel = data.items[0];
+          let username = channel.snippet.customUrl || channel.snippet.title;
+          const url = `https://youtube.com/${channel.snippet.customUrl || '@' + username}`;
+          const followers = parseInt(channel.statistics.subscriberCount, 10) || 0;
+          if (username.startsWith('@')) username = username.slice(1);
+          await useProfileStore.getState().addVerifiedSocialLink('YouTube', username, url, followers);
+          toast.success("YouTube account linked successfully!");
+        } else {
+          toast.error("No YouTube channel found for this Google account.");
+        }
+      } catch (err) {
+        console.error('Failed to fetch YouTube channel info:', err);
+        toast.error("Failed to verify YouTube channel.");
+      }
+    },
+    onError: () => {
+      toast.error("Google authentication failed.");
+    }
+  });
 
   const openEditModal = (key: string, label: string, value: string) => {
     setEditField({ key, label, value });
