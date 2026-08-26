@@ -68,10 +68,40 @@ const OnboardingPage: React.FC = () => {
         // Handle Facebook (Instagram) linking
           const facebookIdentity = identities.find(id => id.provider === 'facebook');
           if (facebookIdentity && !isLinked('Instagram')) {
-            let rawName = facebookIdentity.identity_data?.name || facebookIdentity.identity_data?.full_name || facebookIdentity.identity_data?.email || 'InstagramUser';
-            let username = rawName.split('@')[0].replace(/[^a-zA-Z0-9_.]/g, '');
-            // Session contains the provider_token that we need for the Graph API
-            await addVerifiedSocialLink('Instagram', username, `https://instagram.com/${username}`, 0, session.provider_token || undefined);
+            const token = session.provider_token;
+            let finalUsername = '';
+            let finalFollowers = 0;
+            
+            if (token) {
+              try {
+                // Fetch real Instagram data from Graph API
+                const pagesRes = await fetch(`https://graph.facebook.com/v20.0/me/accounts?access_token=${token}`);
+                const pagesData = await pagesRes.json();
+                for (const page of (pagesData.data || [])) {
+                  const igRes = await fetch(`https://graph.facebook.com/v20.0/${page.id}?fields=instagram_business_account&access_token=${token}`);
+                  const igData = await igRes.json();
+                  if (igData.instagram_business_account) {
+                    const statsRes = await fetch(`https://graph.facebook.com/v20.0/${igData.instagram_business_account.id}?fields=username,followers_count&access_token=${token}`);
+                    const statsData = await statsRes.json();
+                    if (statsData.username) {
+                      finalUsername = statsData.username;
+                      finalFollowers = parseInt(statsData.followers_count, 10) || 0;
+                      break;
+                    }
+                  }
+                }
+              } catch (e) {
+                console.error('Failed to fetch real IG account', e);
+              }
+            }
+
+            // Fallback if no business account found
+            if (!finalUsername) {
+              let rawName = facebookIdentity.identity_data?.name || facebookIdentity.identity_data?.full_name || facebookIdentity.identity_data?.email || 'InstagramUser';
+              finalUsername = rawName.split('@')[0].replace(/[^a-zA-Z0-9_.]/g, '');
+            }
+
+            await addVerifiedSocialLink('Instagram', finalUsername, `https://instagram.com/${finalUsername}`, finalFollowers, token || undefined);
             toast.success("Instagram linked successfully!");
           }
       }
