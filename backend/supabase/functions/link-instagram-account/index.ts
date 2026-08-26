@@ -71,7 +71,8 @@ serve(async (req) => {
     const finalToken = longLivedData.access_token || shortLivedToken;
 
     // 3. Fetch user profile data and followers using the token
-    const profileRes = await fetch(`https://graph.instagram.com/v22.0/me?fields=user_id,username,account_type,followers_count,media_count&access_token=${finalToken}`);
+    // Use unversioned endpoint - Instagram API with Instagram Login
+    const profileRes = await fetch(`https://graph.instagram.com/me?fields=user_id,username,account_type,followers_count,media_count&access_token=${finalToken}`);
     const profileText = await profileRes.text();
     console.log("Profile response status:", profileRes.status);
     console.log("Profile response body:", profileText);
