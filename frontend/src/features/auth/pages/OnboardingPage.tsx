@@ -174,6 +174,7 @@ const OnboardingPage: React.FC = () => {
       const { error } = await supabase.auth.linkIdentity({
         provider: platform,
         options: {
+          scopes: platform === 'facebook' ? 'instagram_basic,pages_show_list,instagram_manage_insights,public_profile' : undefined,
           redirectTo: `${window.location.origin}/onboarding`
         }
       });

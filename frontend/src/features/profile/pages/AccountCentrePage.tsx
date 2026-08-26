@@ -71,9 +71,30 @@ const AccountCentrePage: React.FC = () => {
     return '';
   };
 
-  const openLinkModal = (platform: string) => {
+  const openLinkModal = async (platform: string) => {
     if (platform === 'YouTube') {
       loginWithGoogle();
+      return;
+    }
+    if (platform === 'Instagram') {
+      try {
+        const { error } = await supabase.auth.linkIdentity({
+          provider: 'facebook',
+          options: {
+            scopes: 'instagram_basic,pages_show_list,instagram_manage_insights,public_profile',
+            redirectTo: `${window.location.origin}/profile/account`
+          }
+        });
+        if (error) {
+          if (error.message.includes('already linked')) {
+            toast.error(`This Facebook account is already linked to another user.`);
+          } else {
+            toast.error(`Failed to link Facebook: ${error.message}`);
+          }
+        }
+      } catch (err: any) {
+        toast.error(`An unexpected error occurred: ${err.message}`);
+      }
       return;
     }
     setActiveLinkPlatform(platform);
