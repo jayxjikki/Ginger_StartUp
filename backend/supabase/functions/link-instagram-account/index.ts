@@ -62,17 +62,28 @@ serve(async (req) => {
     console.log("Got short-lived token, user_id:", igUserId);
 
     // 2. Exchange short-lived token for long-lived token
-    const longLivedRes = await fetch(
-      `https://graph.instagram.com/access_token?grant_type=ig_exchange_token&client_secret=${INSTAGRAM_CLIENT_SECRET}&access_token=${shortLivedToken}`
-    );
-    const longLivedData = await longLivedRes.json();
-    console.log("Long-lived token response:", JSON.stringify(longLivedData));
-    
-    const finalToken = longLivedData.access_token || shortLivedToken;
+    let finalToken = shortLivedToken;
+    try {
+      const longLivedRes = await fetch(
+        `https://graph.instagram.com/access_token?grant_type=ig_exchange_token&client_secret=${INSTAGRAM_CLIENT_SECRET}&access_token=${shortLivedToken}`
+      );
+      const longLivedText = await longLivedRes.text();
+      console.log("Long-lived token response:", longLivedText);
+      const longLivedData = JSON.parse(longLivedText);
+      if (longLivedData.access_token) {
+        finalToken = longLivedData.access_token;
+        console.log("Using long-lived token");
+      } else {
+        console.log("Long-lived token exchange failed, using short-lived token");
+      }
+    } catch (e) {
+      console.error("Long-lived token exchange error:", e);
+      // Continue with short-lived token
+    }
 
-    // 3. Fetch user profile data and followers using the token
-    // Use unversioned endpoint - Instagram API with Instagram Login
-    const profileRes = await fetch(`https://graph.instagram.com/me?fields=user_id,username,account_type,followers_count,media_count&access_token=${finalToken}`);
+    // 3. Fetch user profile data using the user_id from token response
+    // Use user_id instead of /me to avoid "Unsupported request" errors
+    const profileRes = await fetch(`https://graph.instagram.com/${igUserId}?fields=user_id,username,account_type,followers_count,media_count&access_token=${finalToken}`);
     const profileText = await profileRes.text();
     console.log("Profile response status:", profileRes.status);
     console.log("Profile response body:", profileText);
