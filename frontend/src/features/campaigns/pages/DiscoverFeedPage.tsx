@@ -68,6 +68,7 @@ const DiscoverFeedPage: React.FC = () => {
         if (error) throw error;
 
         const { data: links } = await supabase.from('social_links').select('*');
+        const { data: channels } = await supabase.from('verified_channels').select('*');
 
         const mappedCreators = (profiles || []).map((p: any) => {
           const userLinks = (links || []).filter((l: any) => l.profile_id === p.id);
@@ -82,6 +83,7 @@ const DiscoverFeedPage: React.FC = () => {
             avatarUrl: p.avatar_url || 'https://via.placeholder.com/150/333/fff?text=?',
             platforms: userLinks.map((l: any) => l.platform.toLowerCase()),
             socialLinks: userLinks,
+            verifiedChannels: (channels || []).filter((c: any) => c.profile_id === p.id),
             pinnedSocials: p.pinned_socials || [],
             telegramUsername: p.telegram_username,
             mediaKit: {
