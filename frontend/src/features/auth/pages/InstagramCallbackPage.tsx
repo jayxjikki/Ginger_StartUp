@@ -9,12 +9,14 @@ import TransitionLoader from '../../../components/ui/TransitionLoader';
 const InstagramCallbackPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { user } = useAuthStore();
+  const { user, isInitialized } = useAuthStore();
   const { addVerifiedSocialLink } = useProfileStore();
   const [isProcessing, setIsProcessing] = useState(true);
 
   useEffect(() => {
     const processCode = async () => {
+      if (!isInitialized) return;
+      
       const code = searchParams.get('code');
       const error = searchParams.get('error');
 
@@ -67,7 +69,7 @@ const InstagramCallbackPage: React.FC = () => {
     };
 
     processCode();
-  }, [searchParams, user, navigate, addVerifiedSocialLink]);
+  }, [searchParams, user, isInitialized, navigate, addVerifiedSocialLink]);
 
   return (
     <div className="min-h-screen bg-ginger-bg text-white flex flex-col items-center justify-center relative overflow-hidden">
