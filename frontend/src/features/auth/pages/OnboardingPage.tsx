@@ -97,8 +97,8 @@ const OnboardingPage: React.FC = () => {
 
             // Fallback if no business account found
             if (!finalUsername) {
-              let rawName = facebookIdentity.identity_data?.name || facebookIdentity.identity_data?.full_name || facebookIdentity.identity_data?.email || 'InstagramUser';
-              finalUsername = rawName.split('@')[0].replace(/[^a-zA-Z0-9_.]/g, '');
+              toast.error("No Instagram Business account found linked to this Facebook account.");
+              return;
             }
 
             await addVerifiedSocialLink('Instagram', finalUsername, `https://instagram.com/${finalUsername}`, finalFollowers, token || undefined);
