@@ -138,7 +138,7 @@ const AccountCentrePage: React.FC = () => {
     if (confirmed) {
       try {
         setIsEntering(true);
-        const { error } = await supabase.functions.invoke('delete-user');
+        const { error } = await supabase.rpc('delete_user_account');
         
         if (error) {
           throw new Error(error.message || 'Failed to delete account');
