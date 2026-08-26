@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../../store/authStore';
 import TransitionLoader from '../../../components/ui/TransitionLoader';
 import LoginBackground from '../components/LoginBackground';
@@ -8,7 +8,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import './LoginPage.css';
 
 const LoginPage: React.FC = () => {
-  const { signInWithGoogle, isLoading } = useAuthStore();
+  const { signInWithGoogle, isLoading, user, isInitialized } = useAuthStore();
+  const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
   const [isEntering, setIsEntering] = useState((location.state as any)?.fromTransition || false);
@@ -22,6 +23,13 @@ const LoginPage: React.FC = () => {
       sessionStorage.removeItem('showBannedPopup');
     }
   }, []);
+
+  useEffect(() => {
+    // If the user is already logged in, redirect them to the app
+    if (isInitialized && user) {
+      navigate('/campaigns', { replace: true });
+    }
+  }, [user, isInitialized, navigate]);
 
   const handleTermsCheckboxClick = () => {
     if (isTermsAccepted) {
@@ -78,8 +86,10 @@ const LoginPage: React.FC = () => {
         {/* Hero Section / Text */}
         <div className="login-hero">
           <div>
-            <h1 className="login-hero-title">Welcome</h1>
-            <p className="login-hero-subtitle">Experience fluid precision.</p>
+            <h1 className="login-hero-title">Welcome to gingerproject</h1>
+            <p className="login-hero-subtitle" style={{ fontSize: '0.9rem', opacity: 0.8, marginTop: '12px', lineHeight: '1.4' }}>
+              GINGER is a UGC marketing platform connecting brands with creators.<br/>Participate in campaigns, submit videos, and earn rewards.
+            </p>
           </div>
         </div>
 

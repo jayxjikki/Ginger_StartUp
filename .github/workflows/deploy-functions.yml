@@ -1,0 +1,29 @@
+name: Deploy Supabase Functions
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/supabase/functions/**'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    env:
+      SUPABASE_ACCESS_TOKEN: sbp_18b36ebd11102c575d1fabeb2d5d52753d0ff8cd
+      PROJECT_ID: ywpgnkvlzxwzuptaxqyw
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Deploy delete-user function
+        run: supabase functions deploy delete-user --project-ref $PROJECT_ID --no-verify-jwt
+        working-directory: backend

@@ -6,7 +6,6 @@ import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import type { Profile } from '../types/user.types';
 import type { Session, User } from '@supabase/supabase-js';
-import { fetchFollowersCount } from '../utils/socialHelpers';
 
 interface AuthState {
   user: User | null;
@@ -21,10 +20,8 @@ interface AuthState {
   signOut: () => Promise<void>;
   setProfile: (profile: Profile) => void;
   fetchProfile: () => Promise<void>;
-  completeOnboarding: (
-    profileData: Partial<Profile>, 
-    socialLinks: { platform: string, username: string }[]
-  ) => Promise<void>;
+  saveBasicProfile: (profileData: Partial<Profile>) => Promise<void>;
+  completeOnboarding: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -152,17 +149,40 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  completeOnboarding: async (profileData, socialLinks) => {
+  saveBasicProfile: async (profileData) => {
     const { user, profile } = get();
     if (!user || !profile) return;
 
     set({ isLoading: true });
     try {
-      // 1. Update profile with new data and set onboarding_completed = true
       const { error: profileError } = await supabase
         .from('profiles')
         .update({
           ...profileData,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', user.id);
+
+      if (profileError) throw profileError;
+      
+      await get().fetchProfile();
+    } catch (error) {
+      console.error('Error saving basic profile:', error);
+      throw error;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  completeOnboarding: async () => {
+    const { user, profile } = get();
+    if (!user || !profile) return;
+
+    set({ isLoading: true });
+    try {
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({
           onboarding_completed: true,
           updated_at: new Date().toISOString()
         })
@@ -170,43 +190,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       if (profileError) throw profileError;
 
-      // 2. Fetch followers and Insert social links if any
-      let maxFollowers = profileData.follower_count || 0;
-
-      if (socialLinks.length > 0) {
-        // Clear old ones just in case
-        await supabase.from('social_links').delete().eq('profile_id', user.id);
-        
-        const linksToInsert = await Promise.all(socialLinks.map(async (link) => {
-          const followers = await fetchFollowersCount(link.platform, link.username);
-          if (followers > maxFollowers) {
-            maxFollowers = followers;
-          }
-          return {
-            profile_id: user.id,
-            platform: link.platform,
-            username: link.username,
-            url: link.username.startsWith('http') ? link.username : `https://${link.platform.toLowerCase()}.com/${link.username}`,
-            followers: followers
-          };
-        }));
-
-        const { error: linksError } = await supabase
-          .from('social_links')
-          .insert(linksToInsert);
-
-        if (linksError) throw linksError;
-        
-        // Update profile with max followers if it changed
-        if (maxFollowers > (profileData.follower_count || 0)) {
-          await supabase
-            .from('profiles')
-            .update({ follower_count: maxFollowers })
-            .eq('id', user.id);
-        }
-      }
-
-      // 3. Refresh profile state
       await get().fetchProfile();
     } catch (error) {
       console.error('Error completing onboarding:', error);

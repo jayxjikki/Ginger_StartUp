@@ -29,6 +29,7 @@ import AdminDashboard from './features/admin/pages/AdminDashboard';
 import InboxPage from './features/chat/pages/InboxPage';
 import JoinedCampaignsPage from './features/campaigns/pages/JoinedCampaignsPage';
 import ManageCampaignsPage from './features/campaigns/pages/ManageCampaignsPage';
+import LandingPage from './features/marketing/pages/LandingPage';
 import ManageCampaignDetailPage from './features/campaigns/pages/ManageCampaignDetailPage';
 
 // Components
@@ -296,9 +297,9 @@ const AppRoutes: React.FC = () => {
             }
           />
 
-          {/* Default redirect */}
-          <Route path="/" element={<Navigate to="/campaigns" replace />} />
-          <Route path="*" element={<Navigate to="/campaigns" replace />} />
+          {/* Public Landing Page */}
+          <Route path="/" element={<LandingPage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AnimatePresence>
     </>
