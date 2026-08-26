@@ -2,12 +2,17 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../../store/authStore';
+import { useProfileStore } from '../../../store/profileStore';
+import { supabase } from '../../../lib/supabase';
 import { uploadToCloudinary } from '../../../lib/cloudinary';
+import instagramIcon from '../../../assets/instagram.png';
+import telegramIcon from '../../../assets/telegram.png';
 import './OnboardingPage.css';
 
 const OnboardingPage: React.FC = () => {
   const navigate = useNavigate();
-  const { profile, completeOnboarding } = useAuthStore();
+  const { profile, saveBasicProfile, completeOnboarding } = useAuthStore();
+  const { socialLinks, addVerifiedSocialLink, fetchProfile: fetchProfileData } = useProfileStore();
   
   const [step, setStep] = useState(1);
   const [isSaving, setIsSaving] = useState(false);
@@ -27,10 +32,8 @@ const OnboardingPage: React.FC = () => {
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
 
-  // Social Links State
-  const [socialLinks, setSocialLinks] = useState<{ platform: string; username: string }[]>([]);
-  const [newPlatform, setNewPlatform] = useState('youtube');
-  const [newSocialUsername, setNewSocialUsername] = useState('');
+  // Telegram State
+  const [telegramUsername, setTelegramUsername] = useState('');
 
   useEffect(() => {
     if (profile) {
@@ -41,8 +44,50 @@ const OnboardingPage: React.FC = () => {
       if (profile.location) setLocation(profile.location);
       if (profile.avatar_url) setAvatarUrl(profile.avatar_url);
       if (profile.banner_url) setBannerUrl(profile.banner_url);
+
+      // Auto advance to step 3 if they already have a username (meaning step 2 was completed)
+      // but only if they haven't completed onboarding yet.
+      if (profile.username && !profile.onboarding_completed && step === 1) {
+        setStep(3);
+        fetchProfileData(); // fetch latest social links for step 3
+      }
     }
-  }, [profile]);
+  }, [profile, step, fetchProfileData]);
+
+  // Listen for auth state changes to capture OAuth linking callback
+  useEffect(() => {
+    if (step !== 3) return;
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (session && session.user) {
+        const identities = session.user.identities || [];
+        
+        const isLinked = (platform: string) => socialLinks.some(l => l.platform.toLowerCase() === platform.toLowerCase());
+        
+        // Handle Google (YouTube) linking
+        const googleIdentity = identities.find(id => id.provider === 'google');
+        if (googleIdentity && !isLinked('YouTube')) {
+          let rawName = googleIdentity.identity_data?.name || googleIdentity.identity_data?.full_name || googleIdentity.identity_data?.email || 'YouTubeUser';
+          let username = rawName.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '');
+          await addVerifiedSocialLink('YouTube', username, `https://youtube.com/@${username}`, 0);
+          toast.success("YouTube account linked successfully!");
+        }
+
+        // Handle Facebook (Instagram) linking
+        const facebookIdentity = identities.find(id => id.provider === 'facebook');
+        if (facebookIdentity && !isLinked('Instagram')) {
+          let rawName = facebookIdentity.identity_data?.name || facebookIdentity.identity_data?.full_name || facebookIdentity.identity_data?.email || 'InstagramUser';
+          let username = rawName.split('@')[0].replace(/[^a-zA-Z0-9_.]/g, '');
+          await addVerifiedSocialLink('Instagram', username, `https://instagram.com/${username}`, 0);
+          toast.success("Instagram linked successfully!");
+        }
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [socialLinks, step, addVerifiedSocialLink]);
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -72,17 +117,7 @@ const OnboardingPage: React.FC = () => {
     }
   };
 
-  const addSocialLink = () => {
-    if (!newSocialUsername.trim()) return;
-    setSocialLinks([...socialLinks, { platform: newPlatform, username: newSocialUsername }]);
-    setNewSocialUsername('');
-  };
-
-  const removeSocialLink = (index: number) => {
-    setSocialLinks(socialLinks.filter((_, i) => i !== index));
-  };
-
-  const handleComplete = async () => {
+  const handleProceedToSocial = async () => {
     if (!name.trim() || !username.trim()) {
       toast.error("Name and Username are required!");
       return;
@@ -90,7 +125,7 @@ const OnboardingPage: React.FC = () => {
     
     setIsSaving(true);
     try {
-      await completeOnboarding({
+      await saveBasicProfile({
         full_name: name,
         username,
         mobile_number: mobile,
@@ -98,14 +133,55 @@ const OnboardingPage: React.FC = () => {
         location,
         avatar_url: avatarUrl,
         banner_url: bannerUrl
-      }, socialLinks);
-      navigate('/profile');
+      });
+      await fetchProfileData(); // Make sure profile store is loaded
+      setStep(3);
     } catch (err) {
       toast.error('Failed to save profile details.');
     } finally {
       setIsSaving(false);
     }
   };
+
+  const handleOAuthLink = async (platform: 'google' | 'facebook') => {
+    try {
+      const { error } = await supabase.auth.linkIdentity({
+        provider: platform,
+        options: {
+          redirectTo: `${window.location.origin}/onboarding`
+        }
+      });
+      if (error) {
+        if (error.message.includes('already linked')) {
+          toast.error(`This ${platform} account is already linked to another user.`);
+        } else {
+          toast.error(`Failed to link ${platform}: ${error.message}`);
+        }
+      }
+    } catch (err: any) {
+      toast.error(`An unexpected error occurred: ${err.message}`);
+    }
+  };
+
+  const handleComplete = async () => {
+    setIsSaving(true);
+    try {
+      // Save Telegram if provided
+      if (telegramUsername.trim()) {
+        const handle = telegramUsername.startsWith('@') ? telegramUsername.slice(1) : telegramUsername;
+        await addVerifiedSocialLink('Telegram', handle, `https://t.me/${handle}`, 0);
+      }
+      
+      await completeOnboarding();
+      navigate('/profile');
+    } catch (err) {
+      toast.error('Failed to finish onboarding.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const isLinked = (platform: string) => socialLinks.some(l => l.platform.toLowerCase() === platform.toLowerCase());
 
   const renderStep = () => {
     switch(step) {
@@ -173,7 +249,9 @@ const OnboardingPage: React.FC = () => {
 
             <div className="onboarding-actions">
               <button className="btn btn-secondary" onClick={() => setStep(1)}>Back</button>
-              <button className="btn btn-primary" onClick={() => setStep(3)}>Next Step</button>
+              <button className="btn btn-primary" onClick={handleProceedToSocial} disabled={isSaving}>
+                {isSaving ? 'Saving...' : 'Next Step'}
+              </button>
             </div>
           </div>
         );
@@ -181,39 +259,66 @@ const OnboardingPage: React.FC = () => {
         return (
           <div className="onboarding-step fade-in">
             <h2>Social Connections</h2>
-            <p className="onboarding-subtitle">Link your other platforms.</p>
+            <p className="onboarding-subtitle">Link your key platforms to verify your identity.</p>
 
-            <div className="social-links-list">
-              {socialLinks.map((link, idx) => (
-                <div key={idx} className="social-link-item">
-                  <span>{link.platform.charAt(0).toUpperCase() + link.platform.slice(1)}: {link.username}</span>
-                  <button className="icon-btn remove-btn" onClick={() => removeSocialLink(idx)}>
-                    <span className="material-symbols-outlined">close</span>
-                  </button>
+            <div className="social-oauth-container">
+              
+              {/* Instagram Card */}
+              <div className={`oauth-card ${isLinked('Instagram') ? 'linked' : ''}`}>
+                <div className="oauth-card-left">
+                  <img src={instagramIcon} alt="Instagram" className="oauth-icon" />
+                  <div className="oauth-info">
+                    <h4>Instagram</h4>
+                    <p>{isLinked('Instagram') ? 'Connected' : 'Not Connected'}</p>
+                  </div>
                 </div>
-              ))}
-            </div>
+                {isLinked('Instagram') ? (
+                  <span className="material-symbols-outlined success-icon">check_circle</span>
+                ) : (
+                  <button className="btn btn-outline" onClick={() => handleOAuthLink('facebook')}>Link</button>
+                )}
+              </div>
 
-            <div className="add-social-form">
-              <select value={newPlatform} onChange={e => setNewPlatform(e.target.value)}>
-                <option value="youtube">YouTube</option>
-                <option value="instagram">Instagram</option>
-                <option value="tiktok">TikTok</option>
-                <option value="twitter">X (Twitter)</option>
-              </select>
-              <input 
-                type="text" 
-                placeholder="Username or URL" 
-                value={newSocialUsername} 
-                onChange={e => setNewSocialUsername(e.target.value)}
-              />
-              <button className="btn btn-secondary" onClick={addSocialLink}>Add</button>
+              {/* YouTube Card */}
+              <div className={`oauth-card ${isLinked('YouTube') ? 'linked' : ''}`}>
+                <div className="oauth-card-left">
+                  <span className="material-symbols-outlined" style={{ fontSize: '32px', color: '#ff0000' }}>smart_display</span>
+                  <div className="oauth-info">
+                    <h4>YouTube</h4>
+                    <p>{isLinked('YouTube') ? 'Connected' : 'Not Connected'}</p>
+                  </div>
+                </div>
+                {isLinked('YouTube') ? (
+                  <span className="material-symbols-outlined success-icon">check_circle</span>
+                ) : (
+                  <button className="btn btn-outline" onClick={() => handleOAuthLink('google')}>Link</button>
+                )}
+              </div>
+
+              {/* Telegram Input */}
+              <div className="oauth-card telegram-card">
+                <div className="oauth-card-left">
+                  <img src={telegramIcon} alt="Telegram" className="oauth-icon" />
+                  <div className="oauth-info">
+                    <h4>Telegram</h4>
+                    <p>Enter your handle</p>
+                  </div>
+                </div>
+                <div className="telegram-input-wrap">
+                  <input 
+                    type="text" 
+                    placeholder="@handle" 
+                    value={telegramUsername}
+                    onChange={e => setTelegramUsername(e.target.value)}
+                  />
+                </div>
+              </div>
+
             </div>
 
             <div className="onboarding-actions">
-              <button className="btn btn-secondary" onClick={() => setStep(2)}>Back</button>
-              <button className="btn btn-primary" onClick={handleComplete} disabled={isSaving}>
-                {isSaving ? 'Saving...' : 'Finish Setup'}
+              <button className="btn btn-primary finish-btn" onClick={handleComplete} disabled={isSaving}>
+                {isSaving ? 'Finishing...' : 'Finish Setup'}
               </button>
             </div>
           </div>

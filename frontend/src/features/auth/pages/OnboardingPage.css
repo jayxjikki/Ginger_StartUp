@@ -196,30 +196,90 @@
   flex: 1;
 }
 
-/* Step 3 */
-.social-links-list {
+/* Step 3 (OAuth) */
+.social-oauth-container {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
   margin-bottom: 24px;
 }
 
-.social-link-item {
+.oauth-card {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 16px;
-  background: rgba(255,255,255,0.05);
-  border-radius: 12px;
-  border: 1px solid rgba(255,255,255,0.1);
-}
-
-.add-social-form {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
   background: rgba(0,0,0,0.2);
+  border: 1px solid rgba(255,255,255,0.1);
   padding: 16px;
   border-radius: 16px;
-  border: 1px dashed rgba(255,255,255,0.2);
+  transition: all 0.3s ease;
+}
+
+.oauth-card.linked {
+  border-color: #34d399;
+  background: rgba(52, 211, 153, 0.05);
+}
+
+.oauth-card-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.oauth-icon {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+
+.oauth-info h4 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #fff;
+  margin: 0;
+}
+
+.oauth-info p {
+  font-size: 13px;
+  color: #8fa696;
+  margin: 4px 0 0 0;
+}
+
+.success-icon {
+  color: #34d399;
+  font-size: 24px;
+}
+
+.telegram-card {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+}
+
+.telegram-card .oauth-card-left {
+  justify-content: flex-start;
+}
+
+.telegram-input-wrap {
+  width: 100%;
+}
+
+.telegram-input-wrap input {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 12px 16px;
+  color: #fff;
+  font-size: 15px;
+  transition: all 0.2s;
+}
+
+.telegram-input-wrap input:focus {
+  outline: none;
+  border-color: #34d399;
+}
+
+.finish-btn {
+  width: 100%;
 }
