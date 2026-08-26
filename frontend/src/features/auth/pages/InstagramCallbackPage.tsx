@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../../../store/authStore';
 import { useProfileStore } from '../../../store/profileStore';
@@ -12,10 +12,13 @@ const InstagramCallbackPage: React.FC = () => {
   const { user, isInitialized } = useAuthStore();
   const { addVerifiedSocialLink } = useProfileStore();
   const [isProcessing, setIsProcessing] = useState(true);
+  const hasProcessed = useRef(false); // Prevent double execution
 
   useEffect(() => {
     const processCode = async () => {
       if (!isInitialized) return;
+      if (hasProcessed.current) return; // Already processed, skip
+      hasProcessed.current = true;
       
       const code = searchParams.get('code');
       const error = searchParams.get('error');
@@ -33,9 +36,7 @@ const InstagramCallbackPage: React.FC = () => {
       }
 
       try {
-        const origin = window.location.origin.includes('http://localhost') 
-          ? window.location.origin.replace('http://', 'https://')
-          : window.location.origin;
+        const origin = window.location.origin;
 
         const { data, error: functionError } = await supabase.functions.invoke('link-instagram-account', {
           body: { 
@@ -46,14 +47,13 @@ const InstagramCallbackPage: React.FC = () => {
         });
 
         if (functionError) {
-          // Try to extract the real error message from the response body
           let errorMsg = functionError.message;
           try {
             if (functionError.context && typeof functionError.context.json === 'function') {
               const errorBody = await functionError.context.json();
               errorMsg = errorBody?.message || errorMsg;
             }
-          } catch { /* ignore parse errors */ }
+          } catch { /* ignore */ }
           throw new Error(errorMsg);
         }
 
@@ -79,7 +79,7 @@ const InstagramCallbackPage: React.FC = () => {
     };
 
     processCode();
-  }, [searchParams, user, isInitialized, navigate, addVerifiedSocialLink]);
+  }, [isInitialized]);
 
   return (
     <div className="min-h-screen bg-ginger-bg text-white flex flex-col items-center justify-center relative overflow-hidden">

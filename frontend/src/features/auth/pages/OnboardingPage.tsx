@@ -155,10 +155,7 @@ const OnboardingPage: React.FC = () => {
       }
       
       // Meta requires HTTPS for redirect URIs, even for localhost
-      const origin = window.location.origin.includes('http://localhost') 
-        ? window.location.origin.replace('http://', 'https://')
-        : window.location.origin;
-      const redirectUri = `${origin}/auth/instagram/callback`;
+      const redirectUri = `${window.location.origin}/auth/instagram/callback`;
       const authUrl = `https://api.instagram.com/oauth/authorize?enable_fb_login=0&force_authentication=1&client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=instagram_business_basic,instagram_business_manage_insights`;
       window.location.href = authUrl;
     }
