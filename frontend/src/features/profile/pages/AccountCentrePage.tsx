@@ -138,19 +138,10 @@ const AccountCentrePage: React.FC = () => {
     if (confirmed) {
       try {
         setIsEntering(true);
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) throw new Error("Not authenticated");
+        const { error } = await supabase.functions.invoke('delete-user');
         
-        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-user`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`
-          }
-        });
-        
-        if (!response.ok) {
-          const errData = await response.json();
-          throw new Error(errData.error || 'Failed to delete account');
+        if (error) {
+          throw new Error(error.message || 'Failed to delete account');
         }
         
         toast.success("Account deleted successfully.");
