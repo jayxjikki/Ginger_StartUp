@@ -202,10 +202,10 @@ const OnboardingPage: React.FC = () => {
     }
 
     try {
-      const { error } = await supabase.auth.linkIdentity({
-        provider: platform,
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'facebook',
         options: {
-          scopes: platform === 'facebook' ? 'instagram_basic,pages_show_list,instagram_manage_insights,public_profile' : undefined,
+          scopes: 'instagram_basic,pages_show_list,pages_read_engagement,instagram_manage_insights,public_profile',
           redirectTo: `${window.location.origin}/onboarding`
         }
       });
