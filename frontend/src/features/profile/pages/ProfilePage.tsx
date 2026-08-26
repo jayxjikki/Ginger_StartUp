@@ -478,13 +478,15 @@ const ProfilePage: React.FC = () => {
             <span className="stat-value text-primary">{formatCount(stats.totalViews)}</span>
             <span className="stat-label">Total Views</span>
           </div>
-          <div className="liquid-card stat-box">
-            <span className="stat-value text-primary">{formatCount(stats.telegramMembers)}</span>
-            <span className="stat-label" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <img src={telegramIcon} alt="Telegram" style={{ width: '12px', height: '12px', objectFit: 'contain' }} />
-              Members
-            </span>
-          </div>
+          {profile?.telegram_id && (
+            <div className="liquid-card stat-box">
+              <span className="stat-value text-primary">{formatCount(stats.telegramMembers)}</span>
+              <span className="stat-label" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <img src={telegramIcon} alt="Telegram" style={{ width: '12px', height: '12px', objectFit: 'contain' }} />
+                Members
+              </span>
+            </div>
+          )}
         </section>
 
         {/* Content Tabs */}

@@ -191,6 +191,11 @@ export default function ConnectTelegram() {
               <div style={{ lineHeight: '1.5', marginTop: '2px' }}>Click <strong style={{ color: 'white' }}>Verify</strong>. You can add multiple channels!</div>
             </div>
 
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <div style={{ minWidth: '22px', height: '22px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '12px', fontWeight: 'bold' }}>5</div>
+              <div style={{ lineHeight: '1.5', marginTop: '2px' }}><strong style={{ color: '#f59e0b' }}>Note:</strong> If you kick the bot out of the group it will fail to load the number of members in your telegram group.</div>
+            </div>
+
           </div>
         </div>
       )}
