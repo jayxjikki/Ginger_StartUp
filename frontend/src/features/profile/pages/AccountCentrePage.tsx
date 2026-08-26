@@ -29,7 +29,8 @@ const AccountCentrePage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuthStore();
-  const { profile, socialLinks, updateSocialLinks, updateProfile, addVerifiedSocialLink } = useProfileStore();
+  const { profile, socialLinks, updateSocialLinks, updateProfile, togglePinnedSocial, addVerifiedSocialLink } = useProfileStore();
+  const pinnedSocials = profile?.pinned_socials || [];
 
   const actualAvatarUrl = profile?.avatar_url || 'https://via.placeholder.com/150';
   const fullName = profile?.full_name || 'Jikki Thakur';
@@ -57,6 +58,37 @@ const AccountCentrePage: React.FC = () => {
     setTimeout(() => {
       navigate('/profile', { state: { openSettings: true, fromTransition: true } });
     }, 400);
+  };
+
+  const renderPinIcon = (platform: string) => {
+    // Only allow pinning if it's actually linked
+    const isPlatformLinked = platform === 'Telegram' ? !!profile?.telegram_id : isLinked(platform);
+    if (!isPlatformLinked) return null;
+
+    const isPinned = pinnedSocials.includes(platform);
+    const pinIndex = pinnedSocials.indexOf(platform) + 1;
+
+    return (
+      <button 
+        className={`pin-btn ${isPinned ? 'active' : ''}`}
+        onClick={async (e) => {
+          e.stopPropagation();
+          try {
+            await togglePinnedSocial(platform);
+          } catch (err: any) {
+            toast.error(err.message);
+          }
+        }}
+        title={isPinned ? "Unpin from feed" : "Pin to feed (Max 3)"}
+      >
+        {isPinned ? (
+          <span className="material-symbols-outlined" style={{ fontSize: '18px', fontVariationSettings: "'FILL' 1" }}>push_pin</span>
+        ) : (
+          <span className="material-symbols-outlined" style={{ fontSize: '18px', fontVariationSettings: "'FILL' 0" }}>push_pin</span>
+        )}
+        {isPinned && <span className="pin-badge">{pinIndex}</span>}
+      </button>
+    );
   };
 
   const getPlatformLink = (platform: string) => {
@@ -331,6 +363,7 @@ const AccountCentrePage: React.FC = () => {
                   style={{ width: '24px', height: '24px', opacity: 0.8 }} 
                 />
               </div>
+              {renderPinIcon('Instagram')}
               <div>
                 <div className="account-card-name">Instagram</div>
                 <div className="account-status">
@@ -348,6 +381,7 @@ const AccountCentrePage: React.FC = () => {
               <div className="account-icon-wrap">
                 <span className="material-symbols-outlined" style={{ color: '#ffffff', fontSize: '24px', fontVariationSettings: "'FILL' 1", opacity: 0.8 }}>play_circle</span>
               </div>
+              {renderPinIcon('YouTube')}
               <div>
                 <div className="account-card-name">YouTube</div>
                 <div className="account-status">
@@ -369,6 +403,7 @@ const AccountCentrePage: React.FC = () => {
                   style={{ width: '24px', height: '24px', opacity: 0.8, filter: 'invert(1)' }} 
                 />
               </div>
+              {renderPinIcon('TikTok')}
               <div>
                 <div className="account-card-name">TikTok</div>
                 <div className="account-status">
@@ -390,6 +425,7 @@ const AccountCentrePage: React.FC = () => {
                   style={{ width: '24px', height: '24px', opacity: 0.8 }} 
                 />
               </div>
+              {renderPinIcon('Telegram')}
               <div>
                 <div className="account-card-name">Telegram</div>
                 <div className="account-status">
@@ -412,6 +448,7 @@ const AccountCentrePage: React.FC = () => {
                     style={{ width: '24px', height: '24px', opacity: 0.8 }} 
                   />
                 </div>
+                {renderPinIcon(platform.name)}
                 <div>
                   <div className="account-card-name">{platform.name}</div>
                   <div className="account-status">

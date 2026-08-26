@@ -22,6 +22,7 @@ export interface Profile {
   telegram_username?: string;
   role?: string;
   is_banned?: boolean;
+  pinned_socials?: string[];
   created_at: string;
 }
 

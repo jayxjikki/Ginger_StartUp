@@ -86,6 +86,7 @@ export interface ProfileState {
   createMediaKitItem: (item: { title: string; description: string; image_url: string }) => Promise<void>;
   sendMessage: (receiverId: string, content: string) => Promise<void>;
   updateProfile: (updates: Partial<Profile>) => Promise<void>;
+  togglePinnedSocial: (platform: string) => Promise<void>;
 }
 
 export const useProfileStore = create<ProfileState>()(
@@ -405,6 +406,33 @@ export const useProfileStore = create<ProfileState>()(
           set((state) => ({
             profile: state.profile ? { ...state.profile, ...updates } : null
           }));
+        },
+        togglePinnedSocial: async (platform: string) => {
+          const { profile } = get();
+          if (!profile) return;
+          
+          let currentPins = [...(profile.pinned_socials || [])];
+          
+          if (currentPins.includes(platform)) {
+            currentPins = currentPins.filter(p => p !== platform);
+          } else {
+            if (currentPins.length >= 3) {
+              throw new Error("You can only pin up to 3 platforms.");
+            }
+            currentPins.push(platform);
+          }
+          
+          try {
+            const { error } = await supabase
+              .from('profiles')
+              .update({ pinned_socials: currentPins })
+              .eq('id', profile.id);
+            if (error) throw error;
+            set({ profile: { ...profile, pinned_socials: currentPins } });
+          } catch (err: any) {
+            console.error('Error toggling pinned social:', err);
+            throw err;
+          }
         }
       }),
       {

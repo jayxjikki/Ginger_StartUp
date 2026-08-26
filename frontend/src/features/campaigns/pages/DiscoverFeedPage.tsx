@@ -79,6 +79,8 @@ const DiscoverFeedPage: React.FC = () => {
             avatarUrl: p.avatar_url || 'https://via.placeholder.com/150/333/fff?text=?',
             platforms: userLinks.map((l: any) => l.platform.toLowerCase()),
             socialLinks: userLinks,
+            pinnedSocials: p.pinned_socials || [],
+            telegramUsername: p.telegram_username,
             mediaKit: {
               type: 'image',
               url: 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?q=80&w=1000'
@@ -284,43 +286,57 @@ const DiscoverFeedPage: React.FC = () => {
                       <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>chat</span>
                     </button>
                     
-                    {creator.socialLinks && creator.socialLinks.length > 0 && (
+                    {creator.pinnedSocials && creator.pinnedSocials.length > 0 ? (
                       <div style={{ display: 'flex', gap: '8px' }}>
-                        {creator.socialLinks.slice(0, 2).map((link: any) => (
-                          <button
-                            key={link.id || link.platform}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              window.open(link.url, '_blank');
-                            }}
-                            title={link.platform}
-                            style={{ 
-                              background: 'rgba(255,255,255,0.05)', 
-                              border: 'none',
-                              borderRadius: '50%',
-                              width: '32px', 
-                              height: '32px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              cursor: 'pointer',
-                              transition: 'background 0.2s'
-                            }}
-                            onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
-                            onMouseOut={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
-                          >
-                            <img 
-                              src={getSocialIcon(link.platform)} 
-                              alt={link.platform} 
-                              style={{ width: '18px', height: '18px', objectFit: 'contain' }} 
-                              onError={(e) => {
-                                e.currentTarget.style.display = 'none';
-                                e.currentTarget.parentElement!.innerHTML = '<span class="material-symbols-outlined" style="font-size: 16px; color: #a1a1aa">link</span>';
-                              }} 
-                            />
-                          </button>
-                        ))}
+                        {creator.pinnedSocials.map((platform: string) => {
+                          const link = platform === 'Telegram' 
+                            ? { platform: 'Telegram', url: creator.telegramUsername ? `https://t.me/${creator.telegramUsername}` : '#' }
+                            : creator.socialLinks.find((l: any) => l.platform.toLowerCase() === platform.toLowerCase());
+                          
+                          if (!link) return null;
+
+                          return (
+                            <button
+                              key={link.platform}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (link.url !== '#') window.open(link.url, '_blank');
+                              }}
+                              title={link.platform}
+                              style={{ 
+                                background: 'rgba(255,255,255,0.05)', 
+                                border: 'none',
+                                borderRadius: '50%',
+                                width: '32px', 
+                                height: '32px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                                transition: 'background 0.2s'
+                              }}
+                              onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+                              onMouseOut={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                            >
+                              <img 
+                                src={getSocialIcon(link.platform)} 
+                                alt={link.platform} 
+                                style={{ width: '18px', height: '18px', objectFit: 'contain' }} 
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                  e.currentTarget.parentElement!.innerHTML = '<span class="material-symbols-outlined" style="font-size: 16px; color: #a1a1aa">link</span>';
+                                }} 
+                              />
+                            </button>
+                          );
+                        })}
                       </div>
+                    ) : (
+                      // Fallback if no pinned socials, show none or prioritize telegram if available? 
+                      // Wait, the prompt said: "only 3 icons which the user pins in the account centre ... whatever the pin platform is it should be visible in the feed tab in that order"
+                      // "also note : if i have only telegram linked i can only link telegram and only that will be visible in the feed below the message icon."
+                      // If there's no pinned socials, we don't show any.
+                      <></>
                     )}
                   </div>
                 </div>
