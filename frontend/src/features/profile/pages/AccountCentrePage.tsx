@@ -192,8 +192,6 @@ const AccountCentrePage: React.FC = () => {
         updateProfile({ location: editField.value });
       } else if (editField.key === 'email') {
         setLocalEmail(editField.value);
-      } else if (editField.key === 'phone') {
-        setLocalPhone(editField.value);
       } else if (editField.key === 'dob') {
         setLocalDob(editField.value);
       }
