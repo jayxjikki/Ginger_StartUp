@@ -736,7 +736,41 @@ const ProfilePage: React.FC = () => {
               </button>
             </div>
             <div className="drawer-body">
-              {verifiedChannels && verifiedChannels.length > 0 ? (
+              {profile?.telegram_username ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.05)', padding: '12px', borderRadius: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span className="material-symbols-outlined" style={{ color: '#4ade80' }}>person</span>
+                      <span style={{ fontWeight: '500' }}>@{profile.telegram_username}</span>
+                    </div>
+                    <a 
+                      href={`https://t.me/${profile.telegram_username}`} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      style={{ background: '#0088cc', color: 'white', padding: '6px 12px', borderRadius: '6px', fontSize: '13px', textDecoration: 'none', fontWeight: '500' }}
+                    >
+                      Visit
+                    </a>
+                  </div>
+
+                  {verifiedChannels && verifiedChannels.length > 0 && verifiedChannels.map(ch => (
+                    <div key={ch.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.05)', padding: '12px', borderRadius: '12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span className="material-symbols-outlined" style={{ color: '#4ade80' }}>verified</span>
+                        <span style={{ fontWeight: '500' }}>{ch.channel_username}</span>
+                      </div>
+                      <a 
+                        href={`https://t.me/${ch.channel_username.replace('@', '')}`} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        style={{ background: '#0088cc', color: 'white', padding: '6px 12px', borderRadius: '6px', fontSize: '13px', textDecoration: 'none', fontWeight: '500' }}
+                      >
+                        Visit
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              ) : (verifiedChannels && verifiedChannels.length > 0) ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   {verifiedChannels.map(ch => (
                     <div key={ch.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.05)', padding: '12px', borderRadius: '12px' }}>
