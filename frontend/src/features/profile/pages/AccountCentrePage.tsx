@@ -29,7 +29,7 @@ const AccountCentrePage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuthStore();
-  const { profile, socialLinks, updateSocialLinks, updateProfile, togglePinnedSocial, addVerifiedSocialLink } = useProfileStore();
+  const { profile, socialLinks, updateSocialLinks, updateProfile, togglePinnedSocial } = useProfileStore();
   const pinnedSocials = profile?.pinned_socials || [];
 
   const actualAvatarUrl = profile?.avatar_url || 'https://via.placeholder.com/150';

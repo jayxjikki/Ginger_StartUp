@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../../store/authStore';
 import { useProfileStore } from '../../../store/profileStore';
-import { supabase } from '../../../lib/supabase';
+
 import { useGoogleLogin } from '@react-oauth/google';
 import { uploadToCloudinary } from '../../../lib/cloudinary';
 import instagramIcon from '../../../assets/instagram.png';

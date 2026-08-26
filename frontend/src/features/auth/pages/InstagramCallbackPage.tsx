@@ -71,7 +71,7 @@ const InstagramCallbackPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-ginger-bg text-white flex flex-col items-center justify-center relative overflow-hidden">
-      {isProcessing && <TransitionLoader />}
+      <TransitionLoader isActive={isProcessing} />
       <div className="text-center z-10 p-8 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10">
         <h2 className="text-2xl font-bold mb-4 font-outfit">Connecting Instagram...</h2>
         <p className="text-white/70">Please wait while we securely link your Business Account.</p>
