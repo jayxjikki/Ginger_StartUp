@@ -1,11 +1,20 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { FiVideo, FiTrendingUp, FiDollarSign } from 'react-icons/fi';
+import { useAuthStore } from '../../../store/authStore';
 import './LandingPage.css';
 
 const LandingPage: React.FC = () => {
   const navigate = useNavigate();
+  const { user, isInitialized } = useAuthStore();
+
+  useEffect(() => {
+    // If the user is already logged in, redirect them to the app
+    if (isInitialized && user) {
+      navigate('/campaigns', { replace: true });
+    }
+  }, [user, isInitialized, navigate]);
 
   return (
     <div className="landing-page">

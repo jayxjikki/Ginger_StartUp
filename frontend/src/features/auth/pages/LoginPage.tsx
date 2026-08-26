@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../../store/authStore';
 import TransitionLoader from '../../../components/ui/TransitionLoader';
 import LoginBackground from '../components/LoginBackground';
@@ -8,7 +8,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import './LoginPage.css';
 
 const LoginPage: React.FC = () => {
-  const { signInWithGoogle, isLoading } = useAuthStore();
+  const { signInWithGoogle, isLoading, user, isInitialized } = useAuthStore();
+  const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
   const [isEntering, setIsEntering] = useState((location.state as any)?.fromTransition || false);
@@ -22,6 +23,13 @@ const LoginPage: React.FC = () => {
       sessionStorage.removeItem('showBannedPopup');
     }
   }, []);
+
+  useEffect(() => {
+    // If the user is already logged in, redirect them to the app
+    if (isInitialized && user) {
+      navigate('/campaigns', { replace: true });
+    }
+  }, [user, isInitialized, navigate]);
 
   const handleTermsCheckboxClick = () => {
     if (isTermsAccepted) {
