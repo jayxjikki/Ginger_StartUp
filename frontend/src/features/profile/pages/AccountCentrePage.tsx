@@ -169,7 +169,10 @@ const AccountCentrePage: React.FC = () => {
         if (googleIdentity && !isLinked('YouTube')) {
           // In a real production app, we would use session.provider_token to fetch from YouTube API.
           // Since this requires YouTube API keys, we'll save basic verified info here.
-          const username = googleIdentity.identity_data?.email || googleIdentity.identity_data?.name || 'YouTube User';
+          let rawName = googleIdentity.identity_data?.name || googleIdentity.identity_data?.full_name || googleIdentity.identity_data?.email || 'YouTubeUser';
+          // Clean up for a valid handle format
+          let username = rawName.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '');
+          
           await useProfileStore.getState().addVerifiedSocialLink('YouTube', username, `https://youtube.com/@${username}`, 0);
           toast.success("YouTube account linked successfully!");
         }
@@ -177,7 +180,9 @@ const AccountCentrePage: React.FC = () => {
         // Handle Facebook (Instagram) linking
         const facebookIdentity = identities.find(id => id.provider === 'facebook');
         if (facebookIdentity && !isLinked('Instagram')) {
-          const username = facebookIdentity.identity_data?.email || facebookIdentity.identity_data?.name || 'Instagram User';
+          let rawName = facebookIdentity.identity_data?.name || facebookIdentity.identity_data?.full_name || facebookIdentity.identity_data?.email || 'InstagramUser';
+          let username = rawName.split('@')[0].replace(/[^a-zA-Z0-9_.]/g, '');
+          
           await useProfileStore.getState().addVerifiedSocialLink('Instagram', username, `https://instagram.com/${username}`, 0);
           toast.success("Instagram (via Facebook) linked successfully!");
         }
