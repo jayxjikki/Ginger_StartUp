@@ -35,7 +35,6 @@ const AccountCentrePage: React.FC = () => {
   const fullName = profile?.full_name || 'Jikki Thakur';
   
   const [localEmail, setLocalEmail] = useState(user?.email || 'manis108hkumar@gmail.com');
-  const [localPhone, setLocalPhone] = useState('+1 (555) 019-2834');
   const [localDob, setLocalDob] = useState('October 14, 1992');
 
   const [isNavigating, setIsNavigating] = useState(false);

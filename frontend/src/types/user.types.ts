@@ -18,6 +18,8 @@ export interface Profile {
   follower_count: number;
   rates: ProfileRates | null;
   is_verified: boolean;
+  telegram_id?: string;
+  telegram_username?: string;
   role?: string;
   is_banned?: boolean;
   created_at: string;
