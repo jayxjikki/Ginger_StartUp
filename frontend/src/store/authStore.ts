@@ -6,7 +6,6 @@ import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import type { Profile } from '../types/user.types';
 import type { Session, User } from '@supabase/supabase-js';
-import { fetchFollowersCount } from '../utils/socialHelpers';
 
 interface AuthState {
   user: User | null;

@@ -12,7 +12,7 @@ import './OnboardingPage.css';
 const OnboardingPage: React.FC = () => {
   const navigate = useNavigate();
   const { profile, saveBasicProfile, completeOnboarding } = useAuthStore();
-  const { socialLinks, addVerifiedSocialLink, fetchProfile: fetchProfileData } = useProfileStore();
+  const { socialLinks, addVerifiedSocialLink, fetchProfileData } = useProfileStore();
   
   const [step, setStep] = useState(1);
   const [isSaving, setIsSaving] = useState(false);
@@ -49,7 +49,7 @@ const OnboardingPage: React.FC = () => {
       // but only if they haven't completed onboarding yet.
       if (profile.username && !profile.onboarding_completed && step === 1) {
         setStep(3);
-        fetchProfileData(); // fetch latest social links for step 3
+        fetchProfileData(profile.id); // fetch latest social links for step 3
       }
     }
   }, [profile, step, fetchProfileData]);
@@ -134,7 +134,7 @@ const OnboardingPage: React.FC = () => {
         avatar_url: avatarUrl,
         banner_url: bannerUrl
       });
-      await fetchProfileData(); // Make sure profile store is loaded
+      if (profile) await fetchProfileData(profile.id); // Make sure profile store is loaded
       setStep(3);
     } catch (err) {
       toast.error('Failed to save profile details.');
