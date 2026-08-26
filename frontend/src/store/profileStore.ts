@@ -82,7 +82,7 @@ export interface ProfileState {
   createAchievement: (achievement: Partial<Achievement>) => Promise<void>;
   createPost: (post: Partial<BlogPost>) => Promise<void>;
   updateSocialLinks: (links: SocialLink[]) => Promise<void>;
-  addVerifiedSocialLink: (platform: string, username: string, url: string, followers?: number) => Promise<void>;
+  addVerifiedSocialLink: (platform: string, username: string, url: string, followers?: number, access_token?: string) => Promise<void>;
   createMediaKitItem: (item: { title: string; description: string; image_url: string }) => Promise<void>;
   sendMessage: (receiverId: string, content: string) => Promise<void>;
   updateProfile: (updates: Partial<Profile>) => Promise<void>;
@@ -299,7 +299,7 @@ export const useProfileStore = create<ProfileState>()(
           }
         },
 
-        addVerifiedSocialLink: async (platform: string, username: string, url: string, followers: number = 0) => {
+        addVerifiedSocialLink: async (platform: string, username: string, url: string, followers: number = 0, access_token?: string) => {
           const { profile, socialLinks } = get();
           if (!profile) return;
           try {
@@ -307,22 +307,21 @@ export const useProfileStore = create<ProfileState>()(
             const existingLink = socialLinks.find(l => l.platform.toLowerCase() === platform.toLowerCase());
             
             if (existingLink) {
+              const updates: any = { username, url, followers, verified: true };
+              if (access_token) updates.access_token = access_token;
+              
               const { error } = await supabase
                 .from('social_links')
-                .update({ username, url, followers, verified: true })
+                .update(updates)
                 .eq('id', existingLink.id);
               if (error) throw error;
             } else {
+              const insertData: any = { profile_id: profile.id, platform, username, url, followers, verified: true };
+              if (access_token) insertData.access_token = access_token;
+              
               const { error } = await supabase
                 .from('social_links')
-                .insert({
-                  profile_id: profile.id,
-                  platform,
-                  username,
-                  url,
-                  followers,
-                  verified: true
-                });
+                .insert([insertData]);
               if (error) throw error;
             }
             

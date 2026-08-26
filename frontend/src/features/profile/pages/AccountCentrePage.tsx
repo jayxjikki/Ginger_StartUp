@@ -29,7 +29,7 @@ const AccountCentrePage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuthStore();
-  const { profile, socialLinks, updateSocialLinks, updateProfile } = useProfileStore();
+  const { profile, socialLinks, updateSocialLinks, updateProfile, addVerifiedSocialLink } = useProfileStore();
 
   const actualAvatarUrl = profile?.avatar_url || 'https://via.placeholder.com/150';
   const fullName = profile?.full_name || 'Jikki Thakur';
@@ -169,6 +169,27 @@ const AccountCentrePage: React.FC = () => {
   const isLinked = (platform: string) => {
     return socialLinks.some(l => l.platform.toLowerCase() === platform.toLowerCase());
   };
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (session && session.user) {
+        const identities = session.user.identities || [];
+        
+        // Handle Facebook (Instagram) linking
+        const facebookIdentity = identities.find(id => id.provider === 'facebook');
+        if (facebookIdentity && !isLinked('Instagram')) {
+          let rawName = facebookIdentity.identity_data?.name || facebookIdentity.identity_data?.full_name || facebookIdentity.identity_data?.email || 'InstagramUser';
+          let username = rawName.split('@')[0].replace(/[^a-zA-Z0-9_.]/g, '');
+          await addVerifiedSocialLink('Instagram', username, `https://instagram.com/${username}`, 0, session.provider_token || undefined);
+          toast.success("Instagram linked successfully!");
+        }
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [socialLinks, addVerifiedSocialLink]);
 
   const loginWithGoogle = useGoogleLogin({
     scope: 'https://www.googleapis.com/auth/youtube.readonly',

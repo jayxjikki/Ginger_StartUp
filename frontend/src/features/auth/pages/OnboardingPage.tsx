@@ -66,13 +66,14 @@ const OnboardingPage: React.FC = () => {
         const isLinked = (platform: string) => socialLinks.some(l => l.platform.toLowerCase() === platform.toLowerCase());
         
         // Handle Facebook (Instagram) linking
-        const facebookIdentity = identities.find(id => id.provider === 'facebook');
-        if (facebookIdentity && !isLinked('Instagram')) {
-          let rawName = facebookIdentity.identity_data?.name || facebookIdentity.identity_data?.full_name || facebookIdentity.identity_data?.email || 'InstagramUser';
-          let username = rawName.split('@')[0].replace(/[^a-zA-Z0-9_.]/g, '');
-          await addVerifiedSocialLink('Instagram', username, `https://instagram.com/${username}`, 0);
-          toast.success("Instagram linked successfully!");
-        }
+          const facebookIdentity = identities.find(id => id.provider === 'facebook');
+          if (facebookIdentity && !isLinked('Instagram')) {
+            let rawName = facebookIdentity.identity_data?.name || facebookIdentity.identity_data?.full_name || facebookIdentity.identity_data?.email || 'InstagramUser';
+            let username = rawName.split('@')[0].replace(/[^a-zA-Z0-9_.]/g, '');
+            // Session contains the provider_token that we need for the Graph API
+            await addVerifiedSocialLink('Instagram', username, `https://instagram.com/${username}`, 0, session.provider_token || undefined);
+            toast.success("Instagram linked successfully!");
+          }
       }
     });
 
