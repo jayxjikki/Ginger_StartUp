@@ -63,7 +63,7 @@ serve(async (req) => {
     );
 
     // 5. Check their status. 'creator' means they are the owner.
-    if (adminRecord && (adminRecord.status === 'creator' || adminRecord.status === 'administrator')) {
+    if (adminRecord && adminRecord.status === 'creator') {
       
       let memberCount = 0;
       try {
