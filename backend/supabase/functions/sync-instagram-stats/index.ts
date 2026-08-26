@@ -44,37 +44,17 @@ serve(async (req: Request) => {
         const token = link.access_token;
         
         // Step 1: Get the Facebook Pages connected to this user
-        const pagesRes = await fetch(`https://graph.facebook.com/v20.0/me/accounts?access_token=${token}`);
-        const pagesData = await pagesRes.json();
+        // Fetch the follower count directly from Instagram Graph API
+        const statsRes = await fetch(`https://graph.instagram.com/me?fields=followers_count&access_token=${token}`);
+        const statsData = await statsRes.json();
 
-        if (pagesData.error) {
-           console.error(`Graph API Error for ${link.username}:`, pagesData.error);
-           errors.push({ type: 'graph_api_pages', username: link.username, error: pagesData.error });
+        if (statsData.error) {
+           console.error(`Graph API Error for ${link.username}:`, statsData.error);
+           errors.push({ type: 'graph_api', username: link.username, error: statsData.error });
            failedCount++;
            continue;
         }
 
-        let igBusinessAccountId = null;
-
-        // Step 2: Find the page that has an Instagram Business Account connected
-        for (const page of (pagesData.data || [])) {
-          const igAccountRes = await fetch(`https://graph.facebook.com/v20.0/${page.id}?fields=instagram_business_account&access_token=${token}`);
-          const igAccountData = await igAccountRes.json();
-          if (igAccountData.instagram_business_account) {
-            igBusinessAccountId = igAccountData.instagram_business_account.id;
-            break; // Found one
-          }
-        }
-
-        if (!igBusinessAccountId) {
-          errors.push({ type: 'no_ig_business_account', username: link.username });
-          failedCount++;
-          continue;
-        }
-
-        // Step 3: Fetch the follower count for that Instagram Business Account
-        const statsRes = await fetch(`https://graph.facebook.com/v20.0/${igBusinessAccountId}?fields=followers_count&access_token=${token}`);
-        const statsData = await statsRes.json();
 
         if (statsData.followers_count !== undefined) {
           const subscriberCount = parseInt(statsData.followers_count, 10) || 0;

@@ -109,24 +109,15 @@ const AccountCentrePage: React.FC = () => {
       return;
     }
     if (platform === 'Instagram') {
-      try {
-        const { error } = await supabase.auth.linkIdentity({
-          provider: 'facebook',
-          options: {
-            scopes: 'instagram_basic,pages_show_list,pages_read_engagement,instagram_manage_insights,public_profile',
-            redirectTo: `${window.location.origin}/profile/account`
-          }
-        });
-        if (error) {
-          if (error.message.includes('already linked')) {
-            toast.error(`This Facebook account is already linked to another user.`);
-          } else {
-            toast.error(`Failed to link Facebook: ${error.message}`);
-          }
-        }
-      } catch (err: any) {
-        toast.error(`An unexpected error occurred: ${err.message}`);
+      const clientId = import.meta.env.VITE_INSTAGRAM_CLIENT_ID;
+      if (!clientId) {
+        toast.error("Instagram Client ID is not configured.");
+        return;
       }
+      
+      const redirectUri = `${window.location.origin}/auth/instagram/callback`;
+      const authUrl = `https://api.instagram.com/oauth/authorize?enable_fb_login=0&force_authentication=1&client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=instagram_business_basic,instagram_business_manage_insights`;
+      window.location.href = authUrl;
       return;
     }
     setActiveLinkPlatform(platform);
@@ -202,57 +193,6 @@ const AccountCentrePage: React.FC = () => {
     return socialLinks.some(l => l.platform.toLowerCase() === platform.toLowerCase());
   };
 
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (session && session.user) {
-        const identities = session.user.identities || [];
-        
-        // Handle Facebook (Instagram) linking
-        const facebookIdentity = identities.find(id => id.provider === 'facebook');
-        if (facebookIdentity && !isLinked('Instagram')) {
-          const token = session.provider_token;
-          let finalUsername = '';
-          let finalFollowers = 0;
-          
-          if (token) {
-            try {
-              // Fetch real Instagram data from Graph API
-              const pagesRes = await fetch(`https://graph.facebook.com/v20.0/me/accounts?access_token=${token}`);
-              const pagesData = await pagesRes.json();
-              for (const page of (pagesData.data || [])) {
-                const igRes = await fetch(`https://graph.facebook.com/v20.0/${page.id}?fields=instagram_business_account&access_token=${token}`);
-                const igData = await igRes.json();
-                if (igData.instagram_business_account) {
-                  const statsRes = await fetch(`https://graph.facebook.com/v20.0/${igData.instagram_business_account.id}?fields=username,followers_count&access_token=${token}`);
-                  const statsData = await statsRes.json();
-                  if (statsData.username) {
-                    finalUsername = statsData.username;
-                    finalFollowers = parseInt(statsData.followers_count, 10) || 0;
-                    break;
-                  }
-                }
-              }
-            } catch (e) {
-              console.error('Failed to fetch real IG account', e);
-            }
-          }
-
-          // Fallback if no business account found
-          if (!finalUsername) {
-            toast.error("No Instagram Business account found linked to this Facebook account.");
-            return;
-          }
-
-          await addVerifiedSocialLink('Instagram', finalUsername, `https://instagram.com/${finalUsername}`, finalFollowers, token || undefined);
-          toast.success("Instagram linked successfully!");
-        }
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [socialLinks, addVerifiedSocialLink]);
 
   const loginWithGoogle = useGoogleLogin({
     scope: 'https://www.googleapis.com/auth/youtube.readonly',

@@ -17,6 +17,7 @@ import ProfilePage from './features/profile/pages/ProfilePage';
 import EditProfilePage from './features/profile/pages/EditProfilePage';
 import ActivityPage from './features/profile/pages/ActivityPage';
 import AccountCentrePage from './features/profile/pages/AccountCentrePage';
+import InstagramCallbackPage from './features/auth/pages/InstagramCallbackPage';
 import PaymentVerificationPage from './features/profile/pages/PaymentVerificationPage';
 import PrivacyPolicyPage from './features/legal/pages/PrivacyPolicyPage';
 import TermsOfServicePage from './features/legal/pages/TermsOfServicePage';
@@ -141,6 +142,7 @@ const AppRoutes: React.FC = () => {
         <Routes location={location} key={location.pathname}>
           {/* Auth */}
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/auth/instagram/callback" element={<InstagramCallbackPage />} />
           <Route path="/onboarding" element={<ProtectedRoute requireOnboarding={false}><OnboardingPage /></ProtectedRoute>} />
           <Route path="/privacy-policy" element={<AppLayout><PrivacyPolicyPage /></AppLayout>} />
           <Route path="/terms-of-service" element={<AppLayout><TermsOfServicePage /></AppLayout>} />
