@@ -31,10 +31,14 @@ const InstagramCallbackPage: React.FC = () => {
       }
 
       try {
+        const origin = window.location.origin.includes('http://localhost') 
+          ? window.location.origin.replace('http://', 'https://')
+          : window.location.origin;
+
         const { data, error: functionError } = await supabase.functions.invoke('link-instagram-account', {
           body: { 
             code, 
-            redirect_uri: `${window.location.origin}/auth/instagram/callback`,
+            redirect_uri: `${origin}/auth/instagram/callback`,
             profile_id: user.id
           }
         });
