@@ -24,6 +24,9 @@ const DiscoverFeedPage: React.FC = () => {
   const [isChatModalOpen, setIsChatModalOpen] = useState(false);
   const [activeChatUser, setActiveChatUser] = useState<{id: string, name: string, avatar: string | null} | null>(null);
 
+  // Telegram Modal state
+  const [telegramModalUser, setTelegramModalUser] = useState<any>(null);
+
   const [activeFilters, setActiveFilters] = useState<FilterState>({
     platforms: [],
     minFollowers: 0,
@@ -300,7 +303,11 @@ const DiscoverFeedPage: React.FC = () => {
                               key={link.platform}
                               onClick={(e) => {
                                 e.stopPropagation();
-                                if (link.url !== '#') window.open(link.url, '_blank');
+                                if (link.platform === 'Telegram' && creator.verifiedChannels && creator.verifiedChannels.length > 0) {
+                                  setTelegramModalUser(creator);
+                                } else if (link.url !== '#') {
+                                  window.open(link.url, '_blank');
+                                }
                               }}
                               title={link.platform}
                               style={{ 
@@ -371,6 +378,75 @@ const DiscoverFeedPage: React.FC = () => {
         recipientName={activeChatUser?.name || ''}
         recipientAvatar={activeChatUser?.avatar || null}
       />
+
+      {telegramModalUser && (
+        <div className="discover-modal-overlay" onClick={() => setTelegramModalUser(null)}>
+          <div className="discover-modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '400px', width: '90%' }}>
+            <div className="modal-header">
+              <h2>Connect via Telegram</h2>
+              <button className="icon-btn" onClick={() => setTelegramModalUser(null)}>
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            
+            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {telegramModalUser.telegramUsername && (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.05)', padding: '12px', borderRadius: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <span className="material-symbols-outlined">person</span>
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 600 }}>Message User</div>
+                      <div style={{ fontSize: '12px', color: '#a1a1aa' }}>@{telegramModalUser.telegramUsername}</div>
+                    </div>
+                  </div>
+                  <button 
+                    className="solid-btn"
+                    onClick={() => {
+                      window.open(`https://t.me/${telegramModalUser.telegramUsername}`, '_blank');
+                      setTelegramModalUser(null);
+                    }}
+                  >
+                    Message
+                  </button>
+                </div>
+              )}
+
+              {telegramModalUser.verifiedChannels?.length > 0 && (
+                <>
+                  <h3 style={{ fontSize: '14px', color: '#a1a1aa', margin: '8px 0 0' }}>Verified Channels/Groups</h3>
+                  {telegramModalUser.verifiedChannels.map((channel: any) => (
+                    <div key={channel.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.05)', padding: '12px', borderRadius: '12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <span className="material-symbols-outlined">campaign</span>
+                        </div>
+                        <div>
+                          <div style={{ fontWeight: 600 }}>{channel.channel_username}</div>
+                          <div style={{ fontSize: '12px', color: '#a1a1aa' }}>{channel.member_count?.toLocaleString() || 0} Members</div>
+                        </div>
+                      </div>
+                      <button 
+                        className="solid-btn"
+                        onClick={() => {
+                          const url = channel.channel_username.startsWith('http') 
+                            ? channel.channel_username 
+                            : `https://t.me/${channel.channel_username.replace('@', '')}`;
+                          window.open(url, '_blank');
+                          setTelegramModalUser(null);
+                        }}
+                      >
+                        Visit
+                      </button>
+                    </div>
+                  ))}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
