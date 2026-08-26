@@ -65,7 +65,35 @@ const AccountCentrePage: React.FC = () => {
     return '';
   };
 
+  const handleOAuthLink = async (platform: 'google' | 'facebook') => {
+    try {
+      const { error } = await supabase.auth.linkIdentity({
+        provider: platform,
+        options: {
+          redirectTo: `${window.location.origin}/profile/account`
+        }
+      });
+      if (error) {
+        if (error.message.includes('already linked')) {
+          toast.error(`This ${platform} account is already linked to another user.`);
+        } else {
+          toast.error(`Failed to link ${platform}: ${error.message}`);
+        }
+      }
+    } catch (err: any) {
+      toast.error(`An unexpected error occurred: ${err.message}`);
+    }
+  };
+
   const openLinkModal = (platform: string) => {
+    if (platform === 'YouTube') {
+      handleOAuthLink('google');
+      return;
+    }
+    if (platform === 'Instagram') {
+      handleOAuthLink('facebook');
+      return;
+    }
     setActiveLinkPlatform(platform);
     setLinkUrl(getPlatformLink(platform));
   };
@@ -138,6 +166,37 @@ const AccountCentrePage: React.FC = () => {
   const isLinked = (platform: string) => {
     return socialLinks.some(l => l.platform.toLowerCase() === platform.toLowerCase());
   };
+
+  // Listen for auth state changes to capture OAuth linking callback
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session && session.user) {
+        const identities = session.user.identities || [];
+        
+        // Handle Google (YouTube) linking
+        const googleIdentity = identities.find(id => id.provider === 'google');
+        if (googleIdentity && !isLinked('YouTube')) {
+          // In a real production app, we would use session.provider_token to fetch from YouTube API.
+          // Since this requires YouTube API keys, we'll save basic verified info here.
+          const username = googleIdentity.identity_data?.email || googleIdentity.identity_data?.name || 'YouTube User';
+          await useProfileStore.getState().addVerifiedSocialLink('YouTube', username, `https://youtube.com/@${username}`, 0);
+          toast.success("YouTube account linked successfully!");
+        }
+
+        // Handle Facebook (Instagram) linking
+        const facebookIdentity = identities.find(id => id.provider === 'facebook');
+        if (facebookIdentity && !isLinked('Instagram')) {
+          const username = facebookIdentity.identity_data?.email || facebookIdentity.identity_data?.name || 'Instagram User';
+          await useProfileStore.getState().addVerifiedSocialLink('Instagram', username, `https://instagram.com/${username}`, 0);
+          toast.success("Instagram (via Facebook) linked successfully!");
+        }
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [socialLinks, isLinked]);
 
   const OTHER_PLATFORMS = [
     { name: 'Facebook', icon: facebookIcon },

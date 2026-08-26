@@ -73,6 +73,7 @@ export interface ProfileState {
   createAchievement: (achievement: Partial<Achievement>) => Promise<void>;
   createPost: (post: Partial<BlogPost>) => Promise<void>;
   updateSocialLinks: (links: SocialLink[]) => Promise<void>;
+  addVerifiedSocialLink: (platform: string, username: string, url: string, followers?: number) => Promise<void>;
   createMediaKitItem: (item: { title: string; description: string; image_url: string }) => Promise<void>;
   sendMessage: (receiverId: string, content: string) => Promise<void>;
 }
@@ -264,6 +265,41 @@ export const useProfileStore = create<ProfileState>()(
             
           } catch (err: any) {
             console.error('Error updating social links:', err);
+            throw err;
+          }
+        },
+
+        addVerifiedSocialLink: async (platform: string, username: string, url: string, followers: number = 0) => {
+          const { profile, socialLinks } = get();
+          if (!profile) return;
+          try {
+            // First check if it already exists
+            const existingLink = socialLinks.find(l => l.platform.toLowerCase() === platform.toLowerCase());
+            
+            if (existingLink) {
+              const { error } = await supabase
+                .from('social_links')
+                .update({ username, url, followers, verified: true })
+                .eq('id', existingLink.id);
+              if (error) throw error;
+            } else {
+              const { error } = await supabase
+                .from('social_links')
+                .insert({
+                  profile_id: profile.id,
+                  platform,
+                  username,
+                  url,
+                  followers,
+                  verified: true
+                });
+              if (error) throw error;
+            }
+            
+            // Reload profile data to get updated links
+            get().fetchProfile(profile.id);
+          } catch (err: any) {
+            console.error('Error adding verified social link:', err);
             throw err;
           }
         },
