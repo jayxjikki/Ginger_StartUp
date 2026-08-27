@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../../store/authStore';
 import { useChatStore } from '../../../store/chatStore';
 import Avatar from '../../../components/ui/Avatar';
@@ -9,6 +9,7 @@ import './InboxPage.css';
 
 const InboxPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuthStore();
   const { inboxChats, fetchInbox, isLoading } = useChatStore();
   
@@ -20,6 +21,20 @@ const InboxPage: React.FC = () => {
       fetchInbox(user.id);
     }
   }, [user, fetchInbox]);
+
+  useEffect(() => {
+    const state = location.state as any;
+    if (state?.restoreChat && !isChatModalOpen) {
+      setActiveChatUser({ 
+        id: state.restoreChat.id, 
+        name: state.restoreChat.name, 
+        avatar: state.restoreChat.avatar 
+      });
+      setIsChatModalOpen(true);
+      // Clear state via React Router to avoid reopening on close
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.state, location.pathname, isChatModalOpen, navigate]);
 
   const handleOpenChat = (id: string, name: string, avatar: string | null) => {
     setActiveChatUser({ id, name, avatar });

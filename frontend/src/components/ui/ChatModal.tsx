@@ -1,9 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import Avatar from './Avatar';
+import SharedPostCard from './SharedPostCard';
 import { useAuthStore } from '../../store/authStore';
 import { useChatStore, type Message } from '../../store/chatStore';
 import { useUgcStore } from '../../store/ugcStore';
+import { useGlobalModalStore } from '../../store/globalModalStore';
 import './ChatModal.css';
 
 interface ChatModalProps {
@@ -32,14 +36,31 @@ const ChatModal: React.FC<ChatModalProps> = ({
     unsubscribeFromMessages,
     setActiveRecipient,
     subscribeToPresence,
-    setTypingStatus
+    setTypingStatus,
+    reactToMessage,
+    deleteChat
   } = useChatStore();
+  
+  const navigate = useNavigate();
   
   const [content, setContent] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [isBlockedByThem, setIsBlockedByThem] = useState(false);
-  const { blockedUserIds, checkIfBlockedByThem } = useUgcStore();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { blockedUserIds, fetchBlockedUsers, checkIfBlockedByThem, blockUser, unblockUser, reportItem } = useUgcStore();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Close menu on click outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setIsMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Initialize Chat
   useEffect(() => {
@@ -49,6 +70,7 @@ const ChatModal: React.FC<ChatModalProps> = ({
       subscribeToMessages(user.id);
       subscribeToPresence(user.id, recipientId);
       checkIfBlockedByThem(recipientId).then(setIsBlockedByThem);
+      fetchBlockedUsers();
     } else {
       setActiveRecipient(null);
       unsubscribeFromMessages();
@@ -58,10 +80,10 @@ const ChatModal: React.FC<ChatModalProps> = ({
       setActiveRecipient(null);
       unsubscribeFromMessages();
     };
-  }, [isOpen, user, recipientId, fetchHistory, subscribeToMessages, unsubscribeFromMessages, setActiveRecipient, checkIfBlockedByThem]);
+  }, [isOpen, user, recipientId, fetchHistory, subscribeToMessages, unsubscribeFromMessages, setActiveRecipient, checkIfBlockedByThem, fetchBlockedUsers]);
 
   const isBlockedByMe = blockedUserIds.includes(recipientId);
-  const isBlocked = isBlockedByMe || isBlockedByThem;
+  const isBlocked = isBlockedByMe; // Don't show UI block if they blocked us, to keep it stealthy
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
@@ -98,6 +120,50 @@ const ChatModal: React.FC<ChatModalProps> = ({
     }
   }, [content, setTypingStatus]);
 
+  const handleDeleteChat = async () => {
+    setIsMenuOpen(false);
+    if (!user) return;
+    const confirmed = await useGlobalModalStore.getState().showConfirm('Are you sure you want to delete this entire chat? This cannot be undone.', 'Delete Chat');
+    if (confirmed) {
+      try {
+        await deleteChat(user.id, recipientId);
+        toast.success('Chat deleted');
+        onClose(); // Close modal after deleting
+      } catch (err) {
+        toast.error('Failed to delete chat');
+      }
+    }
+  };
+
+  const handleReportChat = async () => {
+    setIsMenuOpen(false);
+    const confirmed = await useGlobalModalStore.getState().showConfirm('Are you sure you want to report this chat for inappropriate behavior?', 'Report Chat');
+    if (confirmed) {
+      await reportItem(recipientId, 'profile', 'Inappropriate chat');
+      toast.success('Chat reported to moderation');
+    }
+  };
+
+  const handleToggleBlock = async () => {
+    setIsMenuOpen(false);
+    if (isBlockedByMe) {
+      const confirmed = await useGlobalModalStore.getState().showConfirm('Unblock this user?', 'Unblock User');
+      if (confirmed) unblockUser(recipientId);
+    } else {
+      const confirmed = await useGlobalModalStore.getState().showConfirm('Block this user? They will not be able to message you.', 'Block User');
+      if (confirmed) blockUser(recipientId);
+    }
+  };
+
+  const handleVisitProfile = () => {
+    setIsMenuOpen(false);
+    onClose();
+    navigate(`/profile/${recipientId}`);
+  };
+
+  const displayName = isBlockedByThem ? 'Ginger user' : recipientName;
+  const displayAvatar = isBlockedByThem ? null : recipientAvatar;
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -108,15 +174,45 @@ const ChatModal: React.FC<ChatModalProps> = ({
               <span className="material-symbols-outlined">close</span>
             </button>
             <div className="chat-detail-user-info">
-              <Avatar src={recipientAvatar} name={recipientName} size="sm" />
+              <Avatar src={displayAvatar} name={displayName} size="sm" />
               <div className="chat-detail-title-group">
-                <h2 className="chat-detail-name">{recipientName}</h2>
+                <h2 className="chat-detail-name">{displayName}</h2>
                 {partnerTyping && <span className="chat-detail-typing text-xs text-primary-500">Typing...</span>}
               </div>
             </div>
-            <button className="chat-detail-icon-btn" aria-label="More options">
-              <span className="material-symbols-outlined">more_vert</span>
-            </button>
+            
+            <div className="chat-detail-menu-container" ref={menuRef}>
+              <button 
+                className="chat-detail-icon-btn" 
+                aria-label="More options"
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+              >
+                <span className="material-symbols-outlined">more_vert</span>
+              </button>
+
+              {isMenuOpen && (
+                <div className="chat-detail-dropdown-menu">
+                  {!isBlockedByThem && (
+                    <button className="chat-menu-item" onClick={handleVisitProfile}>
+                      <span className="material-symbols-outlined">person</span>
+                      Visit Profile
+                    </button>
+                  )}
+                  <button className="chat-menu-item text-danger" onClick={handleToggleBlock}>
+                    <span className="material-symbols-outlined">block</span>
+                    {isBlockedByMe ? 'Unblock User' : 'Block User'}
+                  </button>
+                  <button className="chat-menu-item text-warning" onClick={handleReportChat}>
+                    <span className="material-symbols-outlined">flag</span>
+                    Report Chat
+                  </button>
+                  <button className="chat-menu-item text-danger" onClick={handleDeleteChat}>
+                    <span className="material-symbols-outlined">delete</span>
+                    Delete Chat
+                  </button>
+                </div>
+              )}
+            </div>
           </header>
 
           <div className="chat-detail-messages">
@@ -132,6 +228,37 @@ const ChatModal: React.FC<ChatModalProps> = ({
             ) : (
               messages.map((msg: Message) => {
                 const isMine = msg.sender_id === user?.id;
+                
+                // Detect shared post card format
+                const isSharedCard = msg.content.startsWith('[SHARE_CARD]') && msg.content.endsWith('[/SHARE_CARD]');
+                
+                if (isSharedCard) {
+                  try {
+                    const jsonStr = msg.content.replace('[SHARE_CARD]', '').replace('[/SHARE_CARD]', '');
+                    const postData = JSON.parse(jsonStr);
+                    return (
+                      <SharedPostCard 
+                        key={msg.id}
+                        isMine={isMine}
+                        posterName={postData.posterName}
+                        posterAvatar={postData.posterAvatar}
+                        imageUrl={postData.imageUrl}
+                        caption={postData.caption}
+                        postId={postData.postId}
+                        posterId={postData.posterId}
+                        messageId={msg.id}
+                        initialReaction={msg.reaction || null}
+                        onReact={reactToMessage}
+                        chatContext={{ id: recipientId, name: recipientName, avatar: recipientAvatar }}
+                      />
+                    );
+                  } catch (e) {
+                    console.error('Failed to parse share card', e);
+                    // Fallback to normal rendering if parsing fails
+                  }
+                }
+
+                // Regular message
                 return (
                   <div 
                     key={msg.id} 

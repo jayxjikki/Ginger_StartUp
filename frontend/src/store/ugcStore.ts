@@ -4,6 +4,7 @@ import { useGlobalModalStore } from './globalModalStore';
 
 interface UgcState {
   blockedUserIds: string[]; // Users that the current user has blocked
+  blockedByThemIds: string[]; // Users that have blocked the current user
   
   fetchBlockedUsers: () => Promise<void>;
   reportItem: (itemId: string, itemType: 'profile' | 'campaign' | 'submission', reason: string) => Promise<void>;
@@ -12,8 +13,9 @@ interface UgcState {
   checkIfBlockedByThem: (otherUserId: string) => Promise<boolean>;
 }
 
-export const useUgcStore = create<UgcState>((set) => ({
+export const useUgcStore = create<UgcState>((set, get) => ({
   blockedUserIds: [],
+  blockedByThemIds: [],
 
   fetchBlockedUsers: async () => {
     try {
@@ -22,12 +24,15 @@ export const useUgcStore = create<UgcState>((set) => ({
       
       const { data, error } = await supabase
         .from('blocked_users')
-        .select('blocked_id')
-        .eq('blocker_id', session.user.id);
+        .select('*')
+        .or(`blocker_id.eq.${session.user.id},blocked_id.eq.${session.user.id}`);
         
       if (error) throw error;
       
-      set({ blockedUserIds: data.map(row => row.blocked_id) });
+      const iBlocked = data.filter(r => r.blocker_id === session.user.id).map(r => r.blocked_id);
+      const blockedMe = data.filter(r => r.blocked_id === session.user.id).map(r => r.blocker_id);
+      
+      set({ blockedUserIds: iBlocked, blockedByThemIds: blockedMe });
     } catch (err) {
       console.error('Error fetching blocked users:', err);
     }
@@ -59,12 +64,13 @@ export const useUgcStore = create<UgcState>((set) => ({
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Not authenticated');
       
-      const { error } = await supabase.from('blocked_users').upsert({
+      const { error } = await supabase.from('blocked_users').insert({
         blocker_id: session.user.id,
         blocked_id: blockedId
-      }, { onConflict: 'blocker_id,blocked_id' });
+      });
       
-      if (error) {
+      // Ignore unique constraint violation (already blocked)
+      if (error && error.code !== '23505') {
         throw error;
       }
       
@@ -101,26 +107,8 @@ export const useUgcStore = create<UgcState>((set) => ({
   },
 
   checkIfBlockedByThem: async (otherUserId: string) => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return false;
-      
-      const { data, error } = await supabase
-        .from('blocked_users')
-        .select('id')
-        .eq('blocker_id', otherUserId)
-        .eq('blocked_id', session.user.id)
-        .maybeSingle();
-        
-      if (error && error.code !== 'PGRST116') { // Ignore "no rows returned" error
-        console.error('Error checking if blocked by them:', error);
-        return false;
-      }
-      
-      return !!data;
-    } catch (err) {
-      console.error('Error checking block status:', err);
-      return false;
-    }
+    // Relying on the cached state which is fetched on load and chat open
+    const state = get();
+    return state.blockedByThemIds.includes(otherUserId);
   }
 }));

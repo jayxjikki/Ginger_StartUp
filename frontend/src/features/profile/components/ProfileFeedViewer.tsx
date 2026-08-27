@@ -1,5 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import './ProfileFeedViewer.css';
+import { useFeedStore } from '../../../store/feedStore';
+import FeedCommentsPanel from './FeedCommentsPanel';
+import FeedShareModal from './FeedShareModal';
+import { useUgcStore } from '../../../store/ugcStore';
+import { useGlobalModalStore } from '../../../store/globalModalStore';
 
 interface FeedPost {
   id: string;
@@ -31,7 +36,19 @@ const ProfileFeedViewer: React.FC<ProfileFeedViewerProps> = ({
   profile 
 }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [likedPosts, setLikedPosts] = useState<Record<string, boolean>>({});
+  const { postLikesCount, userLikedPosts, fetchLikes, toggleLike } = useFeedStore();
+  const [activeCommentPostId, setActiveCommentPostId] = useState<string | null>(null);
+  const [activeSharePost, setActiveSharePost] = useState<FeedPost | null>(null);
+  const [heartAnimations, setHeartAnimations] = useState<Record<string, boolean>>({});
+  const [activeOptionsPostId, setActiveOptionsPostId] = useState<string | null>(null);
+  const { reportItem } = useUgcStore();
+
+  useEffect(() => {
+    if (isOpen && posts.length > 0) {
+      const postIds = posts.map(p => p.id);
+      fetchLikes(postIds);
+    }
+  }, [isOpen, posts, fetchLikes]);
 
   useEffect(() => {
     if (isOpen && scrollRef.current && posts.length > 0) {
@@ -54,16 +71,27 @@ const ProfileFeedViewer: React.FC<ProfileFeedViewerProps> = ({
 
   if (!isOpen) return null;
 
-  const toggleLike = (postId: string) => {
-    setLikedPosts(prev => ({
-      ...prev,
-      [postId]: !prev[postId]
-    }));
-  };
-
   const getCaption = (post: FeedPost) => {
     // Media kits and achievements usually use description, posts use content
     return post.description || post.content || post.title;
+  };
+
+  const handleDoubleClick = (postId: string, isLiked: boolean) => {
+    if (!isLiked) {
+      toggleLike(postId);
+    }
+    setHeartAnimations(prev => ({ ...prev, [postId]: true }));
+    setTimeout(() => {
+      setHeartAnimations(prev => ({ ...prev, [postId]: false }));
+    }, 1000);
+  };
+
+  const handleReportPost = async (postId: string) => {
+    setActiveOptionsPostId(null);
+    const confirmed = await useGlobalModalStore.getState().showConfirm('Are you sure you want to report this post for inappropriate content?', 'Report Post');
+    if (confirmed) {
+      await reportItem(postId, 'submission', 'Inappropriate content');
+    }
   };
 
   return (
@@ -77,7 +105,8 @@ const ProfileFeedViewer: React.FC<ProfileFeedViewerProps> = ({
 
       <div className="feed-viewer-content" ref={scrollRef}>
         {posts.map((post, index) => {
-          const isLiked = !!likedPosts[post.id];
+          const isLiked = !!userLikedPosts[post.id];
+          const likesCount = postLikesCount[post.id] || 0;
           const actualAvatarUrl = profile.avatar_url || 'https://via.placeholder.com/150';
           const username = profile.username ? profile.username.replace('@', '') : profile.full_name.replace(/\s+/g, '').toLowerCase();
 
@@ -92,13 +121,38 @@ const ProfileFeedViewer: React.FC<ProfileFeedViewerProps> = ({
                     <span className="feed-post-location">{profile.location}</span>
                   )}
                 </div>
-                <button className="feed-post-options-btn">
+                <button 
+                  className="feed-post-options-btn"
+                  onClick={() => setActiveOptionsPostId(activeOptionsPostId === post.id ? null : post.id)}
+                >
                   <span className="material-symbols-outlined">more_horiz</span>
                 </button>
+                {activeOptionsPostId === post.id && (
+                  <div className="feed-post-dropdown-menu">
+                    <button className="feed-menu-item text-warning" onClick={() => handleReportPost(post.id)}>
+                      <span className="material-symbols-outlined">flag</span>
+                      Report Post
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Post Image */}
-              <img src={post.image_url} alt={post.title} className="feed-post-image" />
+              <div 
+                className="feed-post-image-container" 
+                style={{ position: 'relative', cursor: 'pointer' }}
+                onDoubleClick={() => handleDoubleClick(post.id, isLiked)}
+              >
+                <img src={post.image_url} alt={post.title} className="feed-post-image" />
+                
+                {heartAnimations[post.id] && (
+                  <div className="double-click-heart-overlay">
+                    <span className="material-symbols-outlined heart-icon" style={{ fontVariationSettings: "'FILL' 1" }}>
+                      favorite
+                    </span>
+                  </div>
+                )}
+              </div>
 
               {/* Post Actions */}
               <div className="feed-post-actions">
@@ -110,18 +164,20 @@ const ProfileFeedViewer: React.FC<ProfileFeedViewerProps> = ({
                     {isLiked ? 'favorite' : 'favorite_border'}
                   </span>
                 </button>
-                <button className="feed-action-btn">
+                <button className="feed-action-btn" onClick={() => setActiveCommentPostId(post.id)}>
                   <span className="material-symbols-outlined">chat_bubble_outline</span>
                 </button>
-                <button className="feed-action-btn">
+                <button className="feed-action-btn" onClick={() => setActiveSharePost(post)}>
                   <span className="material-symbols-outlined" style={{ transform: 'rotate(-20deg)', marginTop: '-4px' }}>send</span>
                 </button>
               </div>
 
               {/* Likes Count */}
-              <div className="feed-post-likes">
-                {isLiked ? '1 like' : 'Be the first to like this'}
-              </div>
+              {likesCount > 0 && (
+                <div className="feed-post-likes">
+                  {likesCount} {likesCount === 1 ? 'like' : 'likes'}
+                </div>
+              )}
 
               {/* Caption */}
               <div className="feed-post-caption-box">
@@ -145,6 +201,23 @@ const ProfileFeedViewer: React.FC<ProfileFeedViewerProps> = ({
           </div>
         )}
       </div>
+
+      <FeedCommentsPanel 
+        isOpen={!!activeCommentPostId} 
+        onClose={() => setActiveCommentPostId(null)} 
+        entityId={activeCommentPostId || ''} 
+      />
+      
+      <FeedShareModal 
+        isOpen={!!activeSharePost}
+        onClose={() => setActiveSharePost(null)}
+        post={activeSharePost ? {
+          ...activeSharePost,
+          caption: getCaption(activeSharePost)
+        } : {} as any}
+        posterName={profile.username ? profile.username.replace('@', '') : profile.full_name.replace(/\s+/g, '').toLowerCase()}
+        posterAvatar={profile.avatar_url || 'https://via.placeholder.com/150'}
+      />
     </div>
   );
 };

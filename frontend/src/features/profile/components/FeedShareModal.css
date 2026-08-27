@@ -1,0 +1,278 @@
+/* Share Modal Unique Aesthetic Style */
+.share-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.share-modal-container {
+  background-color: #121212;
+  border-top-left-radius: 24px;
+  border-top-right-radius: 24px;
+  height: 65vh;
+  display: flex;
+  flex-direction: column;
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.5);
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.share-modal-header {
+  padding: 20px 16px 16px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.share-drag-handle {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 4px;
+  background-color: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+}
+
+.share-modal-title {
+  margin: 0;
+  color: #fff;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+
+.share-close-btn {
+  position: absolute;
+  right: 16px;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.share-close-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.share-modal-search {
+  padding: 0 16px 16px 16px;
+}
+
+.share-search-input-wrap {
+  display: flex;
+  align-items: center;
+  background-color: rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  padding: 10px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: border-color 0.2s, background-color 0.2s;
+}
+
+.share-search-input-wrap:focus-within {
+  border-color: rgba(255, 255, 255, 0.2);
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.share-search-input-wrap .material-symbols-outlined {
+  color: #8c90a0;
+  margin-right: 12px;
+  font-size: 20px;
+}
+
+.share-search-input {
+  background: transparent;
+  border: none;
+  color: #fff;
+  outline: none;
+  font-size: 15px;
+  width: 100%;
+}
+
+.share-search-input::placeholder {
+  color: #8c90a0;
+}
+
+.share-modal-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 16px 100px 16px; /* Padding bottom for floating footer */
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.share-user-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-radius: 16px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.share-user-item:hover {
+  background-color: rgba(255, 255, 255, 0.04);
+}
+
+.share-user-item.selected {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.share-user-info {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.share-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.share-username-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.share-fullname {
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.share-username {
+  color: #8c90a0;
+  font-size: 13px;
+}
+
+/* Custom modern checkbox */
+.share-checkbox {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.share-user-item.selected .share-checkbox {
+  background-color: #3b82f6; /* Modern Blue */
+  border-color: #3b82f6;
+}
+
+.share-checkbox .material-symbols-outlined {
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  opacity: 0;
+  transform: scale(0.5);
+  transition: all 0.2s;
+}
+
+.share-user-item.selected .share-checkbox .material-symbols-outlined {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.share-modal-footer {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 24px 16px 16px 16px;
+  background: linear-gradient(to top, #121212 70%, rgba(18, 18, 18, 0));
+  display: flex;
+  align-items: flex-end;
+}
+
+.share-input-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background-color: rgba(255, 255, 255, 0.08);
+  border-radius: 28px;
+  padding: 6px 6px 6px 20px;
+  width: 100%;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.share-message-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: #fff;
+  outline: none;
+  font-size: 15px;
+}
+
+.share-message-input::placeholder {
+  color: #8c90a0;
+}
+
+.share-send-btn {
+  background-color: #3b82f6;
+  color: #fff;
+  border: none;
+  border-radius: 24px;
+  padding: 10px 24px;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.1s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.share-send-btn:active {
+  transform: scale(0.95);
+}
+
+.share-send-btn:disabled {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.3);
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Custom scrollbar for webkit */
+.share-modal-list::-webkit-scrollbar {
+  width: 6px;
+}
+.share-modal-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+.share-modal-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}

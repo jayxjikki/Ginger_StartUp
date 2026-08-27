@@ -87,10 +87,10 @@ const ProfilePage: React.FC = () => {
   const [activeTab, setActiveTab] = useState(1);
   const tabSliderRef = useRef<HTMLDivElement>(null);
 
-  // Fullscreen Viewer State
   const [isFeedViewerOpen, setIsFeedViewerOpen] = useState(false);
   const [feedPosts, setFeedPosts] = useState<any[]>([]);
   const [feedStartIndex, setFeedStartIndex] = useState(0);
+  const [returnToChat, setReturnToChat] = useState<any>(false);
 
   const [isChatModalOpen, setIsChatModalOpen] = useState(false);
   const [isBlockedByThem, setIsBlockedByThem] = useState(false);
@@ -142,6 +142,45 @@ const ProfilePage: React.FC = () => {
     }
   }, [user, isPublicView, targetUserId, fetchBlockedUsers, checkIfBlockedByThem]);
 
+  // Handle openPostId from state
+  useEffect(() => {
+    const state = location.state as any;
+    if (state?.openPostId && profile && !isLoading) {
+      // Find the post in all possible collections
+      const combinedItems = [
+        ...achievements.filter(ach => ach.icon_url).map(ach => ({
+          id: ach.id, title: ach.title, description: ach.description, image_url: ach.icon_url!, created_at: ach.created_at
+        })),
+        ...(mediaKitItems || []).filter(mk => mk.image_url).map(mk => ({
+          id: mk.id, title: mk.title, description: mk.description, image_url: mk.image_url!, created_at: mk.created_at
+        }))
+      ];
+      
+      let index = combinedItems.findIndex(p => p.id === state.openPostId);
+      if (index !== -1) {
+        setActiveTab(0);
+        setFeedPosts(combinedItems);
+        setFeedStartIndex(index);
+        setIsFeedViewerOpen(true);
+        if (state.returnToChat) setReturnToChat(state.returnToChat);
+        // Clear state to avoid reopening on normal navigations
+        window.history.replaceState({}, document.title);
+        return;
+      }
+      
+      const validPosts = posts.filter(post => post.image_url);
+      index = validPosts.findIndex(p => p.id === state.openPostId);
+      if (index !== -1) {
+        setActiveTab(1);
+        setFeedPosts(validPosts);
+        setFeedStartIndex(index);
+        setIsFeedViewerOpen(true);
+        if (state.returnToChat) setReturnToChat(state.returnToChat);
+        window.history.replaceState({}, document.title);
+      }
+    }
+  }, [location.state, profile, isLoading, achievements, mediaKitItems, posts]);
+
   const isBlockedByMe = profile ? blockedUserIds.includes(profile.id) : false;
 
   const handleTabClick = (index: number) => {
@@ -192,10 +231,19 @@ const ProfilePage: React.FC = () => {
 
   // Removed tabSliderRef initialization
 
+  if (location.state?.openPostId && !isFeedViewerOpen) {
+    return (
+      <div className="profile-page-wrapper" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#000' }}>
+         <span className="material-symbols-outlined" style={{ fontSize: '48px', color: '#ff5722', opacity: 0.8, animation: 'pulse 1.5s infinite' }}>blur_on</span>
+         <p style={{ color: '#fff', marginTop: '16px' }}>Opening post...</p>
+      </div>
+    );
+  }
+
   if (!profile || (isLoading && profile.id !== targetUserId)) {
     return (
-      <div className="profile-page-wrapper" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-        <p>Loading Profile...</p>
+      <div className="profile-page-wrapper" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#000' }}>
+        <span className="material-symbols-outlined" style={{ fontSize: '48px', color: '#ff5722', opacity: 0.8, animation: 'pulse 1.5s infinite' }}>blur_on</span>
       </div>
     );
   }
@@ -313,7 +361,18 @@ const ProfilePage: React.FC = () => {
         {/* FeedViewer Modal */}
       <ProfileFeedViewer 
         isOpen={isFeedViewerOpen} 
-        onClose={() => setIsFeedViewerOpen(false)} 
+        onClose={() => {
+          if (returnToChat) {
+            setReturnToChat(false);
+            if (typeof returnToChat === 'object' && (returnToChat as any).id) {
+              navigate('/inbox', { state: { restoreChat: returnToChat } });
+            } else {
+              navigate(-1);
+            }
+          } else {
+            setIsFeedViewerOpen(false);
+          }
+        }} 
         posts={feedPosts}
         initialPostIndex={feedStartIndex}
         profile={{
