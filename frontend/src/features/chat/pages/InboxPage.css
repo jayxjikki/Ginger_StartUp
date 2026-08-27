@@ -266,3 +266,87 @@
     background-position-x: -200%;
   }
 }
+
+/* Edit Mode & Bulk Delete */
+.inbox-icon-btn.active {
+  background-color: rgba(255, 68, 68, 0.1);
+  color: #ff4444;
+}
+
+.chat-item-hover.selected {
+  background-color: rgba(175, 198, 255, 0.05);
+  border-color: rgba(175, 198, 255, 0.2);
+}
+
+.chat-item-checkbox {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid var(--chat-outline);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+
+.chat-item-checkbox.checked {
+  background-color: var(--chat-primary);
+  border-color: var(--chat-primary);
+  color: var(--chat-on-primary);
+}
+
+.inbox-bulk-delete-bar {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 50;
+  background-color: rgba(255, 68, 68, 0.1);
+  border: 1px solid rgba(255, 68, 68, 0.2);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  padding: 12px 24px;
+  border-radius: 9999px;
+  display: flex;
+  box-shadow: 0 10px 25px rgba(255, 68, 68, 0.2);
+}
+
+.bulk-delete-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  border: none;
+  color: #ff4444;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.bulk-delete-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Global Search */
+.global-search-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.global-search-title {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--chat-outline);
+  margin: 8px 0 4px 8px;
+}
+
+.global-search-empty {
+  color: var(--chat-outline);
+  padding: 16px 8px;
+  font-size: 14px;
+}
