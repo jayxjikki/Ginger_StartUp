@@ -1,5 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useFeedStore } from '../../../store/feedStore';
+import { formatDistanceToNow } from 'date-fns';
+import EmojiPicker, { Theme } from 'emoji-picker-react';
+import type { EmojiClickData } from 'emoji-picker-react';
+import './FeedCommentsPanel.css';
 
 interface FeedCommentsPanelProps {
   isOpen: boolean;
@@ -11,12 +15,29 @@ const FeedCommentsPanel: React.FC<FeedCommentsPanelProps> = ({ isOpen, onClose, 
   const { postComments, fetchComments, addComment } = useFeedStore();
   const [newComment, setNewComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (isOpen && entityId) {
       fetchComments(entityId);
     }
   }, [isOpen, entityId, fetchComments]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target as Node)) {
+        setShowEmojiPicker(false);
+      }
+    };
+
+    if (showEmojiPicker) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showEmojiPicker]);
 
   if (!isOpen) return null;
 
@@ -30,6 +51,7 @@ const FeedCommentsPanel: React.FC<FeedCommentsPanelProps> = ({ isOpen, onClose, 
     try {
       await addComment(entityId, newComment.trim());
       setNewComment('');
+      setShowEmojiPicker(false);
     } catch (err) {
       console.error(err);
     } finally {
@@ -37,73 +59,45 @@ const FeedCommentsPanel: React.FC<FeedCommentsPanelProps> = ({ isOpen, onClose, 
     }
   };
 
+  const onEmojiClick = (emojiData: EmojiClickData) => {
+    setNewComment(prev => prev + emojiData.emoji);
+  };
+
   return (
-    <div style={{
-      position: 'fixed',
-      inset: 0,
-      backgroundColor: 'rgba(0,0,0,0.5)',
-      zIndex: 10000,
-      display: 'flex',
-      flexDirection: 'column',
-      justifyContent: 'flex-end'
-    }}>
+    <div className="comments-panel-overlay">
       <div style={{ flex: 1 }} onClick={onClose} />
       
-      <div style={{
-        backgroundColor: '#121212',
-        borderTopLeftRadius: '16px',
-        borderTopRightRadius: '16px',
-        height: '70vh',
-        display: 'flex',
-        flexDirection: 'column',
-        animation: 'slideUp 0.3s ease'
-      }}>
-        <div style={{
-          padding: '16px',
-          borderBottom: '1px solid #262626',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          position: 'relative'
-        }}>
-          <h3 style={{ margin: 0, color: '#fff', fontSize: '16px' }}>Comments</h3>
-          <button 
-            onClick={onClose}
-            style={{
-              position: 'absolute',
-              right: '16px',
-              background: 'transparent',
-              border: 'none',
-              color: '#fff',
-              cursor: 'pointer'
-            }}
-          >
-            <span className="material-symbols-outlined">close</span>
+      <div className="comments-panel-content">
+        <div className="comments-panel-header">
+          <div style={{ width: '32px' }} />
+          <h3 className="comments-panel-title">Comments</h3>
+          <button onClick={onClose} className="comments-panel-close-btn" aria-label="Close">
+            <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>close</span>
           </button>
         </div>
         
-        <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
+        <div className="comments-list-container">
           {comments.length === 0 ? (
-            <div style={{ textAlign: 'center', color: '#a8a8a8', marginTop: '2rem' }}>
+            <div className="comment-empty-state">
               No comments yet. Be the first to comment!
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               {comments.map(comment => {
                 const username = comment.profiles?.username?.replace('@', '') || comment.profiles?.full_name.replace(/\s+/g, '').toLowerCase() || 'user';
                 const avatar = comment.profiles?.avatar_url || 'https://via.placeholder.com/150';
                 
                 return (
-                  <div key={comment.id} style={{ display: 'flex', gap: '12px' }}>
-                    <img src={avatar} alt={username} style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover' }} />
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ color: '#fff', fontWeight: 600, fontSize: '14px' }}>{username}</span>
-                        <span style={{ color: '#a8a8a8', fontSize: '12px' }}>
-                          {new Date(comment.created_at).toLocaleDateString()}
+                  <div key={comment.id} className="comment-item">
+                    <img src={avatar} alt={username} className="comment-avatar" />
+                    <div className="comment-content-wrapper">
+                      <div className="comment-header">
+                        <span className="comment-username">{username}</span>
+                        <span className="comment-date">
+                          {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
                         </span>
                       </div>
-                      <p style={{ color: '#fff', fontSize: '14px', margin: '4px 0 0 0', lineHeight: 1.4 }}>
+                      <p className="comment-text">
                         {comment.content}
                       </p>
                     </div>
@@ -114,41 +108,42 @@ const FeedCommentsPanel: React.FC<FeedCommentsPanelProps> = ({ isOpen, onClose, 
           )}
         </div>
         
-        <form onSubmit={handleSubmit} style={{
-          padding: '16px',
-          borderTop: '1px solid #262626',
-          display: 'flex',
-          gap: '12px',
-          alignItems: 'center'
-        }}>
-          <input 
-            type="text" 
-            placeholder="Add a comment..." 
-            value={newComment}
-            onChange={(e) => setNewComment(e.target.value)}
-            style={{
-              flex: 1,
-              backgroundColor: 'transparent',
-              border: 'none',
-              color: '#fff',
-              outline: 'none',
-              fontSize: '14px'
-            }}
-          />
-          <button 
-            type="submit"
-            disabled={!newComment.trim() || isSubmitting}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: newComment.trim() ? '#0095f6' : '#005c98',
-              fontWeight: 600,
-              cursor: newComment.trim() ? 'pointer' : 'default'
-            }}
-          >
-            Post
-          </button>
-        </form>
+        <div className="comments-input-area">
+          {showEmojiPicker && (
+            <div className="emoji-picker-container" ref={emojiPickerRef}>
+              <EmojiPicker 
+                theme={Theme.DARK}
+                onEmojiClick={onEmojiClick}
+                lazyLoadEmojis={true}
+              />
+            </div>
+          )}
+          
+          <form onSubmit={handleSubmit} className="comments-form">
+            <button 
+              type="button" 
+              className="emoji-toggle-btn"
+              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+              aria-label="Add emoji"
+            >
+              <span className="material-symbols-outlined">sentiment_satisfied</span>
+            </button>
+            <input 
+              type="text" 
+              placeholder="Add a comment..." 
+              value={newComment}
+              onChange={(e) => setNewComment(e.target.value)}
+              className="comments-input"
+            />
+            <button 
+              type="submit"
+              disabled={!newComment.trim() || isSubmitting}
+              className="comments-submit-btn"
+            >
+              Post
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   );
