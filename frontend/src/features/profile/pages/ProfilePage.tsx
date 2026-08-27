@@ -624,16 +624,19 @@ const ProfilePage: React.FC = () => {
                 <span className="material-symbols-outlined">add</span>
               </button>
             )}
-            {(mediaKitItems && mediaKitItems.length > 0) && (
-              <button
-                className="media-kit-btn"
-                title="Download Media Kit"
-                onClick={(e) => { e.stopPropagation(); setShowMediaKitModal(true); }}
-              >
-                <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>auto_awesome</span>
-                <span>Media Kit</span>
-              </button>
-            )}
+            <button
+              className={`media-kit-btn ${(mediaKitItems && mediaKitItems.length > 0) ? 'active-shine' : 'empty-inactive'}`}
+              title={(mediaKitItems && mediaKitItems.length > 0) ? "Download Media Kit" : "Media Kit not uploaded"}
+              onClick={(e) => { 
+                e.stopPropagation(); 
+                if (mediaKitItems && mediaKitItems.length > 0) {
+                  setShowMediaKitModal(true);
+                }
+              }}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>auto_awesome</span>
+              <span>Media Kit</span>
+            </button>
           </div>
         </section>
 

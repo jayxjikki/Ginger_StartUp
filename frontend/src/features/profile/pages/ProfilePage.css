@@ -752,23 +752,40 @@
   padding: 0 10px;
   height: 36px;
   border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+/* Active with animated shine when media kit is uploaded */
+.media-kit-btn.active-shine {
   border: 1px solid rgba(249, 200, 70, 0.5);
   background: linear-gradient(110deg, #1a1600 0%, #3a2e00 30%, #f9c846 50%, #3a2e00 70%, #1a1600 100%);
   background-size: 200% auto;
   animation: golden-shine 3s linear infinite;
   color: #f9c846;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
   cursor: pointer;
   box-shadow: 0 0 10px rgba(249, 200, 70, 0.3), inset 0 0 8px rgba(249, 200, 70, 0.1);
-  transition: transform 0.2s, box-shadow 0.2s;
-  white-space: nowrap;
 }
 
-.media-kit-btn:hover {
+.media-kit-btn.active-shine:hover {
   transform: translateY(-2px);
   box-shadow: 0 0 18px rgba(249, 200, 70, 0.5), inset 0 0 10px rgba(249, 200, 70, 0.15);
+}
+
+/* Normal inactive box when empty */
+.media-kit-btn.empty-inactive {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-tertiary);
+  cursor: default;
+  opacity: 0.6;
+}
+
+.media-kit-btn.empty-inactive span {
+  opacity: 0.6;
 }
 
 /* ── Media Kit Modal ──────────────────────────────────── */
