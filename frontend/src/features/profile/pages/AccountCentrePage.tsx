@@ -35,8 +35,8 @@ const AccountCentrePage: React.FC = () => {
   const actualAvatarUrl = profile?.avatar_url || 'https://via.placeholder.com/150';
   const fullName = profile?.full_name || 'Jikki Thakur';
   
-  const [localEmail, setLocalEmail] = useState(user?.email || 'manis108hkumar@gmail.com');
-  const [localDob, setLocalDob] = useState('October 14, 1992');
+  const [localEmail] = useState(user?.email || '');
+  const [localDob, setLocalDob] = useState(profile?.date_of_birth ? new Date(profile.date_of_birth).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Not set');
 
   const [isNavigating, setIsNavigating] = useState(false);
   const [isEntering, setIsEntering] = useState((location.state as any)?.fromTransition || false);
@@ -225,22 +225,72 @@ const AccountCentrePage: React.FC = () => {
   });
 
   const openEditModal = (key: string, label: string, value: string) => {
+    if (key === 'email') {
+      toast.error('Email cannot be changed.');
+      return;
+    }
     setEditField({ key, label, value });
   };
 
-  const handleSaveEdit = () => {
-    if (editField) {
-      if (editField.key === 'name') {
-        updateProfile({ full_name: editField.value });
-      } else if (editField.key === 'username') {
-        updateProfile({ username: editField.value });
-      } else if (editField.key === 'location') {
-        updateProfile({ location: editField.value });
-      } else if (editField.key === 'email') {
-        setLocalEmail(editField.value);
-      } else if (editField.key === 'dob') {
-        setLocalDob(editField.value);
+  const handleSaveEdit = async () => {
+    if (!editField) return;
+    const { key, value } = editField;
+    const now = new Date();
+
+    if (key === 'name') {
+      const lastChanged = profile?.name_changed_at ? new Date(profile.name_changed_at as any) : null;
+      if (lastChanged) {
+        const daysSince = (now.getTime() - lastChanged.getTime()) / (1000 * 60 * 60 * 24);
+        if (daysSince < 30) {
+          const daysLeft = Math.ceil(30 - daysSince);
+          toast.error(`You can only change your name once every 30 days. Try again in ${daysLeft} day${daysLeft > 1 ? 's' : ''}.`);
+          setEditField(null);
+          return;
+        }
       }
+      await updateProfile({ full_name: value, name_changed_at: now.toISOString() } as any);
+      toast.success('Name updated!');
+    } else if (key === 'username') {
+      const lastChanged = profile?.username_changed_at ? new Date(profile.username_changed_at as any) : null;
+      if (lastChanged) {
+        const daysSince = (now.getTime() - lastChanged.getTime()) / (1000 * 60 * 60 * 24);
+        if (daysSince < 14) {
+          const daysLeft = Math.ceil(14 - daysSince);
+          toast.error(`You can only change your username once every 14 days. Try again in ${daysLeft} day${daysLeft > 1 ? 's' : ''}.`);
+          setEditField(null);
+          return;
+        }
+      }
+      await updateProfile({ username: value, username_changed_at: now.toISOString() } as any);
+      toast.success('Username updated!');
+    } else if (key === 'location') {
+      const lastChanged = profile?.location_changed_at ? new Date(profile.location_changed_at as any) : null;
+      if (lastChanged) {
+        const daysSince = (now.getTime() - lastChanged.getTime()) / (1000 * 60 * 60 * 24);
+        if (daysSince < 7) {
+          const daysLeft = Math.ceil(7 - daysSince);
+          toast.error(`You can only change your location once every 7 days. Try again in ${daysLeft} day${daysLeft > 1 ? 's' : ''}.`);
+          setEditField(null);
+          return;
+        }
+      }
+      await updateProfile({ location: value, location_changed_at: now.toISOString() } as any);
+      toast.success('Location updated!');
+    } else if (key === 'dob') {
+      // Validate age >= 18
+      const dobDate = new Date(value);
+      if (isNaN(dobDate.getTime())) {
+        toast.error('Please enter a valid date (YYYY-MM-DD).');
+        return;
+      }
+      const age = (now.getTime() - dobDate.getTime()) / (1000 * 60 * 60 * 24 * 365.25);
+      if (age < 18) {
+        toast.error('You must be at least 18 years old.');
+        return;
+      }
+      await updateProfile({ date_of_birth: value } as any);
+      setLocalDob(dobDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }));
+      toast.success('Date of birth updated!');
     }
     setEditField(null);
   };
@@ -451,10 +501,18 @@ const AccountCentrePage: React.FC = () => {
               </div>
               <span className="material-symbols-outlined info-item-icon">edit</span>
             </div>
+            {/* Name */}
+            <div className="info-item liquid-hover" onClick={() => openEditModal('name', 'Name', profile?.full_name || '')}>
+              <div className="info-item-content">
+                <span className="info-item-label">Name <span style={{fontSize:'11px',color:'var(--text-tertiary)',marginLeft:'4px'}}>· changeable every 30 days</span></span>
+                <span className="info-item-value">{fullName}</span>
+              </div>
+              <span className="material-symbols-outlined info-item-icon">edit</span>
+            </div>
             {/* Username */}
             <div className="info-item liquid-hover" onClick={() => openEditModal('username', 'Username', profile?.username || '')}>
               <div className="info-item-content">
-                <span className="info-item-label">Username</span>
+                <span className="info-item-label">Username <span style={{fontSize:'11px',color:'var(--text-tertiary)',marginLeft:'4px'}}>· changeable every 14 days</span></span>
                 <span className="info-item-value">{profile?.username || 'Not set'}</span>
               </div>
               <span className="material-symbols-outlined info-item-icon">edit</span>
@@ -462,24 +520,24 @@ const AccountCentrePage: React.FC = () => {
             {/* Location */}
             <div className="info-item liquid-hover" onClick={() => openEditModal('location', 'Location', profile?.location || '')}>
               <div className="info-item-content">
-                <span className="info-item-label">Location</span>
+                <span className="info-item-label">Location <span style={{fontSize:'11px',color:'var(--text-tertiary)',marginLeft:'4px'}}>· changeable every 7 days</span></span>
                 <span className="info-item-value">{profile?.location || 'Not set'}</span>
               </div>
               <span className="material-symbols-outlined info-item-icon">edit</span>
             </div>
-            {/* Email */}
-            <div className="info-item liquid-hover" onClick={() => openEditModal('email', 'Email', localEmail)}>
+            {/* Email - locked */}
+            <div className="info-item" style={{cursor:'default', opacity: 0.7}}>
               <div className="info-item-content">
-                <span className="info-item-label">Email</span>
+                <span className="info-item-label">Email <span style={{fontSize:'11px',color:'var(--text-tertiary)',marginLeft:'4px'}}>· cannot be changed</span></span>
                 <span className="info-item-value">{localEmail}</span>
               </div>
-              <span className="material-symbols-outlined info-item-icon">edit</span>
+              <span className="material-symbols-outlined info-item-icon" style={{color:'var(--text-tertiary)'}}>lock</span>
             </div>
 
             {/* DOB */}
-            <div className="info-item liquid-hover" onClick={() => openEditModal('dob', 'Date of Birth', localDob)}>
+            <div className="info-item liquid-hover" onClick={() => openEditModal('dob', 'Date of Birth', profile?.date_of_birth ? String(profile.date_of_birth) : '')}>
               <div className="info-item-content">
-                <span className="info-item-label">Date of Birth</span>
+                <span className="info-item-label">Date of Birth <span style={{fontSize:'11px',color:'var(--text-tertiary)',marginLeft:'4px'}}>· must be 18+</span></span>
                 <span className="info-item-value">{localDob}</span>
               </div>
               <span className="material-symbols-outlined info-item-icon">edit</span>
@@ -593,11 +651,16 @@ const AccountCentrePage: React.FC = () => {
             <div className="link-modal-body">
               <label>New {editField.label}</label>
               <input 
-                type={editField.key === 'email' ? 'email' : 'text'}
+                type={editField.key === 'dob' ? 'date' : 'text'}
                 value={editField.value}
                 onChange={(e) => setEditField({ ...editField, value: e.target.value })}
                 className="link-url-input"
+                max={editField.key === 'dob' ? new Date(new Date().setFullYear(new Date().getFullYear() - 18)).toISOString().split('T')[0] : undefined}
+                placeholder={editField.key === 'dob' ? 'YYYY-MM-DD' : ''}
               />
+              {editField.key === 'dob' && (
+                <p className="link-modal-hint">You must be at least 18 years old.</p>
+              )}
             </div>
             <div className="link-modal-footer">
               <button className="link-btn-cancel" onClick={() => setEditField(null)}>Cancel</button>

@@ -23,6 +23,10 @@ export interface Profile {
   role?: string;
   is_banned?: boolean;
   pinned_socials?: string[];
+  date_of_birth?: string | null;
+  username_changed_at?: string | null;
+  location_changed_at?: string | null;
+  name_changed_at?: string | null;
   created_at: string;
 }
 
