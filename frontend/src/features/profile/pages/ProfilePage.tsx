@@ -118,6 +118,7 @@ const ProfilePage: React.FC = () => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showMessages, setShowMessages] = useState(false);
   const [showTelegramChannels, setShowTelegramChannels] = useState(false);
+  const [showMediaKitModal, setShowMediaKitModal] = useState(false);
   const [messageSearch, setMessageSearch] = useState('');
   const [isEntering, setIsEntering] = useState((location.state as any)?.fromTransition || false);
 
@@ -577,6 +578,17 @@ const ProfilePage: React.FC = () => {
           {OTHER_PLATFORMS.filter(p => isLinked(p.name)).map(platform => 
             renderPlatformIcon(platform.name, platform.icon)
           )}
+          {/* Media Kit button — always visible on any profile that has media kit items */}
+          {(mediaKitItems && mediaKitItems.length > 0) && (
+            <button
+              className="media-kit-btn"
+              title="Download Media Kit"
+              onClick={(e) => { e.stopPropagation(); setShowMediaKitModal(true); }}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>auto_awesome</span>
+              <span>Media Kit</span>
+            </button>
+          )}
           {!isPublicView && (
             <button className="social-add-btn" aria-label="Add Platform" onClick={() => navigate('/profile/account')}>
               <span className="material-symbols-outlined">add</span>
@@ -891,6 +903,59 @@ const ProfilePage: React.FC = () => {
           telegramUsername={profile?.telegram_username}
           verifiedChannels={verifiedChannels || []}
         />
+      )}
+
+      {/* Media Kit Download Modal */}
+      {showMediaKitModal && (
+        <div className="drawer-overlay" onClick={() => setShowMediaKitModal(false)}>
+          <div
+            className="media-kit-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="media-kit-modal-header">
+              <div>
+                <span className="material-symbols-outlined" style={{ fontSize: '28px', color: '#f9c846' }}>auto_awesome</span>
+                <h3>Media Kit</h3>
+              </div>
+              <button className="premium-close-btn" onClick={() => setShowMediaKitModal(false)}>
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <p className="media-kit-subtitle">Download {profile?.full_name}'s media kit assets</p>
+            <div className="media-kit-items-list">
+              {(mediaKitItems || []).map((item) => (
+                <div key={item.id} className="media-kit-download-item">
+                  <div className="media-kit-item-info">
+                    {item.image_url && (
+                      <img src={item.image_url} alt={item.title} className="media-kit-thumb" />
+                    )}
+                    <div>
+                      <div className="media-kit-item-title">{item.title}</div>
+                      <div className="media-kit-item-desc">{item.description}</div>
+                    </div>
+                  </div>
+                  <div className="media-kit-download-btns">
+                    {item.image_url && (
+                      <a
+                        href={item.image_url}
+                        download={`${item.title || 'media-kit'}.jpg`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="media-kit-dl-btn img"
+                      >
+                        <span className="material-symbols-outlined" style={{fontSize:'16px'}}>image</span>
+                        Image
+                      </a>
+                    )}
+                  </div>
+                </div>
+              ))}
+              {(!mediaKitItems || mediaKitItems.length === 0) && (
+                <div style={{ textAlign: 'center', color: 'var(--text-tertiary)', padding: '24px' }}>No media kit items available.</div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
 
     </div>
