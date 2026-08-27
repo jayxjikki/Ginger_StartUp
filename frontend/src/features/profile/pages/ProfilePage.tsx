@@ -14,6 +14,7 @@ import { useNotificationStore } from '../../../store/notificationStore';
 import { formatDistanceToNow } from 'date-fns';
 import ProfileFeedViewer from '../components/ProfileFeedViewer';
 import ImageUpload from '../../../components/ui/ImageUpload';
+import { uploadToCloudinary } from '../../../lib/cloudinary';
 import SettingsModal from '../components/SettingsModal';
 import VerifiedChannelsModal from '../components/VerifiedChannelsModal';
 import ChatModal from '../../../components/ui/ChatModal';
@@ -107,6 +108,8 @@ const ProfilePage: React.FC = () => {
   const [showAddForm, setShowAddForm] = useState(false);
   const [postType, setPostType] = useState<'media_kit' | 'portfolio' | 'blog'>('portfolio');
   const [mediaKitFileType, setMediaKitFileType] = useState<'image' | 'pdf' | null>(null);
+  const [isUploadingPdf, setIsUploadingPdf] = useState(false);
+  const [pdfFileName, setPdfFileName] = useState('');
 
   const { inboxChats } = useChatStore();
   const unreadChatCount = inboxChats.filter(chat => chat.unread).length;
@@ -779,43 +782,66 @@ const ProfilePage: React.FC = () => {
                           onUploadError={(err: Error) => console.error(err)}
                         />
                       ) : (
-                        /* PDF upload via plain input */
-                        <div className="premium-pdf-upload">
-                          <span className="material-symbols-outlined" style={{fontSize:'32px',color:'#f9c846'}}>picture_as_pdf</span>
+                        /* PDF upload via uploadToCloudinary */
+                        <div 
+                          className={`premium-pdf-upload ${isUploadingPdf ? 'uploading' : ''}`}
+                          onClick={() => {
+                            if (!isUploadingPdf) {
+                              document.getElementById('media-kit-pdf-input')?.click();
+                            }
+                          }}
+                        >
                           <input
                             type="file"
-                            accept="application/pdf"
-                            style={{display:'none'}}
+                            accept="application/pdf,.pdf"
+                            style={{ display: 'none' }}
                             id="media-kit-pdf-input"
+                            disabled={isUploadingPdf}
                             onChange={async (e) => {
                               const file = e.target.files?.[0];
                               if (!file) return;
-                              if (file.size > 10 * 1024 * 1024) { toast.error('PDF must be under 10MB'); return; }
-                              // Upload to Cloudinary
-                              const formData = new FormData();
-                              formData.append('file', file);
-                              formData.append('upload_preset', import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || 'ginger_uploads');
-                              formData.append('resource_type', 'raw');
+                              if (file.size > 15 * 1024 * 1024) { 
+                                toast.error('PDF must be under 15MB'); 
+                                return; 
+                              }
+                              setIsUploadingPdf(true);
                               try {
-                                const res = await fetch(`https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/raw/upload`, { method: 'POST', body: formData });
-                                const data = await res.json();
-                                if (data.secure_url) {
-                                  setImageUrl(data.secure_url);
-                                  setTitle(file.name.replace('.pdf',''));
-                                  toast.success('PDF uploaded!');
-                                } else throw new Error('Upload failed');
-                              } catch { toast.error('Failed to upload PDF'); }
+                                const url = await uploadToCloudinary(file);
+                                setImageUrl(url);
+                                const cleanName = file.name.replace(/\.[^/.]+$/, "");
+                                setTitle(cleanName || 'Media Kit Document');
+                                setPdfFileName(file.name);
+                                toast.success('PDF uploaded successfully!');
+                              } catch (err: any) {
+                                console.error("PDF upload error:", err);
+                                toast.error(err.message || 'Failed to upload PDF');
+                              } finally {
+                                setIsUploadingPdf(false);
+                              }
                             }}
                           />
-                          <label htmlFor="media-kit-pdf-input" className="media-kit-pdf-label">
-                            {imageUrl ? (
-                              <><span className="material-symbols-outlined" style={{color:'#4ade80'}}>check_circle</span> PDF uploaded</>
-                            ) : 'Click to upload PDF'}
-                          </label>
+                          {isUploadingPdf ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                              <span className="material-symbols-outlined icon-spin" style={{ fontSize: '32px', color: '#f9c846' }}>sync</span>
+                              <span style={{ fontSize: '13px', color: '#f9c846', fontWeight: 600 }}>Uploading PDF...</span>
+                            </div>
+                          ) : imageUrl && pdfFileName ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
+                              <span className="material-symbols-outlined" style={{ fontSize: '36px', color: '#4ade80' }}>check_circle</span>
+                              <span style={{ fontSize: '13px', color: '#fff', fontWeight: 600 }}>{pdfFileName}</span>
+                              <span style={{ fontSize: '11px', color: '#4ade80' }}>Ready to share (click to replace)</span>
+                            </div>
+                          ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                              <span className="material-symbols-outlined" style={{ fontSize: '36px', color: '#f9c846' }}>picture_as_pdf</span>
+                              <span style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: 600 }}>Click to upload PDF</span>
+                              <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>Max file size: 15MB</span>
+                            </div>
+                          )}
                         </div>
                       )}
                       {mediaKitFileType && (
-                        <button type="button" style={{fontSize:'12px',color:'var(--text-tertiary)',background:'none',border:'none',cursor:'pointer',marginTop:'4px',padding:'0'}} onClick={() => { setMediaKitFileType(null); setImageUrl(''); setTitle(''); }}>
+                        <button type="button" style={{fontSize:'12px',color:'var(--text-tertiary)',background:'none',border:'none',cursor:'pointer',marginTop:'8px',padding:'0'}} onClick={() => { setMediaKitFileType(null); setImageUrl(''); setTitle(''); setPdfFileName(''); }}>
                           ← Change file type
                         </button>
                       )}
@@ -1041,51 +1067,73 @@ const ProfilePage: React.FC = () => {
 
       {/* Media Kit Download Modal */}
       {showMediaKitModal && (
-        <div className="drawer-overlay" onClick={() => setShowMediaKitModal(false)}>
+        <div className="media-kit-modal-overlay" onClick={() => setShowMediaKitModal(false)}>
           <div
             className="media-kit-modal"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="media-kit-modal-header">
-              <div>
-                <span className="material-symbols-outlined" style={{ fontSize: '28px', color: '#f9c846' }}>auto_awesome</span>
-                <h3>Media Kit</h3>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span className="material-symbols-outlined" style={{ fontSize: '24px', color: '#f9c846' }}>auto_awesome</span>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700 }}>Media Kit</h3>
               </div>
-              <button className="premium-close-btn" onClick={() => setShowMediaKitModal(false)}>
-                <span className="material-symbols-outlined">close</span>
+              <button 
+                className="media-kit-close-btn" 
+                onClick={() => setShowMediaKitModal(false)}
+                aria-label="Close"
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>close</span>
               </button>
             </div>
+            
             <p className="media-kit-subtitle">Download {profile?.full_name}'s media kit assets</p>
+            
             <div className="media-kit-items-list">
-              {(mediaKitItems || []).map((item) => (
-                <div key={item.id} className="media-kit-download-item">
-                  <div className="media-kit-item-info">
-                    {item.image_url && (
-                      <img src={item.image_url} alt={item.title} className="media-kit-thumb" />
-                    )}
-                    <div>
-                      <div className="media-kit-item-title">{item.title}</div>
-                      <div className="media-kit-item-desc">{item.description}</div>
+              {(mediaKitItems || []).map((item) => {
+                const isPdf = item.image_url?.toLowerCase().endsWith('.pdf') || 
+                              item.image_url?.includes('/raw/upload') || 
+                              item.title?.toLowerCase().includes('.pdf') ||
+                              item.title?.toLowerCase().includes('document');
+                return (
+                  <div key={item.id} className="media-kit-download-item">
+                    <div className="media-kit-item-info">
+                      {isPdf ? (
+                        <div className="media-kit-pdf-thumb">
+                          <span className="material-symbols-outlined" style={{ fontSize: '24px', color: '#f9c846' }}>picture_as_pdf</span>
+                        </div>
+                      ) : (
+                        item.image_url && (
+                          <img src={item.image_url} alt={item.title} className="media-kit-thumb" />
+                        )
+                      )}
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div className="media-kit-item-title">{item.title || (isPdf ? 'Media Kit Document' : 'Media Kit Image')}</div>
+                        <div className="media-kit-item-desc">{isPdf ? 'PDF Document' : 'Image File'}</div>
+                      </div>
+                    </div>
+                    <div className="media-kit-download-btns">
+                      {item.image_url && (
+                        <a
+                          href={item.image_url}
+                          download={isPdf ? `${item.title || 'media-kit'}.pdf` : `${item.title || 'media-kit'}.jpg`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={`media-kit-dl-btn ${isPdf ? 'pdf' : 'img'}`}
+                        >
+                          <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>
+                            {isPdf ? 'picture_as_pdf' : 'download'}
+                          </span>
+                          {isPdf ? 'PDF' : 'Image'}
+                        </a>
+                      )}
                     </div>
                   </div>
-                  <div className="media-kit-download-btns">
-                    {item.image_url && (
-                      <a
-                        href={item.image_url}
-                        download={`${item.title || 'media-kit'}.jpg`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="media-kit-dl-btn img"
-                      >
-                        <span className="material-symbols-outlined" style={{fontSize:'16px'}}>image</span>
-                        Image
-                      </a>
-                    )}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
               {(!mediaKitItems || mediaKitItems.length === 0) && (
-                <div style={{ textAlign: 'center', color: 'var(--text-tertiary)', padding: '24px' }}>No media kit items available.</div>
+                <div style={{ textAlign: 'center', color: 'var(--text-tertiary)', padding: '20px' }}>
+                  No media kit items available.
+                </div>
               )}
             </div>
           </div>

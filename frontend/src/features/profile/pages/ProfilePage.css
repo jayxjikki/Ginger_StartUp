@@ -772,21 +772,37 @@
 }
 
 /* ── Media Kit Modal ──────────────────────────────────── */
+.media-kit-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
 .media-kit-modal {
   background: #1d1f27;
-  border-radius: 20px;
-  border: 1px solid rgba(249, 200, 70, 0.2);
-  box-shadow: 0 8px 40px rgba(0,0,0,0.5), 0 0 30px rgba(249, 200, 70, 0.08);
-  padding: 24px;
-  width: calc(100% - 40px);
-  max-width: 420px;
+  border-radius: 18px;
+  border: 1px solid rgba(249, 200, 70, 0.28);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.7), 0 0 30px rgba(249, 200, 70, 0.1);
+  padding: 20px;
+  width: 100%;
+  max-width: 360px;
   position: relative;
-  z-index: 1;
-  max-height: 80vh;
+  z-index: 10;
+  height: auto;
+  max-height: 85vh;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
+  box-sizing: border-box;
 }
 
 .media-kit-modal-header {
@@ -795,56 +811,60 @@
   justify-content: space-between;
 }
 
-.media-kit-modal-header > div {
+.media-kit-close-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-secondary);
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
-.media-kit-modal-header h3 {
-  margin: 0;
-  font-size: 20px;
-  font-weight: 700;
-  background: linear-gradient(90deg, #f9c846, #fff4b0, #f9c846);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+.media-kit-close-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+  transform: scale(1.05);
 }
 
 .media-kit-subtitle {
-  margin: 0;
-  font-size: 13px;
+  margin: -6px 0 0 0;
+  font-size: 12px;
   color: var(--text-secondary);
 }
 
 .media-kit-items-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
 .media-kit-download-item {
   background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.06);
-  border-radius: 14px;
-  padding: 12px;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 10px 12px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
 }
 
 .media-kit-item-info {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   flex: 1;
   min-width: 0;
 }
 
 .media-kit-thumb {
-  width: 48px;
-  height: 48px;
+  width: 42px;
+  height: 42px;
   object-fit: cover;
   border-radius: 8px;
   border: 1px solid rgba(255,255,255,0.1);
@@ -852,7 +872,7 @@
 }
 
 .media-kit-item-title {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--text-primary);
   overflow: hidden;
@@ -861,7 +881,7 @@
 }
 
 .media-kit-item-desc {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-tertiary);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -870,15 +890,15 @@
 
 .media-kit-download-btns {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   flex-shrink: 0;
 }
 
 .media-kit-dl-btn {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 7px 12px;
+  gap: 4px;
+  padding: 6px 10px;
   border-radius: 8px;
   font-size: 12px;
   font-weight: 600;
@@ -910,8 +930,8 @@
 }
 
 .media-kit-pdf-thumb {
-  width: 48px;
-  height: 48px;
+  width: 42px;
+  height: 42px;
   border-radius: 8px;
   border: 1px solid rgba(249, 200, 70, 0.3);
   background: rgba(249, 200, 70, 0.08);
