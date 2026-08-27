@@ -13,7 +13,7 @@ const InboxPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuthStore();
-  const { inboxChats, fetchInbox, isLoading, deleteChat } = useChatStore();
+  const { inboxChats, fetchInbox, isLoading, deleteChat, onlineUsers, typingUsers } = useChatStore();
   
   const [activeChatUser, setActiveChatUser] = useState<{id: string, name: string, avatar: string | null} | null>(null);
   const [isChatModalOpen, setIsChatModalOpen] = useState(false);
@@ -230,32 +230,42 @@ const InboxPage: React.FC = () => {
                   <p style={{ color: '#c2c6d7' }}>No messages found.</p>
                 </div>
               ) : (
-                filteredChats.map((chat) => (
-                  <button 
-                    key={chat.userId} 
-                    className={`chat-item-hover ${isEditMode && selectedChats.includes(chat.userId) ? 'selected' : ''}`}
-                    onClick={() => handleOpenChat(chat.userId, chat.name, chat.avatar)}
-                  >
-                    {isEditMode && (
-                      <div className={`chat-item-checkbox ${selectedChats.includes(chat.userId) ? 'checked' : ''}`}>
-                        {selectedChats.includes(chat.userId) && <span className="material-symbols-outlined check-icon" style={{ fontSize: '16px' }}>check</span>}
+                filteredChats.map((chat) => {
+                  const isOnline = onlineUsers.includes(chat.userId);
+                  const isTyping = typingUsers[chat.userId];
+
+                  return (
+                    <button 
+                      key={chat.userId} 
+                      className={`chat-item-hover ${isEditMode && selectedChats.includes(chat.userId) ? 'selected' : ''}`}
+                      onClick={() => handleOpenChat(chat.userId, chat.name, chat.avatar)}
+                    >
+                      {isEditMode && (
+                        <div className={`chat-item-checkbox ${selectedChats.includes(chat.userId) ? 'checked' : ''}`}>
+                          {selectedChats.includes(chat.userId) && <span className="material-symbols-outlined check-icon" style={{ fontSize: '16px' }}>check</span>}
+                        </div>
+                      )}
+                      <div className="chat-item-avatar-wrap">
+                        <Avatar src={chat.avatar} name={chat.name} size="md" />
+                        {isOnline && !isEditMode && <div className="chat-item-online-dot" title="Online"></div>}
                       </div>
-                    )}
-                    <div className="chat-item-avatar-wrap">
-                      <Avatar src={chat.avatar} name={chat.name} size="md" />
-                      {chat.unread && !isEditMode && <div className="chat-item-online-dot"></div>}
-                    </div>
-                    <div className="chat-item-content">
-                      <div className="chat-item-header">
-                        <h2 className="chat-item-name">{chat.name}</h2>
-                        <span className="chat-item-time">
-                          {formatDistanceToNow(new Date(chat.timestamp), { addSuffix: false }).replace('about ', '')}
-                        </span>
+                      <div className="chat-item-content">
+                        <div className="chat-item-header">
+                          <h2 className="chat-item-name" style={{ fontWeight: chat.unread ? '800' : '700', color: chat.unread ? '#ffffff' : 'var(--chat-on-background)' }}>{chat.name}</h2>
+                          <span className="chat-item-time" style={{ color: chat.unread ? 'var(--chat-primary-container)' : 'var(--chat-outline)' }}>
+                            {formatDistanceToNow(new Date(chat.timestamp), { addSuffix: false }).replace('about ', '')}
+                          </span>
+                        </div>
+                        <p className="chat-item-msg" style={{ color: chat.unread ? '#ffffff' : 'var(--chat-on-surface-variant)' }}>
+                          {isTyping ? <span className="typing-text">typing...</span> : chat.lastMessage}
+                        </p>
                       </div>
-                      <p className="chat-item-msg">{chat.lastMessage}</p>
-                    </div>
-                  </button>
-                ))
+                      {chat.unread && !isEditMode && (
+                        <div className="chat-item-unread-dot"></div>
+                      )}
+                    </button>
+                  );
+                })
               )}
             </>
           )}

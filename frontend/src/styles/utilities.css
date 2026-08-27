@@ -187,3 +187,35 @@
 /* ── Safe Area Padding ─────────────────────────────────── */
 .safe-top { padding-top: var(--safe-top); }
 .safe-bottom { padding-bottom: var(--safe-bottom); }
+
+/* ── Global Chat Badge ─────────────────────────────────── */
+.global-chat-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background-color: #ef4444; /* red-500 */
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  border: 2px solid #0C0C0C; /* match background */
+  animation: pulse-red 2s infinite;
+}
+
+@keyframes pulse-red {
+  0% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(239, 68, 68, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+  }
+}

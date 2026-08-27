@@ -35,7 +35,6 @@ const ChatModal: React.FC<ChatModalProps> = ({
     subscribeToMessages, 
     unsubscribeFromMessages,
     setActiveRecipient,
-    subscribeToPresence,
     setTypingStatus,
     reactToMessage,
     deleteChat
@@ -68,7 +67,6 @@ const ChatModal: React.FC<ChatModalProps> = ({
       setActiveRecipient(recipientId);
       fetchHistory(user.id, recipientId);
       subscribeToMessages(user.id);
-      subscribeToPresence(user.id, recipientId);
       checkIfBlockedByThem(recipientId).then(setIsBlockedByThem);
       fetchBlockedUsers();
     } else {
@@ -110,15 +108,15 @@ const ChatModal: React.FC<ChatModalProps> = ({
   // Typing logic
   useEffect(() => {
     if (content.trim().length > 0) {
-      setTypingStatus(true);
+      setTypingStatus(true, recipientId);
       const timeoutId = setTimeout(() => {
-        setTypingStatus(false);
+        setTypingStatus(false, recipientId);
       }, 3000);
       return () => clearTimeout(timeoutId);
     } else {
-      setTypingStatus(false);
+      setTypingStatus(false, recipientId);
     }
-  }, [content, setTypingStatus]);
+  }, [content, setTypingStatus, recipientId]);
 
   const handleDeleteChat = async () => {
     setIsMenuOpen(false);

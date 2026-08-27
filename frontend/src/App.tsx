@@ -8,6 +8,7 @@ import { AnimatePresence } from 'framer-motion';
 import { Toaster } from 'react-hot-toast';
 import { useAuthStore } from './store/authStore';
 import { useCampaignStore } from './store/campaignStore';
+import { useChatStore } from './store/chatStore';
 import { useLocation } from 'react-router-dom';
 
 // Pages
@@ -115,6 +116,30 @@ const RouteChangeListener: React.FC = () => {
   return null;
 };
 
+// Global chat initializer to track presence and inbox globally
+const GlobalChatInitializer: React.FC = () => {
+  const { user } = useAuthStore();
+  const { fetchInbox, subscribeToMessages, subscribeToGlobalPresence, unsubscribeFromMessages, unsubscribeFromGlobalPresence } = useChatStore();
+
+  useEffect(() => {
+    if (user) {
+      fetchInbox(user.id);
+      subscribeToMessages(user.id);
+      subscribeToGlobalPresence(user.id);
+    } else {
+      unsubscribeFromMessages();
+      unsubscribeFromGlobalPresence();
+    }
+    
+    return () => {
+      unsubscribeFromMessages();
+      unsubscribeFromGlobalPresence();
+    };
+  }, [user, fetchInbox, subscribeToMessages, subscribeToGlobalPresence, unsubscribeFromMessages, unsubscribeFromGlobalPresence]);
+
+  return null;
+};
+
 // Layout with bottom nav
 const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return (
@@ -147,6 +172,7 @@ const AppRoutes: React.FC = () => {
       />
       <GlobalModal />
       <RouteChangeListener />
+      <GlobalChatInitializer />
 
       <AnimatePresence mode="wait">
         <Routes location={location} key={location.pathname}>

@@ -6,6 +6,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCampaignStore } from '../../../store/campaignStore';
 import { useUgcStore } from '../../../store/ugcStore';
+import { useChatStore } from '../../../store/chatStore';
 import { formatCurrency, formatCount, formatTimeLeft } from '../../../utils/formatters';
 import './CampaignFeedPage.css';
 
@@ -22,6 +23,9 @@ const HomeMenuPage: React.FC = () => {
     isLoading,
     fetchCampaigns,
   } = useCampaignStore();
+
+  const { inboxChats } = useChatStore();
+  const unreadCount = inboxChats.filter(chat => chat.unread).length;
 
   useEffect(() => {
     // Reset filters on mount to ensure clean slate when switching tabs
@@ -178,7 +182,11 @@ const HomeMenuPage: React.FC = () => {
             title="Chats"
           >
             <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>chat</span>
-            <span style={{ position: 'absolute', top: '8px', right: '8px', width: '8px', height: '8px', background: '#34d399', borderRadius: '50%', border: '2px solid #0C0C0C' }}></span>
+            {unreadCount > 0 ? (
+              <span className="global-chat-badge">{unreadCount > 9 ? '9+' : unreadCount}</span>
+            ) : (
+              <span style={{ position: 'absolute', top: '8px', right: '8px', width: '8px', height: '8px', background: '#34d399', borderRadius: '50%', border: '2px solid #0C0C0C' }}></span>
+            )}
           </button>
         </div>
       </header>

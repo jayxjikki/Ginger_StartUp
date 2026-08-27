@@ -63,8 +63,11 @@ interface ChatState {
   unsubscribeFromMessages: () => void;
   
   // Presence
-  subscribeToPresence: (currentUserId: string, recipientId: string) => void;
-  setTypingStatus: (isTyping: boolean) => Promise<void>;
+  onlineUsers: string[];
+  typingUsers: Record<string, boolean>; // map of partnerId -> isTyping
+  subscribeToGlobalPresence: (currentUserId: string) => void;
+  unsubscribeFromGlobalPresence: () => void;
+  setTypingStatus: (isTyping: boolean, recipientId: string) => Promise<void>;
 
   // Management
   deleteChat: (currentUserId: string, recipientId: string) => Promise<void>;
@@ -72,6 +75,7 @@ interface ChatState {
 
 // Keep track of the active channel so we can unsubscribe
 let messageChannel: any = null;
+let globalPresenceChannel: any = null;
 
 export const useChatStore = create<ChatState>((set, get) => ({
   messages: [],
@@ -80,6 +84,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
   error: null,
   activeRecipientId: null,
   partnerTyping: false,
+  onlineUsers: [],
+  typingUsers: {},
 
   setActiveRecipient: (id: string | null) => {
     set({ activeRecipientId: id, messages: [], partnerTyping: false }); // clear messages on switch
@@ -294,9 +300,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
         },
         (payload) => {
           const newMessage = payload.new as Message;
-          const { activeRecipientId, messages } = get();
+          const { activeRecipientId, messages, fetchInbox } = get();
           
           if (newMessage.sender_id === currentUserId || newMessage.receiver_id === currentUserId) {
+            
+            // Sync inbox to update unread counts globally
+            fetchInbox(currentUserId);
+            
             if (activeRecipientId) {
               const belongsToActiveChat = 
                 (newMessage.sender_id === currentUserId && newMessage.receiver_id === activeRecipientId) ||
@@ -338,47 +348,54 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
 
-  subscribeToPresence: (currentUserId: string, recipientId: string) => {
-    const roomName = `chat_presence_${[currentUserId, recipientId].sort().join('_')}`;
+  subscribeToGlobalPresence: (currentUserId: string) => {
+    if (globalPresenceChannel) return;
     
-    const existingChannel = supabase.getChannels().find(c => c.topic === `realtime:${roomName}`);
-    if (existingChannel) {
-      supabase.removeChannel(existingChannel);
-    }
-    
-    const presenceChannel = supabase.channel(roomName);
+    globalPresenceChannel = supabase.channel('global_presence', {
+      config: { presence: { key: currentUserId } },
+    });
 
-    presenceChannel
+    globalPresenceChannel
       .on('presence', { event: 'sync' }, () => {
-        const state = presenceChannel.presenceState();
+        const state = globalPresenceChannel.presenceState();
+        const onlineUsers = Object.keys(state);
+        
         let isPartnerTyping = false;
+        const typingUsers: Record<string, boolean> = {};
+        const { activeRecipientId } = get();
         
         for (const [key, value] of Object.entries(state)) {
           if (key !== currentUserId) {
-            // Check if partner is typing
-            if (value.some((presence: any) => presence.typing)) {
-              isPartnerTyping = true;
+            // value is an array of presence states for this user
+            const isTypingToMe = (value as any[]).some(p => p.typingTo === currentUserId);
+            if (isTypingToMe) {
+              typingUsers[key] = true;
+              if (activeRecipientId === key) {
+                isPartnerTyping = true;
+              }
             }
           }
         }
         
-        set({ partnerTyping: isPartnerTyping });
+        set({ onlineUsers, typingUsers, partnerTyping: isPartnerTyping });
       })
-      .subscribe(async (status) => {
+      .subscribe(async (status: string) => {
         if (status === 'SUBSCRIBED') {
-          // Track initial status
-          await presenceChannel.track({ typing: false });
+          await globalPresenceChannel.track({ typingTo: null });
         }
       });
-      
-    // Store it so we can update typing status
-    (window as any).__chatPresenceChannel = presenceChannel;
   },
 
-  setTypingStatus: async (isTyping: boolean) => {
-    const channel = (window as any).__chatPresenceChannel;
-    if (channel) {
-      await channel.track({ typing: isTyping });
+  unsubscribeFromGlobalPresence: () => {
+    if (globalPresenceChannel) {
+      supabase.removeChannel(globalPresenceChannel);
+      globalPresenceChannel = null;
+    }
+  },
+
+  setTypingStatus: async (isTyping: boolean, recipientId: string) => {
+    if (globalPresenceChannel) {
+      await globalPresenceChannel.track({ typingTo: isTyping ? recipientId : null });
     }
   },
 

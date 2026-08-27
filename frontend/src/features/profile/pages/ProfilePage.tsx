@@ -9,6 +9,7 @@ import { useAuthStore } from '../../../store/authStore';
 import { useGlobalModalStore } from '../../../store/globalModalStore';
 import { useUgcStore } from '../../../store/ugcStore';
 import { useProfileStore } from '../../../store/profileStore';
+import { useChatStore } from '../../../store/chatStore';
 import ProfileFeedViewer from '../components/ProfileFeedViewer';
 import Input, { Textarea } from '../../../components/ui/Input';
 import ImageUpload from '../../../components/ui/ImageUpload';
@@ -106,6 +107,10 @@ const ProfilePage: React.FC = () => {
   // Form states
   const [showAddForm, setShowAddForm] = useState(false);
   const [postType, setPostType] = useState<'media_kit' | 'portfolio' | 'blog'>('portfolio');
+
+  const { inboxChats } = useChatStore();
+  const unreadCount = inboxChats.filter(chat => chat.unread).length;
+
   const [title, setTitle] = useState('');
   const [desc, setDesc] = useState('');
   const [imageUrl, setImageUrl] = useState('');
@@ -438,8 +443,11 @@ const ProfilePage: React.FC = () => {
         </div>
         {!isPublicView && (
           <div className="profile-top-actions">
-            <button className="top-action-btn" onClick={() => navigate('/inbox')}>
+            <button className="top-action-btn" style={{ position: 'relative' }} onClick={() => navigate('/inbox')}>
               <span className="material-symbols-outlined">mail</span>
+              {unreadCount > 0 && (
+                <span className="global-chat-badge">{unreadCount > 9 ? '9+' : unreadCount}</span>
+              )}
             </button>
             <button className="top-action-btn" onClick={() => setShowNotifications(true)}>
               <span className="material-symbols-outlined">notifications</span>
