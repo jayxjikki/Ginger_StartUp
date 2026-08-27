@@ -291,6 +291,36 @@ const ProfilePage: React.FC = () => {
     m.content.toLowerCase().includes(messageSearch.toLowerCase())
   );
 
+  const getHighestAudience = () => {
+    let maxCount = profile.follower_count || 0;
+    let label = 'Followers';
+
+    if (socialLinks && socialLinks.length > 0) {
+      socialLinks.forEach(link => {
+        if (link.followers && link.followers > maxCount) {
+          maxCount = link.followers;
+          if (link.platform.toLowerCase() === 'youtube') label = 'Subscribers';
+          else if (link.platform.toLowerCase() === 'instagram') label = 'Followers';
+          else if (link.platform.toLowerCase() === 'tiktok') label = 'Followers';
+          else label = 'Followers';
+        }
+      });
+    }
+
+    if (verifiedChannels && verifiedChannels.length > 0) {
+      verifiedChannels.forEach(channel => {
+        if (channel.member_count && channel.member_count > maxCount) {
+          maxCount = channel.member_count;
+          label = 'Members';
+        }
+      });
+    }
+
+    return { count: maxCount, label };
+  };
+
+  const audienceInfo = getHighestAudience();
+
   return (
     <>
       <TransitionLoader isActive={isEntering} />
@@ -406,7 +436,7 @@ const ProfilePage: React.FC = () => {
             )}
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
               <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>group</span>
-              <span><strong style={{ color: '#fff' }}>{formatCount(profile.follower_count || 0)}</strong> Followers</span>
+              <span><strong style={{ color: '#fff' }}>{formatCount(audienceInfo.count)}</strong> {audienceInfo.label}</span>
             </div>
           </div>
           <p className="profile-bio">
