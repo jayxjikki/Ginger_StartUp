@@ -53,6 +53,13 @@ const ActivityPage: React.FC = () => {
     }, 400);
   };
 
+  const handleNavigate = (path: string) => {
+    setIsNavigating(true);
+    setTimeout(() => {
+      navigate(path, { state: { fromTransition: true } });
+    }, 400);
+  };
+
   return (
     <>
       <TransitionLoader isActive={isNavigating || isEntering} />
@@ -86,7 +93,11 @@ const ActivityPage: React.FC = () => {
           <section className="activity-section">
             <h3 className="activity-section-title">Content</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <div className="activity-glass-card">
+              <div 
+                className="activity-glass-card" 
+                onClick={() => handleNavigate('/profile/activity/posts')}
+                style={{ cursor: 'pointer' }}
+              >
                 <div className="activity-card-left">
                   <div className="activity-icon-wrap">
                     <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>grid_on</span>
@@ -99,7 +110,11 @@ const ActivityPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="activity-glass-card">
+              <div 
+                className="activity-glass-card" 
+                onClick={() => handleNavigate('/profile/activity/campaign-videos')}
+                style={{ cursor: 'pointer' }}
+              >
                 <div className="activity-card-left">
                   <div className="activity-icon-wrap">
                     <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>movie</span>
@@ -112,7 +127,11 @@ const ActivityPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="activity-glass-card">
+              <div 
+                className="activity-glass-card" 
+                onClick={() => handleNavigate('/profile/activity/transactions')}
+                style={{ cursor: 'pointer' }}
+              >
                 <div className="activity-card-left">
                   <div className="activity-icon-wrap">
                     <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>account_balance_wallet</span>
@@ -131,7 +150,11 @@ const ActivityPage: React.FC = () => {
           <section className="activity-section">
             <h3 className="activity-section-title">Engagement</h3>
             <div className="activity-grid-2">
-              <div className="activity-glass-card">
+              <div 
+                className="activity-glass-card" 
+                onClick={() => handleNavigate('/profile/activity/likes')}
+                style={{ cursor: 'pointer' }}
+              >
                 <div className="activity-card-left">
                   <div className="activity-icon-wrap">
                     <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>favorite</span>
@@ -141,7 +164,11 @@ const ActivityPage: React.FC = () => {
                 <span className="material-symbols-outlined activity-chevron">chevron_right</span>
               </div>
 
-              <div className="activity-glass-card">
+              <div 
+                className="activity-glass-card" 
+                onClick={() => handleNavigate('/profile/activity/comments')}
+                style={{ cursor: 'pointer' }}
+              >
                 <div className="activity-card-left">
                   <div className="activity-icon-wrap">
                     <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>chat_bubble</span>
@@ -157,7 +184,11 @@ const ActivityPage: React.FC = () => {
           <section className="activity-section">
             <h3 className="activity-section-title">Interactions</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <div className="activity-glass-card danger-hover">
+              <div 
+                className="activity-glass-card danger-hover" 
+                onClick={() => handleNavigate('/profile/activity/blocked-users')}
+                style={{ cursor: 'pointer' }}
+              >
                 <div className="activity-card-left">
                   <div className="activity-icon-wrap">
                     <span className="material-symbols-outlined">block</span>
@@ -167,12 +198,30 @@ const ActivityPage: React.FC = () => {
                 <span className="material-symbols-outlined activity-chevron">chevron_right</span>
               </div>
 
-              <div className="activity-glass-card danger-hover">
+              <div 
+                className="activity-glass-card danger-hover" 
+                onClick={() => handleNavigate('/profile/activity/deleted-content')}
+                style={{ cursor: 'pointer' }}
+              >
                 <div className="activity-card-left">
                   <div className="activity-icon-wrap">
                     <span className="material-symbols-outlined">delete_sweep</span>
                   </div>
                   <span className="activity-card-text">Deleted Content</span>
+                </div>
+                <span className="material-symbols-outlined activity-chevron">chevron_right</span>
+              </div>
+
+              <div 
+                className="activity-glass-card danger-hover" 
+                onClick={() => handleNavigate('/profile/activity/unlink')}
+                style={{ cursor: 'pointer' }}
+              >
+                <div className="activity-card-left">
+                  <div className="activity-icon-wrap">
+                    <span className="material-symbols-outlined">link_off</span>
+                  </div>
+                  <span className="activity-card-text">Unlink Platforms</span>
                 </div>
                 <span className="material-symbols-outlined activity-chevron">chevron_right</span>
               </div>
@@ -183,7 +232,11 @@ const ActivityPage: React.FC = () => {
           <section className="activity-section">
             <h3 className="activity-section-title">History</h3>
             <div className="activity-grid-2">
-              <div className="activity-glass-card" style={{ flexDirection: 'column', alignItems: 'flex-start', minHeight: '120px', justifyContent: 'space-between' }}>
+              <div 
+                className="activity-glass-card" 
+                onClick={() => handleNavigate('/profile/activity/collaboration-history')}
+                style={{ flexDirection: 'column', alignItems: 'flex-start', minHeight: '120px', justifyContent: 'space-between', cursor: 'pointer' }}
+              >
                 <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
                   <div className="activity-icon-wrap" style={{ marginBottom: '16px' }}>
                     <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>handshake</span>
@@ -193,7 +246,11 @@ const ActivityPage: React.FC = () => {
                 <span className="activity-card-text">Collaboration History</span>
               </div>
 
-              <div className="activity-glass-card" style={{ flexDirection: 'column', alignItems: 'flex-start', minHeight: '120px', justifyContent: 'space-between' }}>
+              <div 
+                className="activity-glass-card" 
+                onClick={() => handleNavigate('/profile/activity/past-projects')}
+                style={{ flexDirection: 'column', alignItems: 'flex-start', minHeight: '120px', justifyContent: 'space-between', cursor: 'pointer' }}
+              >
                 <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
                   <div className="activity-icon-wrap" style={{ marginBottom: '16px' }}>
                     <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>work_history</span>

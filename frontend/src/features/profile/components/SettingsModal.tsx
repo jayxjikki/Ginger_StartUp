@@ -4,6 +4,8 @@ import { useAuthStore } from '../../../store/authStore';
 import TransitionLoader from '../../../components/ui/TransitionLoader';
 import TermsModal from '../../auth/components/TermsModal';
 import HelpModal from './HelpModal';
+import AboutModal from './AboutModal';
+import PrivacyModal from './PrivacyModal';
 import './SettingsModal.css';
 
 interface SettingsModalProps {
@@ -16,6 +18,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
   const [isNavigating, setIsNavigating] = useState(false);
   const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
+  const [isAboutModalOpen, setIsAboutModalOpen] = useState(false);
+  const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false);
 
   const handleNavigate = (e: React.MouseEvent, path: string) => {
     e.preventDefault();
@@ -40,6 +44,24 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
     setTimeout(() => {
       setIsNavigating(false);
       setIsHelpModalOpen(true);
+    }, 400);
+  };
+
+  const handleOpenPrivacy = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsNavigating(true);
+    setTimeout(() => {
+      setIsNavigating(false);
+      setIsPrivacyModalOpen(true);
+    }, 400);
+  };
+
+  const handleOpenAbout = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsNavigating(true);
+    setTimeout(() => {
+      setIsNavigating(false);
+      setIsAboutModalOpen(true);
     }, 400);
   };
 
@@ -122,7 +144,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
             <div className="settings-divider"></div>
 
             {/* Privacy Centre */}
-            <a className="liquid-card settings-menu-item" href="#privacy">
+            <a 
+              className="liquid-card settings-menu-item" 
+              href="#privacy"
+              onClick={handleOpenPrivacy}
+            >
               <div className="settings-menu-item-left">
                 <div className="glass-icon-container settings-icon">
                   <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>shield</span>
@@ -163,7 +189,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
             </a>
 
             {/* About */}
-            <a className="liquid-card settings-menu-item" href="#about">
+            <a 
+              className="liquid-card settings-menu-item" 
+              href="#about"
+              onClick={handleOpenAbout}
+            >
               <div className="settings-menu-item-left">
                 <div className="glass-icon-container settings-icon">
                   <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>info</span>
@@ -221,6 +251,16 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
     <HelpModal 
       isOpen={isHelpModalOpen} 
       onClose={() => setIsHelpModalOpen(false)} 
+    />
+    
+    <AboutModal 
+      isOpen={isAboutModalOpen} 
+      onClose={() => setIsAboutModalOpen(false)} 
+    />
+
+    <PrivacyModal 
+      isOpen={isPrivacyModalOpen} 
+      onClose={() => setIsPrivacyModalOpen(false)} 
     />
     </>
   );

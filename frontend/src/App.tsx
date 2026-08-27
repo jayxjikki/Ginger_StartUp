@@ -17,6 +17,16 @@ import ProfilePage from './features/profile/pages/ProfilePage';
 import EditProfilePage from './features/profile/pages/EditProfilePage';
 import ActivityPage from './features/profile/pages/ActivityPage';
 import AccountCentrePage from './features/profile/pages/AccountCentrePage';
+import MyPostsPage from './features/profile/pages/activity/MyPostsPage';
+import CampaignVideosPage from './features/profile/pages/activity/CampaignVideosPage';
+import TransactionsPage from './features/profile/pages/activity/TransactionsPage';
+import LikesPage from './features/profile/pages/activity/LikesPage';
+import CommentsPage from './features/profile/pages/activity/CommentsPage';
+import BlockedUsersPage from './features/profile/pages/activity/BlockedUsersPage';
+import DeletedContentPage from './features/profile/pages/activity/DeletedContentPage';
+import CollaborationHistoryPage from './features/profile/pages/activity/CollaborationHistoryPage';
+import PastProjectsPage from './features/profile/pages/activity/PastProjectsPage';
+import UnlinkPage from './features/profile/pages/activity/UnlinkPage';
 import InstagramCallbackPage from './features/auth/pages/InstagramCallbackPage';
 import PaymentVerificationPage from './features/profile/pages/PaymentVerificationPage';
 import PrivacyPolicyPage from './features/legal/pages/PrivacyPolicyPage';
@@ -272,6 +282,16 @@ const AppRoutes: React.FC = () => {
               </ProtectedRoute>
             }
           />
+          <Route path="/profile/activity/posts" element={<ProtectedRoute><MyPostsPage /></ProtectedRoute>} />
+          <Route path="/profile/activity/campaign-videos" element={<ProtectedRoute><CampaignVideosPage /></ProtectedRoute>} />
+          <Route path="/profile/activity/transactions" element={<ProtectedRoute><TransactionsPage /></ProtectedRoute>} />
+          <Route path="/profile/activity/likes" element={<ProtectedRoute><LikesPage /></ProtectedRoute>} />
+          <Route path="/profile/activity/comments" element={<ProtectedRoute><CommentsPage /></ProtectedRoute>} />
+          <Route path="/profile/activity/blocked-users" element={<ProtectedRoute><BlockedUsersPage /></ProtectedRoute>} />
+          <Route path="/profile/activity/deleted-content" element={<ProtectedRoute><DeletedContentPage /></ProtectedRoute>} />
+          <Route path="/profile/activity/unlink" element={<ProtectedRoute><UnlinkPage /></ProtectedRoute>} />
+          <Route path="/profile/activity/collaboration-history" element={<ProtectedRoute><CollaborationHistoryPage /></ProtectedRoute>} />
+          <Route path="/profile/activity/past-projects" element={<ProtectedRoute><PastProjectsPage /></ProtectedRoute>} />
           <Route
             path="/profile/account"
             element={
