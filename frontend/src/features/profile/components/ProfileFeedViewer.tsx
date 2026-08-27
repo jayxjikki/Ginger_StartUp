@@ -21,6 +21,7 @@ interface ProfileFeedViewerProps {
   posts: FeedPost[];
   initialPostIndex: number;
   profile: {
+    id: string;
     full_name: string;
     avatar_url?: string;
     username?: string;
@@ -217,6 +218,7 @@ const ProfileFeedViewer: React.FC<ProfileFeedViewerProps> = ({
         } : {} as any}
         posterName={profile.username ? profile.username.replace('@', '') : profile.full_name.replace(/\s+/g, '').toLowerCase()}
         posterAvatar={profile.avatar_url || 'https://via.placeholder.com/150'}
+        posterId={profile.id}
       />
     </div>
   );

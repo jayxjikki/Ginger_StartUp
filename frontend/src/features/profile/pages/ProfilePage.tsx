@@ -2,7 +2,7 @@
 // GINGER — Profile Dashboard Page (New UI)
 // ═══════════════════════════════════════════════════════════
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../../store/authStore';
@@ -85,9 +85,9 @@ const ProfilePage: React.FC = () => {
   } = useProfileStore();
 
   const [activeTab, setActiveTab] = useState(1);
-  const tabSliderRef = useRef<HTMLDivElement>(null);
 
   const [isFeedViewerOpen, setIsFeedViewerOpen] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [feedPosts, setFeedPosts] = useState<any[]>([]);
   const [feedStartIndex, setFeedStartIndex] = useState(0);
   const [returnToChat, setReturnToChat] = useState<any>(false);
@@ -149,7 +149,7 @@ const ProfilePage: React.FC = () => {
       // Find the post in all possible collections
       const combinedItems = [
         ...achievements.filter(ach => ach.icon_url).map(ach => ({
-          id: ach.id, title: ach.title, description: ach.description, image_url: ach.icon_url!, created_at: ach.created_at
+          id: ach.id, title: ach.title, description: ach.description, image_url: ach.icon_url!, created_at: (ach as any).created_at
         })),
         ...(mediaKitItems || []).filter(mk => mk.image_url).map(mk => ({
           id: mk.id, title: mk.title, description: mk.description, image_url: mk.image_url!, created_at: mk.created_at
@@ -357,6 +357,14 @@ const ProfilePage: React.FC = () => {
   return (
     <>
       <TransitionLoader isActive={isEntering} />
+      {selectedImage && (
+        <div 
+          style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.9)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'zoom-out' }}
+          onClick={() => setSelectedImage(null)}
+        >
+          <img src={selectedImage} alt="Expanded view" style={{ maxWidth: '90vw', maxHeight: '90vh', objectFit: 'contain' }} />
+        </div>
+      )}
       <div className="profile-page-wrapper">
         {/* FeedViewer Modal */}
       <ProfileFeedViewer 
@@ -376,10 +384,11 @@ const ProfilePage: React.FC = () => {
         posts={feedPosts}
         initialPostIndex={feedStartIndex}
         profile={{
+          id: profile.id,
           full_name: profile.full_name,
           avatar_url: actualAvatarUrl,
-          username: profile.username,
-          location: profile.location
+          username: profile.username || undefined,
+          location: profile.location || undefined
         }}
       />
 
@@ -655,7 +664,7 @@ const ProfilePage: React.FC = () => {
                           title: ach.title,
                           description: ach.description,
                           image_url: ach.icon_url!,
-                          created_at: ach.created_at
+                          created_at: (ach as any).created_at
                         })),
                         ...(mediaKitItems || []).filter(mk => mk.image_url).map(mk => ({
                           id: mk.id,

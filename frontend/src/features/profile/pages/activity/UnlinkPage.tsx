@@ -20,7 +20,7 @@ const platformStyles: Record<string, { color: string; bg: string; icon: string; 
 
 const UnlinkPage: React.FC = () => {
   const navigate = useNavigate();
-  const { profile, updateProfile } = useAuthStore();
+  const { profile, setProfile } = useAuthStore();
   const [isNavigating, setIsNavigating] = useState(false);
   const [isUnlinking, setIsUnlinking] = useState(false);
   const [socialLinks, setSocialLinks] = useState<any[]>([]);
@@ -68,7 +68,7 @@ const UnlinkPage: React.FC = () => {
           .eq('id', profile.id);
 
         if (error) throw error;
-        await updateProfile({ telegram_id: undefined, telegram_username: undefined });
+        setProfile({ ...profile, telegram_id: undefined, telegram_username: undefined });
         toast.success('Telegram unlinked successfully');
       } else {
         const { error } = await supabase
