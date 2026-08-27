@@ -79,6 +79,7 @@ const ProfilePage: React.FC = () => {
     createPost,
     createAchievement,
     createMediaKitItem,
+    deleteItem,
     messages,
     mediaKitItems,
     verifiedChannels
@@ -208,14 +209,38 @@ const ProfilePage: React.FC = () => {
     }
     try {
       if (postType === 'media_kit') {
+        // If a media kit already exists, confirm replacement
+        if (mediaKitItems && mediaKitItems.length > 0) {
+          const { showConfirm } = useGlobalModalStore.getState();
+          const confirmed = await showConfirm(
+            "Your previous media kit will get replaced with this new one. Do you want to continue?",
+            "Replace Media Kit"
+          );
+          if (!confirmed) return;
+
+          for (const oldItem of mediaKitItems) {
+            try {
+              await deleteItem(oldItem.id, 'media_kit');
+            } catch (err) {
+              console.error("Failed to delete previous media kit item", err);
+            }
+          }
+        }
+
         // Save Media Kit Item — auto-generate title if not set
         await createMediaKitItem({
-          title: title || 'Media Kit',
+          title: title || (mediaKitFileType === 'pdf' ? 'Media Kit Document' : 'Media Kit Image'),
           description: '',
           image_url: imageUrl,
         });
         toast.success("Media Kit saved!");
         setMediaKitFileType(null);
+        setShowAddForm(false);
+        setTitle('');
+        setDesc('');
+        setImageUrl('');
+        handleTabClick(0);
+        return;
       } else if (postType === 'blog') {
         // Save as Post
         await createPost({
@@ -564,43 +589,49 @@ const ProfilePage: React.FC = () => {
           </section>
         ) : (
           <>
-        {/* Social Stats Bar */}
-        <section className="social-stats-bar">
-          {renderPlatformIcon('Instagram', instagramIcon, 'instagram')}
-          {renderPlatformIcon('TikTok', tiktokIcon, 'tiktok')}
-          {renderPlatformIcon('YouTube', youtubeIcon, 'youtube')}
-          
-          {profile?.telegram_id && (
-            <div 
-              key="Telegram"
-              className="social-stat-item telegram" 
-              style={{ cursor: 'pointer', overflow: 'hidden' }}
-              onClick={() => setShowTelegramChannels(true)}
-              title="Verified Channels"
-            >
-              <img src={telegramIcon} alt="Telegram" style={{ width: '20px', height: '20px', objectFit: 'contain' }} />
-            </div>
-          )}
+        {/* Social Stats Bar with fixed middle + button, right media kit, left scrollable logos */}
+        <section className="social-stats-bar-wrapper">
+          {/* Left scrollable area for linked platform logos */}
+          <div className="social-logos-scroll-area">
+            {renderPlatformIcon('Instagram', instagramIcon, 'instagram')}
+            {renderPlatformIcon('TikTok', tiktokIcon, 'tiktok')}
+            {renderPlatformIcon('YouTube', youtubeIcon, 'youtube')}
+            
+            {profile?.telegram_id && (
+              <div 
+                key="Telegram"
+                className="social-stat-item telegram" 
+                style={{ cursor: 'pointer', overflow: 'hidden' }}
+                onClick={() => setShowTelegramChannels(true)}
+                title="Verified Channels"
+              >
+                <img src={telegramIcon} alt="Telegram" style={{ width: '20px', height: '20px', objectFit: 'contain' }} />
+              </div>
+            )}
 
-          {OTHER_PLATFORMS.filter(p => isLinked(p.name)).map(platform => 
-            renderPlatformIcon(platform.name, platform.icon)
-          )}
-          {/* Media Kit button — always visible on any profile that has media kit items */}
-          {(mediaKitItems && mediaKitItems.length > 0) && (
-            <button
-              className="media-kit-btn"
-              title="Download Media Kit"
-              onClick={(e) => { e.stopPropagation(); setShowMediaKitModal(true); }}
-            >
-              <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>auto_awesome</span>
-              <span>Media Kit</span>
-            </button>
-          )}
-          {!isPublicView && (
-            <button className="social-add-btn" aria-label="Add Platform" onClick={() => navigate('/profile/account')}>
-              <span className="material-symbols-outlined">add</span>
-            </button>
-          )}
+            {OTHER_PLATFORMS.filter(p => isLinked(p.name)).map(platform => 
+              renderPlatformIcon(platform.name, platform.icon)
+            )}
+          </div>
+
+          {/* Fixed center/right actions that do not scroll or move */}
+          <div className="social-fixed-actions">
+            {!isPublicView && (
+              <button className="social-add-btn" aria-label="Add Platform" onClick={() => navigate('/profile/account')}>
+                <span className="material-symbols-outlined">add</span>
+              </button>
+            )}
+            {(mediaKitItems && mediaKitItems.length > 0) && (
+              <button
+                className="media-kit-btn"
+                title="Download Media Kit"
+                onClick={(e) => { e.stopPropagation(); setShowMediaKitModal(true); }}
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>auto_awesome</span>
+                <span>Media Kit</span>
+              </button>
+            )}
+          </div>
         </section>
 
         {/* Stats Grid */}
@@ -703,7 +734,24 @@ const ProfilePage: React.FC = () => {
                   {postType === 'media_kit' ? (
                     /* Media Kit: accept image OR pdf, single file */
                     <div className="premium-input-group">
-                      <label>Upload File <span style={{fontSize:'12px',color:'var(--text-tertiary)',fontWeight:400}}>· JPG, PNG or PDF · max 10MB</span></label>
+                      {mediaKitItems && mediaKitItems.length > 0 && (
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          padding: '10px 14px',
+                          borderRadius: '10px',
+                          background: 'rgba(249, 200, 70, 0.08)',
+                          border: '1px solid rgba(249, 200, 70, 0.25)',
+                          color: '#f9c846',
+                          fontSize: '12px',
+                          marginBottom: '12px'
+                        }}>
+                          <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>info</span>
+                          <span>Uploading a new media kit will replace your previous media kit.</span>
+                        </div>
+                      )}
+                      <label>Upload File <span style={{fontSize:'12px',color:'var(--text-tertiary)',fontWeight:400}}>· 1 JPG/PNG or 1 PDF · max 10MB</span></label>
                       {!mediaKitFileType ? (
                         <div style={{display:'flex',gap:'10px',marginBottom:'8px'}}>
                           <button
