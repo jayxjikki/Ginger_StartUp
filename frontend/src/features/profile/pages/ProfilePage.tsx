@@ -533,20 +533,12 @@ const ProfilePage: React.FC = () => {
           <p className="profile-bio">
             {profile.bio || 'Tech professional & passionate world traveler. Exploring the intersection of innovation and global culture.'}
           </p>
-          {isPublicView && (
+          {isPublicView && !isBlockedByMe && !isBlockedByThem && (
             <div className="profile-public-actions" style={{ display: 'flex', justifyContent: 'center', marginTop: '24px' }}>
               <button 
                 className="fancy-message-btn"
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (isBlockedByMe) {
-                    toast.error("You have blocked this user. Unblock them to send a message.");
-                    return;
-                  }
-                  if (isBlockedByThem) {
-                    toast.error("You cannot send messages to this user.");
-                    return;
-                  }
                   setIsChatModalOpen(true);
                 }}
               >
@@ -557,6 +549,24 @@ const ProfilePage: React.FC = () => {
           )}
         </section>
 
+        {isBlockedByMe ? (
+          <section className="liquid-card" style={{ padding: '32px 24px', textAlign: 'center', marginTop: '16px' }}>
+             <span className="material-symbols-outlined" style={{fontSize: '48px', color: 'var(--text-tertiary)', marginBottom: '16px'}}>block</span>
+             <h3 style={{margin: '0 0 8px 0', color: 'var(--text-primary)'}}>You blocked {profile.full_name}</h3>
+             <p style={{color: 'var(--text-secondary)', marginBottom: '24px'}}>Unblock them to view their posts, stats, and send messages.</p>
+             <button className="fancy-message-btn" style={{ margin: '0 auto' }} onClick={(e) => { 
+                e.stopPropagation(); 
+                unblockUser(profile.id); 
+             }}>Unblock User</button>
+          </section>
+        ) : isBlockedByThem ? (
+          <section className="liquid-card" style={{ padding: '32px 24px', textAlign: 'center', marginTop: '16px' }}>
+             <span className="material-symbols-outlined" style={{fontSize: '48px', color: 'var(--text-tertiary)', marginBottom: '16px'}}>lock_person</span>
+             <h3 style={{margin: '0 0 8px 0', color: 'var(--text-primary)'}}>Profile Unavailable</h3>
+             <p style={{color: 'var(--text-secondary)'}}>You cannot view this profile's details.</p>
+          </section>
+        ) : (
+          <>
         {/* Social Stats Bar */}
         <section className="social-stats-bar">
           {renderPlatformIcon('Instagram', instagramIcon, 'instagram')}
@@ -778,6 +788,8 @@ const ProfilePage: React.FC = () => {
             )}
           </div>
         </section>
+          </>
+        )}
       </main>
 
       {/* Notifications Drawer */}
