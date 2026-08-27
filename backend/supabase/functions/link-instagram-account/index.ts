@@ -37,7 +37,7 @@ serve(async (req) => {
     });
 
     const tokenText = await tokenRes.text();
-    console.log("Token response status:", tokenRes.status);
+    console.log("Token response status:", tokenRes.status, "body:", tokenText);
     let tokenData;
     try {
       tokenData = JSON.parse(tokenText);
@@ -46,77 +46,112 @@ serve(async (req) => {
     }
 
     if (!tokenData.access_token || !tokenData.user_id) {
-      throw new Error(`Token exchange failed: ${tokenData.error_message || tokenData.error_type || JSON.stringify(tokenData)}`);
+      throw new Error(`Token exchange failed: ${JSON.stringify(tokenData)}`);
     }
 
     const shortToken = tokenData.access_token;
     const userId = tokenData.user_id;
-    console.log("Got token! user_id:", userId);
+    console.log("Got token! user_id:", userId, "token prefix:", shortToken.substring(0, 10));
 
-    // Step 2: Fetch profile using graph.facebook.com (NOT graph.instagram.com!)
-    // The Instagram API with Instagram Login uses graph.facebook.com for data fetching
+    // Step 2: Fetch profile - try multiple approaches with the Instagram API
     let username = '';
     let followers = 0;
+    const errors: string[] = [];
 
-    // Approach A: graph.facebook.com/v20.0/me (correct endpoint for Instagram Business Login)
-    console.log("Step 2A: Trying graph.facebook.com/v20.0/me...");
-    const fbMeRes = await fetch(
-      `https://graph.facebook.com/v20.0/me?fields=id,username,name,followers_count&access_token=${shortToken}`
-    );
-    const fbMeText = await fbMeRes.text();
-    console.log("  graph.facebook.com/me response:", fbMeRes.status, fbMeText);
-
-    let fbMeData;
-    try { fbMeData = JSON.parse(fbMeText); } catch { fbMeData = null; }
-
-    if (fbMeData && fbMeData.username) {
-      username = fbMeData.username;
-      followers = fbMeData.followers_count || 0;
-      console.log("  Approach A SUCCESS:", username, followers);
-    } else {
-      // Approach B: graph.facebook.com with explicit user_id
-      console.log("Step 2B: Trying graph.facebook.com/{user_id}...");
-      const fbIdRes = await fetch(
-        `https://graph.facebook.com/v20.0/${userId}?fields=id,username,name,followers_count&access_token=${shortToken}`
+    // Approach A: graph.instagram.com/v22.0/{user_id} with user_id,username fields
+    // The new Instagram API uses "user_id" field (not "id")
+    console.log("Step 2A: graph.instagram.com/v22.0/{user_id} with user_id,username...");
+    try {
+      const aRes = await fetch(
+        `https://graph.instagram.com/v22.0/${userId}?fields=user_id,username,followers_count&access_token=${shortToken}`
       );
-      const fbIdText = await fbIdRes.text();
-      console.log("  graph.facebook.com/{id} response:", fbIdRes.status, fbIdText);
-
-      let fbIdData;
-      try { fbIdData = JSON.parse(fbIdText); } catch { fbIdData = null; }
-
-      if (fbIdData && fbIdData.username) {
-        username = fbIdData.username;
-        followers = fbIdData.followers_count || 0;
-        console.log("  Approach B SUCCESS:", username, followers);
+      const aText = await aRes.text();
+      console.log("  A response:", aRes.status, aText);
+      const aData = JSON.parse(aText);
+      if (aData.username) {
+        username = aData.username;
+        followers = aData.followers_count || 0;
+        console.log("  A SUCCESS:", username, followers);
       } else {
-        // Approach C: Try graph.instagram.com as last resort (just in case)
-        console.log("Step 2C: Trying graph.instagram.com/me as fallback...");
-        const igRes = await fetch(
-          `https://graph.instagram.com/me?fields=id,username&access_token=${shortToken}`
+        errors.push(`A: ${aText}`);
+      }
+    } catch (e: any) {
+      errors.push(`A: ${e.message}`);
+    }
+
+    // Approach B: graph.instagram.com/me with user_id,username fields (no version)
+    if (!username) {
+      console.log("Step 2B: graph.instagram.com/me with user_id,username (no version)...");
+      try {
+        const bRes = await fetch(
+          `https://graph.instagram.com/me?fields=user_id,username&access_token=${shortToken}`
         );
-        const igText = await igRes.text();
-        console.log("  graph.instagram.com/me response:", igRes.status, igText);
-
-        let igData;
-        try { igData = JSON.parse(igText); } catch { igData = null; }
-
-        if (igData && igData.username) {
-          username = igData.username;
-          followers = igData.followers_count || 0;
-          console.log("  Approach C SUCCESS:", username);
+        const bText = await bRes.text();
+        console.log("  B response:", bRes.status, bText);
+        const bData = JSON.parse(bText);
+        if (bData.username) {
+          username = bData.username;
+          console.log("  B SUCCESS:", username);
         } else {
-          throw new Error(
-            `Could not fetch Instagram profile. ` +
-            `A (fb/me): ${fbMeText} | ` +
-            `B (fb/${userId}): ${fbIdText} | ` +
-            `C (ig/me): ${igText}`
-          );
+          errors.push(`B: ${bText}`);
         }
+      } catch (e: any) {
+        errors.push(`B: ${e.message}`);
       }
     }
 
-    console.log("=== FINAL RESULT: username:", username, "followers:", followers, "===");
+    // Approach C: graph.instagram.com/{user_id} with NO fields (just access_token)
+    if (!username) {
+      console.log("Step 2C: graph.instagram.com/{user_id} with NO fields...");
+      try {
+        const cRes = await fetch(
+          `https://graph.instagram.com/${userId}?access_token=${shortToken}`
+        );
+        const cText = await cRes.text();
+        console.log("  C response:", cRes.status, cText);
+        const cData = JSON.parse(cText);
+        if (cData.username) {
+          username = cData.username;
+          followers = cData.followers_count || 0;
+          console.log("  C SUCCESS:", username);
+        } else if (cData.name) {
+          username = cData.name;
+          console.log("  C SUCCESS (name):", username);
+        } else {
+          errors.push(`C: ${cText}`);
+        }
+      } catch (e: any) {
+        errors.push(`C: ${e.message}`);
+      }
+    }
+
+    // Approach D: graph.instagram.com/v22.0/me with NO fields
+    if (!username) {
+      console.log("Step 2D: graph.instagram.com/v22.0/me with NO fields...");
+      try {
+        const dRes = await fetch(
+          `https://graph.instagram.com/v22.0/me?access_token=${shortToken}`
+        );
+        const dText = await dRes.text();
+        console.log("  D response:", dRes.status, dText);
+        const dData = JSON.parse(dText);
+        if (dData.username || dData.name) {
+          username = dData.username || dData.name;
+          followers = dData.followers_count || 0;
+          console.log("  D SUCCESS:", username);
+        } else {
+          errors.push(`D: ${dText}`);
+        }
+      } catch (e: any) {
+        errors.push(`D: ${e.message}`);
+      }
+    }
+
+    if (!username) {
+      throw new Error(`Could not fetch profile. All approaches failed: ${errors.join(' | ')}`);
+    }
+
+    console.log("=== FINAL:", username, followers, "===");
 
     return new Response(
       JSON.stringify({
