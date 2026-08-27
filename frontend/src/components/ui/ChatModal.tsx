@@ -8,6 +8,7 @@ import { useAuthStore } from '../../store/authStore';
 import { useChatStore, type Message } from '../../store/chatStore';
 import { useUgcStore } from '../../store/ugcStore';
 import { useGlobalModalStore } from '../../store/globalModalStore';
+import { uploadToCloudinary } from '../../lib/cloudinary';
 import './ChatModal.css';
 
 interface ChatModalProps {
@@ -46,11 +47,15 @@ const ChatModal: React.FC<ChatModalProps> = ({
   const [isSending, setIsSending] = useState(false);
   const [isBlockedByThem, setIsBlockedByThem] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isAttachmentMenuOpen, setIsAttachmentMenuOpen] = useState(false);
+  const [isUploadingMedia, setIsUploadingMedia] = useState(false);
+  const [uploadMediaType, setUploadMediaType] = useState<'image' | 'video' | null>(null);
   const [activeMessageOptions, setActiveMessageOptions] = useState<Message | null>(null);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { blockedUserIds, fetchBlockedUsers, checkIfBlockedByThem, blockUser, unblockUser, reportItem } = useUgcStore();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const attachmentMenuRef = useRef<HTMLDivElement>(null);
 
   const startPressTimer = (msg: Message) => {
     if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
@@ -67,11 +72,14 @@ const ChatModal: React.FC<ChatModalProps> = ({
     }
   };
 
-  // Close menu on click outside
+  // Close menus on click outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         setIsMenuOpen(false);
+      }
+      if (attachmentMenuRef.current && !attachmentMenuRef.current.contains(event.target as Node)) {
+        setIsAttachmentMenuOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -120,6 +128,59 @@ const ChatModal: React.FC<ChatModalProps> = ({
     } finally {
       setIsSending(false);
     }
+  };
+
+  const handleImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user || !recipientId) return;
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Image size must be less than 10MB');
+      return;
+    }
+    setIsAttachmentMenuOpen(false);
+    setIsUploadingMedia(true);
+    setUploadMediaType('image');
+    try {
+      const url = await uploadToCloudinary(file);
+      await sendMessage(user.id, recipientId, `[IMAGE]${url}[/IMAGE]`);
+      toast.success('Image sent!');
+    } catch (err: any) {
+      console.error('Failed to send image:', err);
+      toast.error(err.message || 'Failed to send image');
+    } finally {
+      setIsUploadingMedia(false);
+      setUploadMediaType(null);
+      e.target.value = '';
+    }
+  };
+
+  const handleVideoFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user || !recipientId) return;
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Video size must be less than 10MB');
+      return;
+    }
+    setIsAttachmentMenuOpen(false);
+    setIsUploadingMedia(true);
+    setUploadMediaType('video');
+    try {
+      const url = await uploadToCloudinary(file);
+      await sendMessage(user.id, recipientId, `[VIDEO]${url}[/VIDEO]`);
+      toast.success('Video sent!');
+    } catch (err: any) {
+      console.error('Failed to send video:', err);
+      toast.error(err.message || 'Failed to send video');
+    } finally {
+      setIsUploadingMedia(false);
+      setUploadMediaType(null);
+      e.target.value = '';
+    }
+  };
+
+  const handleSendOfferClick = () => {
+    setIsAttachmentMenuOpen(false);
+    toast.success('Send Offer feature is coming soon!');
   };
 
   // Typing logic
@@ -273,14 +334,18 @@ const ChatModal: React.FC<ChatModalProps> = ({
                   }
                 }
 
-                // Regular message
+                // Regular, Image, or Video message
+                const isImage = msg.content.startsWith('[IMAGE]') && msg.content.endsWith('[/IMAGE]');
+                const isVideo = msg.content.startsWith('[VIDEO]') && msg.content.endsWith('[/VIDEO]');
+                const mediaUrl = (isImage || isVideo) ? msg.content.slice(7, -8) : null;
+
                 return (
                   <div 
                     key={msg.id} 
                     className={`chat-bubble-wrap ${isMine ? 'mine' : 'theirs'}`}
                   >
                     <div 
-                      className="chat-bubble"
+                      className={`chat-bubble ${isImage || isVideo ? 'media-bubble' : ''}`}
                       onMouseDown={() => startPressTimer(msg)}
                       onMouseUp={cancelPressTimer}
                       onMouseLeave={cancelPressTimer}
@@ -292,7 +357,31 @@ const ChatModal: React.FC<ChatModalProps> = ({
                         setActiveMessageOptions(msg);
                       }}
                     >
-                      <p className="chat-bubble-text">{msg.content}</p>
+                      {isImage ? (
+                        <div className="chat-msg-media-container">
+                          <img 
+                            src={mediaUrl!} 
+                            alt="Shared photo" 
+                            className="chat-msg-photo"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              window.open(mediaUrl!, '_blank');
+                            }}
+                          />
+                        </div>
+                      ) : isVideo ? (
+                        <div className="chat-msg-media-container">
+                          <video 
+                            src={mediaUrl!} 
+                            controls 
+                            playsInline 
+                            preload="metadata"
+                            className="chat-msg-video"
+                          />
+                        </div>
+                      ) : (
+                        <p className="chat-bubble-text">{msg.content}</p>
+                      )}
                       <span className="chat-bubble-time">
                         {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </span>
@@ -366,6 +455,13 @@ const ChatModal: React.FC<ChatModalProps> = ({
           )}
 
           <div className="chat-detail-input-area">
+            {isUploadingMedia && (
+              <div className="chat-uploading-indicator">
+                <span className="material-symbols-outlined icon-spin" style={{ fontSize: '16px', color: '#f9c846' }}>sync</span>
+                <span>Uploading {uploadMediaType === 'video' ? 'video' : 'image'}... (Max 10MB)</span>
+              </div>
+            )}
+
             {isBlocked ? (
               <div className="chat-detail-input-wrap" style={{ justifyContent: 'center', backgroundColor: 'rgba(255,68,68,0.1)', padding: '12px' }}>
                 <p style={{ color: '#ff4444', fontSize: '14px', textAlign: 'center' }}>
@@ -373,27 +469,96 @@ const ChatModal: React.FC<ChatModalProps> = ({
                 </p>
               </div>
             ) : (
-              <form className="chat-detail-input-wrap" onSubmit={handleSend}>
-                <button type="button" className="chat-detail-add-btn" aria-label="Add attachment">
-                  <span className="material-symbols-outlined">add</span>
-                </button>
+              <div className="chat-input-row" style={{ position: 'relative', width: '100%' }}>
+                {/* Hidden File Inputs */}
                 <input 
-                  className="chat-detail-input"
-                  type="text"
-                  value={content}
-                  onChange={(e) => setContent(e.target.value)}
-                  placeholder="Type a message..."
-                  disabled={isSending}
+                  type="file" 
+                  accept="image/*" 
+                  id="chat-image-file-input"
+                  style={{ display: 'none' }}
+                  onChange={handleImageFileChange}
                 />
-                <button 
-                  type="submit" 
-                  className="chat-detail-send-btn"
-                  disabled={!content.trim() || isSending}
-                  aria-label="Send message"
-                >
-                  <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>send</span>
-                </button>
-              </form>
+                <input 
+                  type="file" 
+                  accept="video/mp4,video/webm,video/quicktime,video/*" 
+                  id="chat-video-file-input"
+                  style={{ display: 'none' }}
+                  onChange={handleVideoFileChange}
+                />
+
+                {/* Attachment Popup Menu */}
+                {isAttachmentMenuOpen && (
+                  <div className="chat-attachment-menu" ref={attachmentMenuRef}>
+                    <button 
+                      type="button" 
+                      className="chat-attachment-item"
+                      onClick={() => {
+                        document.getElementById('chat-image-file-input')?.click();
+                      }}
+                    >
+                      <div className="chat-attachment-icon-circle image">
+                        <span className="material-symbols-outlined">image</span>
+                      </div>
+                      <span>Send Image</span>
+                    </button>
+
+                    <button 
+                      type="button" 
+                      className="chat-attachment-item"
+                      onClick={() => {
+                        document.getElementById('chat-video-file-input')?.click();
+                      }}
+                    >
+                      <div className="chat-attachment-icon-circle video">
+                        <span className="material-symbols-outlined">videocam</span>
+                      </div>
+                      <span>Send Video</span>
+                    </button>
+
+                    <button 
+                      type="button" 
+                      className="chat-attachment-item offer"
+                      onClick={handleSendOfferClick}
+                    >
+                      <div className="chat-attachment-offer-btn">
+                        <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>auto_awesome</span>
+                        <span>Send Offer</span>
+                      </div>
+                    </button>
+                  </div>
+                )}
+
+                <form className="chat-detail-input-wrap" onSubmit={handleSend}>
+                  <button 
+                    type="button" 
+                    className={`chat-detail-add-btn ${isAttachmentMenuOpen ? 'active' : ''}`}
+                    aria-label="Add attachment"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsAttachmentMenuOpen(!isAttachmentMenuOpen);
+                    }}
+                    disabled={isUploadingMedia}
+                  >
+                    <span className="material-symbols-outlined">{isAttachmentMenuOpen ? 'close' : 'add'}</span>
+                  </button>
+                  <input 
+                    className="chat-detail-input"
+                    type="text"
+                    value={content}
+                    onChange={(e) => setContent(e.target.value)}
+                    placeholder={isUploadingMedia ? `Uploading ${uploadMediaType}...` : "Type a message..."}
+                    disabled={isSending || isUploadingMedia}
+                  />
+                  <button 
+                    type="submit" 
+                    className="chat-detail-send-btn"
+                    disabled={!content.trim() || isSending || isUploadingMedia}
+                    aria-label="Send message"
+                  >
+                    <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>send</span>
+                  </button>
+                </form>
+              </div>
             )}
           </div>
 

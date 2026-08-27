@@ -621,3 +621,170 @@
   background: rgba(255, 255, 255, 0.1);
   color: #fff;
 }
+
+/* ── Attachment Popup Menu ────────────────────────────── */
+.chat-attachment-menu {
+  position: absolute;
+  bottom: calc(100% + 12px);
+  left: 0;
+  background: #181b24;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 18px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.7);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 190px;
+  z-index: 1000;
+  animation: popUp 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.chat-attachment-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  background: transparent;
+  border: none;
+  border-radius: 12px;
+  color: var(--text-primary, #fff);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  box-sizing: border-box;
+  transition: all 0.15s ease;
+}
+
+.chat-attachment-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.chat-attachment-icon-circle {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.chat-attachment-icon-circle.image {
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.chat-attachment-icon-circle.video {
+  background: rgba(168, 85, 247, 0.15);
+  color: #c084fc;
+  border: 1px solid rgba(168, 85, 247, 0.3);
+}
+
+.chat-attachment-icon-circle .material-symbols-outlined {
+  font-size: 20px;
+}
+
+/* ── Send Offer Shiny Button ──────────────────────────── */
+.chat-attachment-item.offer {
+  padding: 2px;
+  margin-top: 4px;
+}
+
+.chat-attachment-offer-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(249, 200, 70, 0.5);
+  background: linear-gradient(110deg, #1a1600 0%, #3a2e00 30%, #f9c846 50%, #3a2e00 70%, #1a1600 100%);
+  background-size: 200% auto;
+  animation: golden-shine 3s linear infinite;
+  color: #f9c846;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  box-shadow: 0 0 12px rgba(249, 200, 70, 0.25), inset 0 0 6px rgba(249, 200, 70, 0.1);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.chat-attachment-offer-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0 18px rgba(249, 200, 70, 0.45);
+}
+
+.chat-detail-add-btn.active {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  transform: rotate(45deg);
+}
+
+/* ── Media Messages (Image & Video) ───────────────────── */
+.chat-bubble.media-bubble {
+  padding: 6px;
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.chat-msg-media-container {
+  border-radius: 14px;
+  overflow: hidden;
+  max-width: 260px;
+  max-height: 320px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.chat-msg-photo {
+  width: 100%;
+  height: auto;
+  max-height: 320px;
+  object-fit: cover;
+  display: block;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.chat-msg-photo:hover {
+  filter: brightness(1.05);
+}
+
+.chat-msg-video {
+  width: 100%;
+  max-width: 260px;
+  max-height: 320px;
+  border-radius: 12px;
+  display: block;
+  background: #000;
+}
+
+.chat-bubble.media-bubble .chat-bubble-time {
+  padding: 0 4px;
+}
+
+.chat-uploading-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  background: rgba(249, 200, 70, 0.12);
+  border: 1px solid rgba(249, 200, 70, 0.3);
+  color: #f9c846;
+  font-size: 12px;
+  font-weight: 500;
+  width: fit-content;
+  margin-bottom: 8px;
+  animation: fadeIn 0.2s ease-out;
+}

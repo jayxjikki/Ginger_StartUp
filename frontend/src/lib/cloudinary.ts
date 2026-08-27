@@ -40,9 +40,15 @@ export const uploadToCloudinary = async (file: File): Promise<string> => {
   formData.append('folder', 'ginger_uploads');
 
   const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+  const isVideo = file.type.startsWith('video/') || /\.(mp4|webm|mov|avi|mkv)$/i.test(file.name);
   
-  // For PDF files: 'raw' delivers exact binary stream without raster distortion. Try raw first, then auto/image.
-  const endpoints = isPdf ? ['raw', 'auto', 'image'] : ['image', 'auto'];
+  // Choose optimal endpoints
+  let endpoints = ['image', 'auto'];
+  if (isPdf) {
+    endpoints = ['raw', 'auto', 'image'];
+  } else if (isVideo) {
+    endpoints = ['video', 'auto'];
+  }
 
   let lastError: Error | null = null;
 
