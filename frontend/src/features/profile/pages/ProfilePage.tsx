@@ -623,33 +623,31 @@ const ProfilePage: React.FC = () => {
                   </button>
                 </div>
                 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <label style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>Post Type</label>
-                    <select 
-                      value={postType}
-                      onChange={(e) => setPostType(e.target.value as any)}
-                      style={{ 
-                        width: '100%', padding: '12px', borderRadius: '8px', 
-                        background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', 
-                        color: 'var(--text-primary)', outline: 'none'
-                      }}
-                    >
-                      <option value="portfolio" style={{ background: '#121212' }}>Portfolio & Achievement</option>
-                      <option value="blog" style={{ background: '#121212' }}>Blog Post</option>
-                      <option value="media_kit" style={{ background: '#121212' }}>Media Kit Item</option>
-                    </select>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  <div className="input-wrapper">
+                    <div className="input-container input-default" style={{ position: 'relative' }}>
+                      <select 
+                        value={postType}
+                        onChange={(e) => setPostType(e.target.value as any)}
+                        className="input-field"
+                        style={{ cursor: 'pointer', appearance: 'none' }}
+                      >
+                        <option value="portfolio" style={{ background: '#121212' }}>Portfolio & Achievement</option>
+                        <option value="blog" style={{ background: '#121212' }}>Blog Post</option>
+                        <option value="media_kit" style={{ background: '#121212' }}>Media Kit Item</option>
+                      </select>
+                      <label className="input-label input-label-float">Post Type</label>
+                      <span className="material-symbols-outlined" style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'var(--text-tertiary)' }}>expand_more</span>
+                    </div>
                   </div>
 
                   <Input 
                     label="Title" 
-                    placeholder="Enter title..." 
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                   />
                   <Textarea 
                     label="Description" 
-                    placeholder="Write a description..." 
                     rows={3}
                     value={desc}
                     onChange={(e) => setDesc(e.target.value)}
