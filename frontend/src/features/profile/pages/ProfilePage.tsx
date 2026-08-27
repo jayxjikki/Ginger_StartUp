@@ -680,14 +680,16 @@ const ProfilePage: React.FC = () => {
                           title: ach.title,
                           description: ach.description,
                           image_url: ach.icon_url!,
-                          created_at: (ach as any).created_at
+                          created_at: (ach as any).created_at,
+                          type: 'achievement' as const
                         })),
                         ...(mediaKitItems || []).filter(mk => mk.image_url).map(mk => ({
                           id: mk.id,
                           title: mk.title,
                           description: mk.description,
                           image_url: mk.image_url!,
-                          created_at: mk.created_at
+                          created_at: mk.created_at,
+                          type: 'media_kit' as const
                         }))
                       ];
 
@@ -719,7 +721,7 @@ const ProfilePage: React.FC = () => {
                 {activeTab === 1 && (
                   <>
                     {(() => {
-                      const validPosts = posts.filter(post => post.image_url);
+                      const validPosts = posts.filter(post => post.image_url).map(post => ({ ...post, type: 'post' as const }));
                       if (validPosts.length === 0) {
                         return (
                           <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '2rem', color: 'var(--text-tertiary)' }}>

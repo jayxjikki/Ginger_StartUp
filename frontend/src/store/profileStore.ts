@@ -88,6 +88,7 @@ export interface ProfileState {
   sendMessage: (receiverId: string, content: string) => Promise<void>;
   updateProfile: (updates: Partial<Profile>) => Promise<void>;
   togglePinnedSocial: (platform: string) => Promise<void>;
+  deleteItem: (id: string, type: 'achievement' | 'media_kit' | 'post') => Promise<void>;
 }
 
 export const useProfileStore = create<ProfileState>()(
@@ -204,6 +205,13 @@ export const useProfileStore = create<ProfileState>()(
               .eq('profile_id', userId)
               .order('created_at', { ascending: false });
 
+            // Fetch Media Kit Items
+            const { data: mediaKitData } = await supabase
+              .from('media_kit_items')
+              .select('*')
+              .eq('profile_id', userId)
+              .order('created_at', { ascending: false });
+
             let totalEarnings = 0;
             let activeCampaigns = 0;
             let completedCampaigns = 0;
@@ -235,6 +243,7 @@ export const useProfileStore = create<ProfileState>()(
               socialLinks: socialData || [],
               messages: messagesData || [],
               verifiedChannels: channelsData || [],
+              mediaKitItems: mediaKitData || [],
               stats: {
                 totalEarnings,
                 activeCampaigns,
@@ -433,6 +442,31 @@ export const useProfileStore = create<ProfileState>()(
             set({ profile: { ...profile, pinned_socials: currentPins } });
           } catch (err: any) {
             console.error('Error toggling pinned social:', err);
+            throw err;
+          }
+        },
+
+        deleteItem: async (id: string, type: 'achievement' | 'media_kit' | 'post') => {
+          const { profile, achievements, mediaKitItems, posts } = get();
+          if (!profile) return;
+          try {
+            let table = '';
+            if (type === 'achievement') table = 'achievements';
+            else if (type === 'media_kit') table = 'media_kit_items';
+            else if (type === 'post') table = 'posts';
+
+            const { error } = await supabase.from(table).delete().eq('id', id);
+            if (error) throw error;
+
+            if (type === 'achievement') {
+              set({ achievements: achievements.filter(a => a.id !== id) });
+            } else if (type === 'media_kit') {
+              set({ mediaKitItems: mediaKitItems.filter(m => m.id !== id) });
+            } else if (type === 'post') {
+              set({ posts: posts.filter(p => p.id !== id) });
+            }
+          } catch (err: any) {
+            console.error('Error deleting item:', err);
             throw err;
           }
         }

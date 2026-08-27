@@ -5,6 +5,9 @@ import FeedCommentsPanel from './FeedCommentsPanel';
 import FeedShareModal from './FeedShareModal';
 import { useUgcStore } from '../../../store/ugcStore';
 import { useGlobalModalStore } from '../../../store/globalModalStore';
+import { useAuthStore } from '../../../store/authStore';
+import { useProfileStore } from '../../../store/profileStore';
+import toast from 'react-hot-toast';
 
 interface FeedPost {
   id: string;
@@ -13,6 +16,7 @@ interface FeedPost {
   description?: string;
   content?: string;
   created_at?: string;
+  type?: 'achievement' | 'media_kit' | 'post';
 }
 
 interface ProfileFeedViewerProps {
@@ -32,17 +36,40 @@ interface ProfileFeedViewerProps {
 const ProfileFeedViewer: React.FC<ProfileFeedViewerProps> = ({ 
   isOpen, 
   onClose, 
-  posts, 
+  posts: initialPosts, 
   initialPostIndex, 
   profile 
 }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [posts, setPosts] = useState(initialPosts);
+  
+  useEffect(() => { setPosts(initialPosts); }, [initialPosts]);
+
+  const { user } = useAuthStore();
+  const { deleteItem } = useProfileStore();
   const { postLikesCount, userLikedPosts, fetchLikes, toggleLike } = useFeedStore();
   const [activeCommentPostId, setActiveCommentPostId] = useState<string | null>(null);
   const [activeSharePost, setActiveSharePost] = useState<FeedPost | null>(null);
   const [heartAnimations, setHeartAnimations] = useState<Record<string, boolean>>({});
   const [activeOptionsPostId, setActiveOptionsPostId] = useState<string | null>(null);
   const { reportItem } = useUgcStore();
+
+  const isMine = user?.id === profile.id;
+
+  const handleDeletePost = async (post: FeedPost) => {
+    setActiveOptionsPostId(null);
+    const confirmed = await useGlobalModalStore.getState().showConfirm('Are you sure you want to delete this post? This cannot be undone.', 'Delete Post');
+    if (confirmed) {
+      try {
+        await deleteItem(post.id, post.type || 'post');
+        toast.success('Post deleted');
+        setPosts(prev => prev.filter(p => p.id !== post.id));
+        if (posts.length === 1) onClose();
+      } catch (err) {
+        toast.error('Failed to delete post');
+      }
+    }
+  };
 
   useEffect(() => {
     if (isOpen && posts.length > 0) {
@@ -92,6 +119,7 @@ const ProfileFeedViewer: React.FC<ProfileFeedViewerProps> = ({
     const confirmed = await useGlobalModalStore.getState().showConfirm('Are you sure you want to report this post for inappropriate content?', 'Report Post');
     if (confirmed) {
       await reportItem(postId, 'submission', 'Inappropriate content');
+      toast.success('Post reported');
     }
   };
 
@@ -130,10 +158,17 @@ const ProfileFeedViewer: React.FC<ProfileFeedViewerProps> = ({
                 </button>
                 {activeOptionsPostId === post.id && (
                   <div className="feed-post-dropdown-menu">
-                    <button className="feed-menu-item text-warning" onClick={() => handleReportPost(post.id)}>
-                      <span className="material-symbols-outlined">flag</span>
-                      Report Post
-                    </button>
+                    {isMine ? (
+                      <button className="feed-menu-item text-danger" onClick={() => handleDeletePost(post)}>
+                        <span className="material-symbols-outlined">delete</span>
+                        Delete Post
+                      </button>
+                    ) : (
+                      <button className="feed-menu-item text-warning" onClick={() => handleReportPost(post.id)}>
+                        <span className="material-symbols-outlined">flag</span>
+                        Report Post
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
