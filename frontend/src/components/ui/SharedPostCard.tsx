@@ -41,6 +41,10 @@ const SharedPostCard: React.FC<SharedPostCardProps> = ({
 
   // In a full implementation, clicking the card would navigate to the post view
   const handleCardClick = () => {
+    if (!posterId || posterId === 'undefined') {
+      console.warn('Cannot navigate: posterId is missing from this shared post.');
+      return; // Do nothing or show a toast
+    }
     // Navigate to the user's profile and pass the post ID in state so the profile can open it
     navigate(`/profile/${posterId}`, { state: { openPostId: postId, returnToChat: chatContext || true } });
   };

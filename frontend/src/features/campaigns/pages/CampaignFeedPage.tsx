@@ -5,6 +5,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCampaignStore } from '../../../store/campaignStore';
+import { useUgcStore } from '../../../store/ugcStore';
 import { formatCurrency, formatCount, formatTimeLeft } from '../../../utils/formatters';
 import './CampaignFeedPage.css';
 
@@ -293,10 +294,16 @@ const HomeMenuPage: React.FC = () => {
         <div className="campaign-list">
           {isLoading ? (
             <div style={{ color: 'white', textAlign: 'center', padding: '2rem' }}>Loading campaigns...</div>
-          ) : filteredCampaigns.length === 0 ? (
-            <div style={{ color: 'white', textAlign: 'center', padding: '2rem' }}>No campaigns found.</div>
-          ) : (
-            filteredCampaigns.map((campaign) => {
+          ) : (() => {
+            const { blockedUserIds, blockedByThemIds } = useUgcStore.getState();
+            const allBlocked = new Set([...blockedUserIds, ...blockedByThemIds]);
+            const visibleCampaigns = filteredCampaigns.filter(c => !allBlocked.has(c.advertiser_id));
+            
+            if (visibleCampaigns.length === 0) {
+              return <div style={{ color: 'white', textAlign: 'center', padding: '2rem' }}>No campaigns found.</div>;
+            }
+
+            return visibleCampaigns.map((campaign) => {
               const themeColor = getCampaignTypeColor(campaign.type);
               
               return (
@@ -368,7 +375,7 @@ const HomeMenuPage: React.FC = () => {
                 </article>
               );
             })
-          )}
+          )()}
         </div>
       </main>
     </div>

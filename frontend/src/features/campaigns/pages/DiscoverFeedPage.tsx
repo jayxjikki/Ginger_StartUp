@@ -6,6 +6,7 @@ import ChatModal from '../../../components/ui/ChatModal';
 import { supabase } from '../../../lib/supabase';
 import { getSocialIcon } from '../../../utils/socialHelpers';
 import VerifiedChannelsModal from '../../profile/components/VerifiedChannelsModal';
+import { useUgcStore } from '../../../store/ugcStore';
 import './DiscoverFeedPage.css';
 
 const DiscoverFeedPage: React.FC = () => {
@@ -69,8 +70,12 @@ const DiscoverFeedPage: React.FC = () => {
         if (error) throw error;
 
         const { data: links } = await supabase.from('social_links').select('*');
+        const { blockedUserIds, blockedByThemIds } = useUgcStore.getState();
+        const allBlocked = new Set([...blockedUserIds, ...blockedByThemIds]);
 
-        const mappedCreators = (profiles || []).map((p: any) => {
+        const mappedCreators = (profiles || [])
+          .filter((p: any) => !allBlocked.has(p.id))
+          .map((p: any) => {
           const userLinks = (links || []).filter((l: any) => l.profile_id === p.id);
           return {
             id: p.id,

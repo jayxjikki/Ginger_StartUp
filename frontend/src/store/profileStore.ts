@@ -112,6 +112,7 @@ export const useProfileStore = create<ProfileState>()(
         error: null,
 
         fetchProfileData: async (userId: string) => {
+          if (!userId || userId === 'undefined') return;
           set({ isLoading: true, error: null });
           try {
             if (userId.startsWith('dummy-')) {

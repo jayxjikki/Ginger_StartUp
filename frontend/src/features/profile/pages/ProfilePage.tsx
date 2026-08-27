@@ -240,10 +240,26 @@ const ProfilePage: React.FC = () => {
     );
   }
 
-  if (!profile || (isLoading && profile.id !== targetUserId)) {
+  if (isLoading && (!profile || profile.id !== targetUserId)) {
     return (
       <div className="profile-page-wrapper" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#000' }}>
         <span className="material-symbols-outlined" style={{ fontSize: '48px', color: '#ff5722', opacity: 0.8, animation: 'pulse 1.5s infinite' }}>blur_on</span>
+      </div>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <div className="profile-page-wrapper" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#000', color: '#fff' }}>
+        <span className="material-symbols-outlined" style={{ fontSize: '64px', color: 'rgba(255,255,255,0.2)', marginBottom: '16px' }}>person_off</span>
+        <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '8px' }}>Profile Unavailable</h2>
+        <p style={{ color: 'rgba(255,255,255,0.6)' }}>This profile may have been deleted, or you don't have permission to view it.</p>
+        <button 
+          onClick={() => navigate(-1)} 
+          style={{ marginTop: '24px', padding: '10px 20px', background: 'rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff', border: 'none', cursor: 'pointer' }}
+        >
+          Go Back
+        </button>
       </div>
     );
   }
