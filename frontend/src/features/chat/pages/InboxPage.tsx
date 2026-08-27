@@ -188,7 +188,7 @@ const InboxPage: React.FC = () => {
                         handleOpenChat(userResult.id, userResult.full_name, userResult.avatar_url);
                       }}
                     >
-                      <div className="chat-item-avatar-wrap">
+                      <div className={`chat-item-avatar-wrap is-offline`}>
                         <Avatar src={userResult.avatar_url} name={userResult.full_name} size="md" />
                       </div>
                       <div className="chat-item-content">
@@ -245,9 +245,8 @@ const InboxPage: React.FC = () => {
                           {selectedChats.includes(chat.userId) && <span className="material-symbols-outlined check-icon" style={{ fontSize: '16px' }}>check</span>}
                         </div>
                       )}
-                      <div className="chat-item-avatar-wrap">
+                      <div className={`chat-item-avatar-wrap ${isOnline && !isEditMode ? 'is-online' : 'is-offline'}`}>
                         <Avatar src={chat.avatar} name={chat.name} size="md" />
-                        {isOnline && !isEditMode && <div className="chat-item-online-dot" title="Online"></div>}
                       </div>
                       <div className="chat-item-content">
                         <div className="chat-item-header">

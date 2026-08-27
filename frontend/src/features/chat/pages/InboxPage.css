@@ -135,9 +135,9 @@
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 16px;
+  padding: 12px 16px;
   border-radius: 12px;
-  background-color: var(--chat-surface);
+  background-color: transparent;
   border: 1px solid transparent;
   cursor: pointer;
   text-align: left;
@@ -153,28 +153,35 @@
 .chat-item-avatar-wrap {
   position: relative;
   flex-shrink: 0;
+  border-radius: 50%;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.chat-item-avatar-wrap.is-online {
+  border: 2px solid #34d399;
+  animation: pulse-green-border 2s infinite;
+}
+
+.chat-item-avatar-wrap.is-offline {
+  border: 2px solid rgba(255, 255, 255, 0.15);
+}
+
+@keyframes pulse-green-border {
+  0% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.4); }
+  70% { box-shadow: 0 0 0 8px rgba(52, 211, 153, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0); }
 }
 
 /* Override existing avatar class if needed, assuming Avatar handles the img */
-.chat-item-avatar-wrap .avatar-img {
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
+.chat-item-avatar-wrap img, .chat-item-avatar-wrap > div {
+  width: 54px !important;
+  height: 54px !important;
+  border-radius: 50% !important;
   object-fit: cover;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-}
-
-.chat-item-online-dot {
-  position: absolute;
-  bottom: 0;
-  right: 0;
-  width: 14px;
-  height: 14px;
-  background-color: var(--chat-secondary);
-  border-radius: 50%;
-  border: 2px solid var(--chat-surface);
-  box-shadow: 0 0 10px rgba(78, 222, 163, 0.5);
 }
 
 .chat-item-content {
@@ -209,7 +216,7 @@
 }
 
 .chat-item-msg {
-  font-size: 16px;
+  font-size: 14px;
   color: var(--chat-on-surface-variant);
   margin: 0;
   white-space: nowrap;
