@@ -28,6 +28,7 @@ export interface VerifiedChannel {
   id: string;
   channel_username: string;
   is_verified: boolean;
+  member_count?: number;
   created_at: string;
 }
 
