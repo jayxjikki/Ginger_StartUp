@@ -44,7 +44,7 @@ export const useNotificationStore = create<NotificationState>((set) => ({
         .from('notifications')
         .select(`
           *,
-          actor:actor_id (
+          actor:profiles!notifications_actor_id_fkey (
             full_name,
             username,
             avatar_url
@@ -129,7 +129,7 @@ export const useNotificationStore = create<NotificationState>((set) => ({
             .from('notifications')
             .select(`
               *,
-              actor:actor_id (
+              actor:profiles!notifications_actor_id_fkey (
                 full_name,
                 username,
                 avatar_url
