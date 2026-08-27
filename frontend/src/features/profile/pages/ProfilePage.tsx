@@ -13,10 +13,7 @@ import { useChatStore } from '../../../store/chatStore';
 import { useNotificationStore } from '../../../store/notificationStore';
 import { formatDistanceToNow } from 'date-fns';
 import ProfileFeedViewer from '../components/ProfileFeedViewer';
-import Input, { Textarea } from '../../../components/ui/Input';
 import ImageUpload from '../../../components/ui/ImageUpload';
-import Button from '../../../components/ui/Button';
-import Card from '../../../components/ui/Card';
 import SettingsModal from '../components/SettingsModal';
 import VerifiedChannelsModal from '../components/VerifiedChannelsModal';
 import ChatModal from '../../../components/ui/ChatModal';
@@ -633,53 +630,68 @@ const ProfilePage: React.FC = () => {
           <div>
             {/* Add Form Overlay / Section */}
             {showAddForm && activeTab === 2 && (
-              <Card variant="glass" padding="lg" className="mb-6 unified-add-form">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                  <h6 style={{ margin: 0, color: 'var(--text-primary)' }}>Create New Post</h6>
-                  <button onClick={() => handleTabClick(0)} style={{ background: 'transparent', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer' }}>
+              <div className="premium-post-form-container popup-enter">
+                <div className="premium-post-header">
+                  <h2>Create New Post</h2>
+                  <button className="premium-close-btn" onClick={() => handleTabClick(0)} aria-label="Close">
                     <span className="material-symbols-outlined">close</span>
                   </button>
                 </div>
                 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                  <div className="input-wrapper">
-                    <div className="input-container input-default" style={{ position: 'relative' }}>
+                <div className="premium-post-body">
+                  <div className="premium-input-group">
+                    <label>Post Type</label>
+                    <div className="premium-select-wrapper">
                       <select 
                         value={postType}
                         onChange={(e) => setPostType(e.target.value as any)}
-                        className="input-field"
-                        style={{ cursor: 'pointer', appearance: 'none' }}
+                        className="premium-select"
                       >
-                        <option value="portfolio" style={{ background: '#121212' }}>Portfolio & Achievement</option>
-                        <option value="blog" style={{ background: '#121212' }}>Blog Post</option>
-                        <option value="media_kit" style={{ background: '#121212' }}>Media Kit Item</option>
+                        <option value="portfolio">Portfolio & Achievement</option>
+                        <option value="blog">Blog Post</option>
+                        <option value="media_kit">Media Kit Item</option>
                       </select>
-                      <label className="input-label input-label-float">Post Type</label>
-                      <span className="material-symbols-outlined" style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'var(--text-tertiary)' }}>expand_more</span>
+                      <span className="material-symbols-outlined select-icon">expand_more</span>
                     </div>
                   </div>
 
-                  <Input 
-                    label="Title" 
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                  />
-                  <Textarea 
-                    label="Description" 
-                    rows={3}
-                    value={desc}
-                    onChange={(e) => setDesc(e.target.value)}
-                  />
-                  <ImageUpload 
-                    label="Upload Image (Cloudinary)" 
-                    onUploadSuccess={(url) => setImageUrl(url)}
-                    onUploadError={(err) => console.error(err)}
-                  />
-                  <Button fullWidth onClick={handleSave}>
+                  <div className="premium-input-group">
+                    <label>Title</label>
+                    <input 
+                      type="text"
+                      className="premium-input"
+                      placeholder="Give your post a catchy title"
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="premium-input-group">
+                    <label>Description</label>
+                    <textarea 
+                      className="premium-textarea"
+                      placeholder="What's this post about?"
+                      rows={3}
+                      value={desc}
+                      onChange={(e) => setDesc(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="premium-input-group">
+                    <ImageUpload 
+                      label="Upload Image" 
+                      className="premium-image-upload"
+                      onUploadSuccess={(url: string) => setImageUrl(url)}
+                      onUploadError={(err: Error) => console.error(err)}
+                    />
+                  </div>
+
+                  <button className="premium-submit-btn" onClick={handleSave}>
+                    <span className="material-symbols-outlined">send</span>
                     Share Post
-                  </Button>
+                  </button>
                 </div>
-              </Card>
+              </div>
             )}
 
             {/* Grid Content */}
