@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../../store/authStore';
 import { useChatStore } from '../../../store/chatStore';
+import { useUgcStore } from '../../../store/ugcStore';
 import Avatar from '../../../components/ui/Avatar';
 import ChatModal from '../../../components/ui/ChatModal';
 import { formatDistanceToNow } from 'date-fns';
@@ -14,6 +15,7 @@ const InboxPage: React.FC = () => {
   const location = useLocation();
   const { user } = useAuthStore();
   const { inboxChats, fetchInbox, isLoading, deleteChat, onlineUsers, typingUsers } = useChatStore();
+  const { blockedUserIds, blockedByThemIds } = useUgcStore();
   
   const [activeChatUser, setActiveChatUser] = useState<{id: string, name: string, avatar: string | null} | null>(null);
   const [isChatModalOpen, setIsChatModalOpen] = useState(false);
@@ -231,8 +233,12 @@ const InboxPage: React.FC = () => {
                 </div>
               ) : (
                 filteredChats.map((chat) => {
-                  const isOnline = onlineUsers.includes(chat.userId);
-                  const isTyping = typingUsers[chat.userId];
+                  const isBlockedByUs = blockedUserIds.includes(chat.userId);
+                  const isBlockedByThem = blockedByThemIds.includes(chat.userId);
+                  const isBlocked = isBlockedByUs || isBlockedByThem;
+                  
+                  const isOnline = !isBlocked && onlineUsers.includes(chat.userId);
+                  const isTyping = !isBlocked && typingUsers[chat.userId];
 
                   return (
                     <button 
