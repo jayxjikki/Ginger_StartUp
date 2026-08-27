@@ -6,7 +6,7 @@ const TermsOfServicePage: React.FC = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="page-content" style={{ padding: '80px 20px', maxWidth: '800px', margin: '0 auto', color: '#fff' }}>
+    <div className="page-content" style={{ padding: '20px', maxWidth: '800px', margin: '0 auto', color: '#fff' }}>
       <button className="icon-btn mb-6" onClick={() => navigate(-1)}>
         <FiArrowLeft />
       </button>
