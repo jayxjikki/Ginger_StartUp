@@ -14,7 +14,7 @@ import { useNotificationStore } from '../../../store/notificationStore';
 import { formatDistanceToNow } from 'date-fns';
 import ProfileFeedViewer from '../components/ProfileFeedViewer';
 import ImageUpload from '../../../components/ui/ImageUpload';
-import { uploadToCloudinary } from '../../../lib/cloudinary';
+import { uploadToCloudinary, formatPdfUrl } from '../../../lib/cloudinary';
 import SettingsModal from '../components/SettingsModal';
 import VerifiedChannelsModal from '../components/VerifiedChannelsModal';
 import ChatModal from '../../../components/ui/ChatModal';
@@ -160,10 +160,10 @@ const ProfilePage: React.FC = () => {
       // Find the post in all possible collections
       const combinedItems = [
         ...achievements.filter(ach => ach.icon_url).map(ach => ({
-          id: ach.id, title: ach.title, description: ach.description, image_url: ach.icon_url!, created_at: (ach as any).created_at
+          id: ach.id, title: ach.title, description: ach.description, image_url: ach.icon_url!, created_at: (ach as any).created_at, type: 'achievement' as const
         })),
         ...(mediaKitItems || []).filter(mk => mk.image_url).map(mk => ({
-          id: mk.id, title: mk.title, description: mk.description, image_url: mk.image_url!, created_at: mk.created_at
+          id: mk.id, title: mk.title, description: mk.description, image_url: mk.image_url!, created_at: mk.created_at, type: 'media_kit' as const
         }))
       ];
       
@@ -179,7 +179,7 @@ const ProfilePage: React.FC = () => {
         return;
       }
       
-      const validPosts = posts.filter(post => post.image_url);
+      const validPosts = posts.filter(post => post.image_url).map(p => ({ ...p, type: 'post' as const }));
       index = validPosts.findIndex(p => p.id === state.openPostId);
       if (index !== -1) {
         setActiveTab(1);
@@ -803,8 +803,8 @@ const ProfilePage: React.FC = () => {
                             onChange={async (e) => {
                               const file = e.target.files?.[0];
                               if (!file) return;
-                              if (file.size > 15 * 1024 * 1024) { 
-                                toast.error('PDF must be under 15MB'); 
+                              if (file.size > 10 * 1024 * 1024) { 
+                                toast.error('PDF size must be under 10MB'); 
                                 return; 
                               }
                               setIsUploadingPdf(true);
@@ -838,7 +838,7 @@ const ProfilePage: React.FC = () => {
                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
                               <span className="material-symbols-outlined" style={{ fontSize: '36px', color: '#f9c846' }}>picture_as_pdf</span>
                               <span style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: 600 }}>Click to upload PDF</span>
-                              <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>Max file size: 15MB</span>
+                              <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>Max file size: 10MB</span>
                             </div>
                           )}
                         </div>
@@ -903,19 +903,36 @@ const ProfilePage: React.FC = () => {
                         );
                       }
 
-                      return combinedItems.map((item, index) => (
-                        <div 
-                          key={item.id} 
-                          className="profile-grid-item"
-                          onClick={() => {
-                            setFeedPosts(combinedItems);
-                            setFeedStartIndex(index);
-                            setIsFeedViewerOpen(true);
-                          }}
-                        >
-                          <img src={item.image_url} alt={item.title} />
-                        </div>
-                      ));
+                      return combinedItems.map((item, index) => {
+                        const isPdf = item.image_url?.toLowerCase().endsWith('.pdf') || 
+                                      item.image_url?.includes('/raw/upload') || 
+                                      item.title?.toLowerCase().includes('.pdf');
+                        return (
+                          <div 
+                            key={item.id} 
+                            className="profile-grid-item"
+                            onClick={() => {
+                              if (isPdf) {
+                                window.open(formatPdfUrl(item.image_url), '_blank', 'noopener,noreferrer');
+                              } else {
+                                setFeedPosts(combinedItems);
+                                setFeedStartIndex(index);
+                                setIsFeedViewerOpen(true);
+                              }
+                            }}
+                          >
+                            {isPdf ? (
+                              <div className="pdf-grid-preview">
+                                <span className="material-symbols-outlined" style={{ fontSize: '36px', color: '#f9c846' }}>picture_as_pdf</span>
+                                <span className="pdf-grid-label">{item.title || 'PDF Media Kit'}</span>
+                                <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Click to view</span>
+                              </div>
+                            ) : (
+                              <img src={item.image_url} alt={item.title} />
+                            )}
+                          </div>
+                        );
+                      });
                     })()}
                   </>
                 )}
@@ -1117,7 +1134,7 @@ const ProfilePage: React.FC = () => {
                     <div className="media-kit-download-btns">
                       {item.image_url && (
                         <a
-                          href={item.image_url}
+                          href={isPdf ? formatPdfUrl(item.image_url) : item.image_url}
                           download={isPdf ? `${item.title || 'media-kit'}.pdf` : `${item.title || 'media-kit'}.jpg`}
                           target="_blank"
                           rel="noopener noreferrer"

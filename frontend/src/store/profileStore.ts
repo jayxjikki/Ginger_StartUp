@@ -88,7 +88,7 @@ export interface ProfileState {
   sendMessage: (receiverId: string, content: string) => Promise<void>;
   updateProfile: (updates: Partial<Profile>) => Promise<void>;
   togglePinnedSocial: (platform: string) => Promise<void>;
-  deleteItem: (id: string, type: 'achievement' | 'media_kit' | 'post') => Promise<void>;
+  deleteItem: (id: string, type?: 'achievement' | 'media_kit' | 'post') => Promise<void>;
 }
 
 export const useProfileStore = create<ProfileState>()(
@@ -446,25 +446,46 @@ export const useProfileStore = create<ProfileState>()(
           }
         },
 
-        deleteItem: async (id: string, type: 'achievement' | 'media_kit' | 'post') => {
+        deleteItem: async (id: string, type?: 'achievement' | 'media_kit' | 'post') => {
           const { profile, achievements, mediaKitItems, posts } = get();
           if (!profile) return;
           try {
-            let table = '';
-            if (type === 'achievement') table = 'achievements';
-            else if (type === 'media_kit') table = 'media_kit_items';
-            else if (type === 'post') table = 'posts';
+            // Delete associated interactions first so foreign keys don't block
+            try {
+              await supabase.from('interactions_likes').delete().eq('entity_id', id);
+              await supabase.from('interactions_comments').delete().eq('entity_id', id);
+            } catch (interactionErr) {
+              console.warn('Interactions cleanup skipped/failed:', interactionErr);
+            }
+
+            // Determine target table
+            let targetType = type;
+            if (!targetType) {
+              if (achievements.some(a => a.id === id)) targetType = 'achievement';
+              else if (mediaKitItems.some(m => m.id === id)) targetType = 'media_kit';
+              else targetType = 'post';
+            }
+
+            let table = 'posts';
+            if (targetType === 'achievement') table = 'achievements';
+            else if (targetType === 'media_kit') table = 'media_kit_items';
 
             const { error } = await supabase.from(table).delete().eq('id', id);
-            if (error) throw error;
-
-            if (type === 'achievement') {
-              set({ achievements: achievements.filter(a => a.id !== id) });
-            } else if (type === 'media_kit') {
-              set({ mediaKitItems: mediaKitItems.filter(m => m.id !== id) });
-            } else if (type === 'post') {
-              set({ posts: posts.filter(p => p.id !== id) });
+            if (error) {
+              // If target table delete failed, attempt from other tables as fallback
+              if (table === 'posts') {
+                await supabase.from('achievements').delete().eq('id', id);
+                await supabase.from('media_kit_items').delete().eq('id', id);
+              } else {
+                throw error;
+              }
             }
+
+            set({
+              achievements: achievements.filter(a => a.id !== id),
+              mediaKitItems: mediaKitItems.filter(m => m.id !== id),
+              posts: posts.filter(p => p.id !== id)
+            });
           } catch (err: any) {
             console.error('Error deleting item:', err);
             throw err;

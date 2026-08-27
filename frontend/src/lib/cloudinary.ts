@@ -2,6 +2,19 @@
 // GINGER — Cloudinary Upload Utility
 // ═══════════════════════════════════════════════════════════
 
+export const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
+
+/**
+ * Normalizes PDF URLs so they download/open cleanly even if stored under image/upload.
+ */
+export const formatPdfUrl = (url: string): string => {
+  if (!url) return '';
+  if (url.includes('/image/upload/') && !url.includes('/fl_attachment/') && url.toLowerCase().endsWith('.pdf')) {
+    return url.replace('/image/upload/', '/image/upload/fl_attachment/');
+  }
+  return url;
+};
+
 /**
  * Uploads a file (image or PDF document) to Cloudinary using unsigned upload preset.
  * 
@@ -16,6 +29,11 @@ export const uploadToCloudinary = async (file: File): Promise<string> => {
     throw new Error('Cloudinary environment variables are missing or not configured.');
   }
 
+  // Strict 10MB size limit check
+  if (file.size > MAX_FILE_SIZE_BYTES) {
+    throw new Error('File size exceeds the 10MB limit.');
+  }
+
   const formData = new FormData();
   formData.append('file', file);
   formData.append('upload_preset', uploadPreset);
@@ -23,8 +41,8 @@ export const uploadToCloudinary = async (file: File): Promise<string> => {
 
   const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
   
-  // Try endpoints in order: 'auto' (general), 'image' (Cloudinary natively processes PDFs as images), then 'raw'
-  const endpoints = isPdf ? ['auto', 'image', 'raw'] : ['image', 'auto'];
+  // For PDF files: 'raw' delivers exact binary stream without raster distortion. Try raw first, then auto/image.
+  const endpoints = isPdf ? ['raw', 'auto', 'image'] : ['image', 'auto'];
 
   let lastError: Error | null = null;
 

@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiUploadCloud, FiX, FiCheckCircle, FiLoader } from 'react-icons/fi';
+import toast from 'react-hot-toast';
 import { uploadToCloudinary } from '../../lib/cloudinary';
 import './ImageUpload.css';
 
@@ -51,7 +52,14 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
 
   const processFile = async (file: File) => {
     if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
       onUploadError?.(new Error('Please select an image file'));
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Image size must be less than 10MB');
+      onUploadError?.(new Error('Image size must be less than 10MB'));
       return;
     }
 

@@ -995,6 +995,40 @@
   cursor: pointer;
 }
 
+.pdf-grid-preview {
+  width: 100%;
+  height: 100%;
+  aspect-ratio: 1 / 1;
+  background: linear-gradient(135deg, rgba(249, 200, 70, 0.12), rgba(0, 0, 0, 0.45));
+  border: 1px solid rgba(249, 200, 70, 0.25);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px;
+  box-sizing: border-box;
+  text-align: center;
+  cursor: pointer;
+  transition: transform 0.2s, border-color 0.2s;
+}
+
+.pdf-grid-preview:hover {
+  transform: scale(1.02);
+  border-color: rgba(249, 200, 70, 0.5);
+}
+
+.pdf-grid-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #f9c846;
+  max-width: 90%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .media-kit-pdf-label {
   display: flex;
   align-items: center;

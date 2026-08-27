@@ -7,6 +7,7 @@ import { useUgcStore } from '../../../store/ugcStore';
 import { useGlobalModalStore } from '../../../store/globalModalStore';
 import { useAuthStore } from '../../../store/authStore';
 import { useProfileStore } from '../../../store/profileStore';
+import { formatPdfUrl } from '../../../lib/cloudinary';
 import toast from 'react-hot-toast';
 
 interface FeedPost {
@@ -173,22 +174,56 @@ const ProfileFeedViewer: React.FC<ProfileFeedViewerProps> = ({
                 )}
               </div>
 
-              {/* Post Image */}
-              <div 
-                className="feed-post-image-container" 
-                style={{ position: 'relative', cursor: 'pointer' }}
-                onDoubleClick={() => handleDoubleClick(post.id, isLiked)}
-              >
-                <img src={post.image_url} alt={post.title} className="feed-post-image" />
-                
-                {heartAnimations[post.id] && (
-                  <div className="double-click-heart-overlay">
-                    <span className="material-symbols-outlined heart-icon" style={{ fontVariationSettings: "'FILL' 1" }}>
-                      favorite
-                    </span>
+              {/* Post Image or PDF Document */}
+              {(() => {
+                const isPdf = post.image_url?.toLowerCase().endsWith('.pdf') || 
+                              post.image_url?.includes('/raw/upload') || 
+                              post.title?.toLowerCase().includes('.pdf');
+                if (isPdf) {
+                  return (
+                    <div 
+                      className="feed-post-image-container"
+                      style={{ 
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        alignItems: 'center', 
+                        justifyContent: 'center',
+                        background: 'linear-gradient(135deg, rgba(249, 200, 70, 0.1), rgba(0, 0, 0, 0.6))',
+                        border: '1px solid rgba(249, 200, 70, 0.25)',
+                        minHeight: '280px',
+                        padding: '24px',
+                        textAlign: 'center',
+                        cursor: 'pointer'
+                      }}
+                      onClick={() => window.open(formatPdfUrl(post.image_url), '_blank', 'noopener,noreferrer')}
+                    >
+                      <span className="material-symbols-outlined" style={{ fontSize: '64px', color: '#f9c846' }}>picture_as_pdf</span>
+                      <h4 style={{ margin: '16px 0 6px 0', color: '#fff', fontSize: '18px' }}>{post.title || 'PDF Media Kit'}</h4>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 16px', borderRadius: '20px', background: 'rgba(249, 200, 70, 0.15)', border: '1px solid rgba(249, 200, 70, 0.4)', color: '#f9c846', fontSize: '13px', fontWeight: 600 }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>open_in_new</span>
+                        Open PDF Document
+                      </div>
+                    </div>
+                  );
+                }
+                return (
+                  <div 
+                    className="feed-post-image-container" 
+                    style={{ position: 'relative', cursor: 'pointer' }}
+                    onDoubleClick={() => handleDoubleClick(post.id, isLiked)}
+                  >
+                    <img src={post.image_url} alt={post.title} className="feed-post-image" />
+                    
+                    {heartAnimations[post.id] && (
+                      <div className="double-click-heart-overlay">
+                        <span className="material-symbols-outlined heart-icon" style={{ fontVariationSettings: "'FILL' 1" }}>
+                          favorite
+                        </span>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
+                );
+              })()}
 
               {/* Post Actions */}
               <div className="feed-post-actions">
