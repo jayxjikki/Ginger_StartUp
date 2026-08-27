@@ -15,7 +15,7 @@ const GlobalModal: React.FC = () => {
     <AnimatePresence>
       <div className="global-modal-overlay" onClick={modalConfig.onCancel}>
         <motion.div 
-          className="global-modal-content glass-strong"
+          className="global-modal-content"
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
