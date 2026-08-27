@@ -87,7 +87,6 @@ const ProfilePage: React.FC = () => {
   const [activeTab, setActiveTab] = useState(1);
 
   const [isFeedViewerOpen, setIsFeedViewerOpen] = useState(false);
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [feedPosts, setFeedPosts] = useState<any[]>([]);
   const [feedStartIndex, setFeedStartIndex] = useState(0);
   const [returnToChat, setReturnToChat] = useState<any>(false);
@@ -379,14 +378,7 @@ const ProfilePage: React.FC = () => {
   return (
     <>
       <TransitionLoader isActive={isEntering} />
-      {selectedImage && (
-        <div 
-          style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.9)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'zoom-out' }}
-          onClick={() => setSelectedImage(null)}
-        >
-          <img src={selectedImage} alt="Expanded view" style={{ maxWidth: '90vw', maxHeight: '90vh', objectFit: 'contain' }} />
-        </div>
-      )}
+
       <div className="profile-page-wrapper">
         {/* FeedViewer Modal */}
       <ProfileFeedViewer 
@@ -501,15 +493,12 @@ const ProfilePage: React.FC = () => {
         {/* Profile Header Card */}
         <section 
           className="liquid-card profile-header-card" 
-          onClick={() => setSelectedImage(actualBannerUrl)}
-          style={{ cursor: 'pointer', ...bannerStyle }}
+          style={{ ...bannerStyle }}
         >
           <img 
             src={actualAvatarUrl} 
             alt={profile.full_name} 
             className="profile-avatar"
-            onClick={(e) => { e.stopPropagation(); setSelectedImage(actualAvatarUrl); }}
-            style={{ cursor: 'zoom-in' }}
           />
           <h2 className="profile-name">{profile.full_name}</h2>
           {profile.username && (
