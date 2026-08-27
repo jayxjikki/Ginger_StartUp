@@ -10,6 +10,8 @@ import { useGlobalModalStore } from '../../../store/globalModalStore';
 import { useUgcStore } from '../../../store/ugcStore';
 import { useProfileStore } from '../../../store/profileStore';
 import { useChatStore } from '../../../store/chatStore';
+import { useNotificationStore } from '../../../store/notificationStore';
+import { formatDistanceToNow } from 'date-fns';
 import ProfileFeedViewer from '../components/ProfileFeedViewer';
 import Input, { Textarea } from '../../../components/ui/Input';
 import ImageUpload from '../../../components/ui/ImageUpload';
@@ -109,7 +111,9 @@ const ProfilePage: React.FC = () => {
   const [postType, setPostType] = useState<'media_kit' | 'portfolio' | 'blog'>('portfolio');
 
   const { inboxChats } = useChatStore();
-  const unreadCount = inboxChats.filter(chat => chat.unread).length;
+  const unreadChatCount = inboxChats.filter(chat => chat.unread).length;
+
+  const { notifications, unreadCount: unreadNotifCount, markAllAsRead, markAsRead } = useNotificationStore();
 
   const [title, setTitle] = useState('');
   const [desc, setDesc] = useState('');
@@ -445,12 +449,18 @@ const ProfilePage: React.FC = () => {
           <div className="profile-top-actions">
             <button className="top-action-btn" style={{ position: 'relative' }} onClick={() => navigate('/inbox')}>
               <span className="material-symbols-outlined">mail</span>
-              {unreadCount > 0 && (
-                <span className="global-chat-badge">{unreadCount > 9 ? '9+' : unreadCount}</span>
+              {unreadChatCount > 0 && (
+                <span className="global-chat-badge">{unreadChatCount > 9 ? '9+' : unreadChatCount}</span>
               )}
             </button>
-            <button className="top-action-btn" onClick={() => setShowNotifications(true)}>
+            <button className="top-action-btn" style={{ position: 'relative' }} onClick={() => {
+              setShowNotifications(true);
+              if (unreadNotifCount > 0 && user) markAllAsRead(user.id);
+            }}>
               <span className="material-symbols-outlined">notifications</span>
+              {unreadNotifCount > 0 && (
+                <span className="global-chat-badge">{unreadNotifCount > 9 ? '9+' : unreadNotifCount}</span>
+              )}
             </button>
             <button className="top-action-btn" onClick={() => navigate('/profile/edit')}>
               <span className="material-symbols-outlined">edit</span>
@@ -769,33 +779,44 @@ const ProfilePage: React.FC = () => {
               </button>
             </div>
             <div className="drawer-body">
-              <div className="notification-item unread">
-                <div className="notification-avatar">
-                  <img src="https://i.pravatar.cc/150?img=1" alt="User" />
+              {notifications.length === 0 ? (
+                <div className="empty-state" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: '48px', opacity: 0.2 }}>notifications_off</span>
+                  <p>No notifications yet</p>
                 </div>
-                <div className="notification-text">
-                  <strong>Sarah Jenkins</strong> liked your new Media Kit item.
-                  <div className="notification-time">2m ago</div>
-                </div>
-              </div>
-              <div className="notification-item">
-                <div className="notification-avatar">
-                  <img src="https://i.pravatar.cc/150?img=2" alt="User" />
-                </div>
-                <div className="notification-text">
-                  <strong>TechCorp</strong> sent you a collaboration request!
-                  <div className="notification-time">1h ago</div>
-                </div>
-              </div>
-              <div className="notification-item">
-                <div className="notification-icon-wrap bg-accent">
-                  <span className="material-symbols-outlined">campaign</span>
-                </div>
-                <div className="notification-text">
-                  Your campaign "Summer Vibes" has officially ended.
-                  <div className="notification-time">3h ago</div>
-                </div>
-              </div>
+              ) : (
+                notifications.map(notification => (
+                  <div 
+                    key={notification.id} 
+                    className={`notification-item ${!notification.is_read ? 'unread' : ''}`}
+                    onClick={() => {
+                      if (!notification.is_read) markAsRead(notification.id);
+                      // Depending on entity type, we could navigate them to the post
+                    }}
+                  >
+                    {notification.actor ? (
+                      <div className="notification-avatar">
+                        <img src={notification.actor.avatar_url || 'https://via.placeholder.com/150'} alt={notification.actor.full_name} />
+                      </div>
+                    ) : (
+                      <div className="notification-icon-wrap bg-accent">
+                        <span className="material-symbols-outlined">campaign</span>
+                      </div>
+                    )}
+                    
+                    <div className="notification-text">
+                      {notification.actor ? (
+                        <><strong>{notification.actor.full_name}</strong> {notification.content}</>
+                      ) : (
+                        <>{notification.content}</>
+                      )}
+                      <div className="notification-time">
+                        {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>

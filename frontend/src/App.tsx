@@ -9,6 +9,7 @@ import { Toaster } from 'react-hot-toast';
 import { useAuthStore } from './store/authStore';
 import { useCampaignStore } from './store/campaignStore';
 import { useChatStore } from './store/chatStore';
+import { useNotificationStore } from './store/notificationStore';
 import { useLocation } from 'react-router-dom';
 
 // Pages
@@ -116,26 +117,34 @@ const RouteChangeListener: React.FC = () => {
   return null;
 };
 
-// Global chat initializer to track presence and inbox globally
-const GlobalChatInitializer: React.FC = () => {
+// Global initializer to track presence, inbox, and notifications globally
+const GlobalRealtimeInitializer: React.FC = () => {
   const { user } = useAuthStore();
   const { fetchInbox, subscribeToMessages, subscribeToGlobalPresence, unsubscribeFromMessages, unsubscribeFromGlobalPresence } = useChatStore();
+  const { fetchNotifications, subscribeToNotifications, unsubscribeFromNotifications } = useNotificationStore();
 
   useEffect(() => {
     if (user) {
+      // Chats
       fetchInbox(user.id);
       subscribeToMessages(user.id);
       subscribeToGlobalPresence(user.id);
+      
+      // Notifications
+      fetchNotifications(user.id);
+      subscribeToNotifications(user.id);
     } else {
       unsubscribeFromMessages();
       unsubscribeFromGlobalPresence();
+      unsubscribeFromNotifications();
     }
     
     return () => {
       unsubscribeFromMessages();
       unsubscribeFromGlobalPresence();
+      unsubscribeFromNotifications();
     };
-  }, [user, fetchInbox, subscribeToMessages, subscribeToGlobalPresence, unsubscribeFromMessages, unsubscribeFromGlobalPresence]);
+  }, [user, fetchInbox, subscribeToMessages, subscribeToGlobalPresence, unsubscribeFromMessages, unsubscribeFromGlobalPresence, fetchNotifications, subscribeToNotifications, unsubscribeFromNotifications]);
 
   return null;
 };
@@ -172,7 +181,7 @@ const AppRoutes: React.FC = () => {
       />
       <GlobalModal />
       <RouteChangeListener />
-      <GlobalChatInitializer />
+      <GlobalRealtimeInitializer />
 
       <AnimatePresence mode="wait">
         <Routes location={location} key={location.pathname}>
