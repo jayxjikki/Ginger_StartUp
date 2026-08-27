@@ -9,7 +9,7 @@ import { useAuthStore } from '../../../store/authStore';
 import { useGlobalModalStore } from '../../../store/globalModalStore';
 import { useUgcStore } from '../../../store/ugcStore';
 import { useProfileStore } from '../../../store/profileStore';
-import ImageViewer from '../../../components/ui/ImageViewer';
+import ProfileFeedViewer from '../components/ProfileFeedViewer';
 import Input, { Textarea } from '../../../components/ui/Input';
 import ImageUpload from '../../../components/ui/ImageUpload';
 import Button from '../../../components/ui/Button';
@@ -88,7 +88,10 @@ const ProfilePage: React.FC = () => {
   const tabSliderRef = useRef<HTMLDivElement>(null);
 
   // Fullscreen Viewer State
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [isFeedViewerOpen, setIsFeedViewerOpen] = useState(false);
+  const [feedPosts, setFeedPosts] = useState<any[]>([]);
+  const [feedStartIndex, setFeedStartIndex] = useState(0);
+
   const [isChatModalOpen, setIsChatModalOpen] = useState(false);
   const [isBlockedByThem, setIsBlockedByThem] = useState(false);
 
@@ -102,6 +105,7 @@ const ProfilePage: React.FC = () => {
 
   // Form states
   const [showAddForm, setShowAddForm] = useState(false);
+  const [postType, setPostType] = useState<'media_kit' | 'portfolio' | 'blog'>('portfolio');
   const [title, setTitle] = useState('');
   const [desc, setDesc] = useState('');
   const [imageUrl, setImageUrl] = useState('');
@@ -140,25 +144,19 @@ const ProfilePage: React.FC = () => {
 
   const isBlockedByMe = profile ? blockedUserIds.includes(profile.id) : false;
 
-  const handleTabClick = (index: number, e: React.MouseEvent<HTMLButtonElement>) => {
+  const handleTabClick = (index: number) => {
     setActiveTab(index);
-    setShowAddForm(false); // Close form when switching tabs
-    if (tabSliderRef.current) {
-      const btn = e.currentTarget;
-      const container = btn.parentElement;
-      if (container) {
-        const width = btn.offsetWidth;
-        const left = btn.offsetLeft;
-        tabSliderRef.current.style.width = `${width}px`;
-        tabSliderRef.current.style.transform = `translateX(${left}px)`;
-      }
+    if (index === 2) {
+      setShowAddForm(true);
+    } else {
+      setShowAddForm(false);
     }
   };
 
   const handleSave = async () => {
     if (!title) return;
     try {
-      if (activeTab === 0) {
+      if (postType === 'media_kit') {
         // Save Media Kit Item
         await createMediaKitItem({
           title,
@@ -166,20 +164,22 @@ const ProfilePage: React.FC = () => {
           image_url: imageUrl,
         });
         toast.success("Media Kit item saved!");
-      } else if (activeTab === 1) {
+      } else if (postType === 'blog') {
         // Save as Post
         await createPost({
           title,
           content: desc,
           image_url: imageUrl,
         });
-      } else if (activeTab === 2) {
+        toast.success("Blog post saved!");
+      } else if (postType === 'portfolio') {
         // Save as Achievement
         await createAchievement({
           title,
           description: desc,
           icon_url: imageUrl,
         });
+        toast.success("Portfolio item saved!");
       }
       setShowAddForm(false);
       setTitle('');
@@ -190,23 +190,7 @@ const ProfilePage: React.FC = () => {
     }
   };
 
-  // Set initial slider position on mount
-  useEffect(() => {
-    if (tabSliderRef.current && tabSliderRef.current.parentElement) {
-      // 2nd button is index 1 (Portfolio & Achievements) which matches initial state 1
-      const btns = tabSliderRef.current.parentElement.querySelectorAll('.tab-btn');
-      if (btns.length > 1) {
-        const targetBtn = btns[1] as HTMLElement;
-        const container = targetBtn.parentElement;
-        if (container) {
-          const width = targetBtn.offsetWidth;
-          const left = targetBtn.offsetLeft;
-          tabSliderRef.current.style.width = `${width}px`;
-          tabSliderRef.current.style.transform = `translateX(${left}px)`;
-        }
-      }
-    }
-  }, []);
+  // Removed tabSliderRef initialization
 
   if (!profile || (isLoading && profile.id !== targetUserId)) {
     return (
@@ -326,11 +310,18 @@ const ProfilePage: React.FC = () => {
     <>
       <TransitionLoader isActive={isEntering} />
       <div className="profile-page-wrapper">
-        {/* ImageViewer Modal */}
-      <ImageViewer 
-        isOpen={!!selectedImage} 
-        imageUrl={selectedImage || ''} 
-        onClose={() => setSelectedImage(null)} 
+        {/* FeedViewer Modal */}
+      <ProfileFeedViewer 
+        isOpen={isFeedViewerOpen} 
+        onClose={() => setIsFeedViewerOpen(false)} 
+        posts={feedPosts}
+        initialPostIndex={feedStartIndex}
+        profile={{
+          full_name: profile.full_name,
+          avatar_url: actualAvatarUrl,
+          username: profile.username,
+          location: profile.location
+        }}
       />
 
       {/* Settings Modal */}
@@ -523,43 +514,49 @@ const ProfilePage: React.FC = () => {
         {/* Content Tabs */}
         <section>
           <div className="tabs-container">
-            <div id="tab-slider" ref={tabSliderRef} className="tab-slider"></div>
-            <button onClick={(e) => handleTabClick(0, e)} className={`tab-btn ${activeTab === 0 ? 'active' : 'inactive'}`}>
-              Media Kit
+            <button onClick={() => handleTabClick(0)} className={`tab-btn ${activeTab === 0 ? 'active' : 'inactive'}`}>
+              <span className="material-symbols-outlined tab-icon">grid_on</span>
             </button>
-            <button onClick={(e) => handleTabClick(1, e)} className={`tab-btn ${activeTab === 1 ? 'active' : 'inactive'}`}>
-              Portfolio & Achievements
+            <button onClick={() => handleTabClick(1)} className={`tab-btn ${activeTab === 1 ? 'active' : 'inactive'}`}>
+              <span className="material-symbols-outlined tab-icon">article</span>
             </button>
-            <button onClick={(e) => handleTabClick(2, e)} className={`tab-btn ${activeTab === 2 ? 'active' : 'inactive'}`}>
-              Blog Posts
-            </button>
+            {!isPublicView && (
+              <button onClick={() => handleTabClick(2)} className={`tab-btn ${activeTab === 2 ? 'active' : 'inactive'}`}>
+                <span className="material-symbols-outlined tab-icon">add_box</span>
+              </button>
+            )}
           </div>
 
           {/* Tab Content area */}
           <div>
-            <div className="section-header">
-              <h3 className="section-title">
-                {activeTab === 0 && 'Media Kit'}
-                {activeTab === 1 && 'Past Work'}
-                {activeTab === 2 && 'Blog Posts'}
-              </h3>
-              {!isPublicView && (
-                <button className="add-btn" onClick={() => setShowAddForm(!showAddForm)}>
-                  <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
-                    {showAddForm ? 'close' : 'add'}
-                  </span> 
-                  {showAddForm ? 'Cancel' : 'Add'}
-                </button>
-              )}
-            </div>
-
             {/* Add Form Overlay / Section */}
-            {showAddForm && (
-              <Card variant="glass" padding="lg" className="mb-6">
-                <h6 style={{ marginBottom: '1rem', color: 'var(--text-primary)' }}>
-                  Add New {activeTab === 0 ? 'Media Kit Item' : activeTab === 1 ? 'Project' : 'Blog Post'}
-                </h6>
+            {showAddForm && activeTab === 2 && (
+              <Card variant="glass" padding="lg" className="mb-6 unified-add-form">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                  <h6 style={{ margin: 0, color: 'var(--text-primary)' }}>Create New Post</h6>
+                  <button onClick={() => handleTabClick(0)} style={{ background: 'transparent', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer' }}>
+                    <span className="material-symbols-outlined">close</span>
+                  </button>
+                </div>
+                
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <label style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>Post Type</label>
+                    <select 
+                      value={postType}
+                      onChange={(e) => setPostType(e.target.value as any)}
+                      style={{ 
+                        width: '100%', padding: '12px', borderRadius: '8px', 
+                        background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', 
+                        color: 'var(--text-primary)', outline: 'none'
+                      }}
+                    >
+                      <option value="portfolio" style={{ background: '#121212' }}>Portfolio & Achievement</option>
+                      <option value="blog" style={{ background: '#121212' }}>Blog Post</option>
+                      <option value="media_kit" style={{ background: '#121212' }}>Media Kit Item</option>
+                    </select>
+                  </div>
+
                   <Input 
                     label="Title" 
                     placeholder="Enter title..." 
@@ -579,85 +576,89 @@ const ProfilePage: React.FC = () => {
                     onUploadError={(err) => console.error(err)}
                   />
                   <Button fullWidth onClick={handleSave}>
-                    Save {activeTab === 0 ? 'Media Kit Item' : activeTab === 1 ? 'Project' : 'Blog Post'}
+                    Share Post
                   </Button>
                 </div>
               </Card>
             )}
 
-            {/* Horizontal Scroll Cards */}
-            {!showAddForm && (
-              <div className="horizontal-scroll">
-                {activeTab === 1 && posts.length > 0 ? (
-                  posts.map(post => (
-                    <div 
-                      key={post.id} 
-                      className="liquid-card scroll-card"
-                      onClick={() => post.image_url && setSelectedImage(post.image_url)}
-                      style={{ cursor: post.image_url ? 'zoom-in' : 'default' }}
-                    >
-                      <div className="scroll-card-bg"></div>
-                      {post.image_url ? (
-                        <img src={post.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', zIndex: 5, position: 'relative' }} />
-                      ) : (
-                        <span className="material-symbols-outlined scroll-card-icon">image</span>
-                      )}
-                    </div>
-                  ))
-                ) : activeTab === 2 && achievements.length > 0 ? (
-                   achievements.map(ach => (
-                    <div 
-                      key={ach.id} 
-                      className="liquid-card scroll-card"
-                      onClick={() => ach.icon_url && setSelectedImage(ach.icon_url)}
-                      style={{ cursor: ach.icon_url ? 'zoom-in' : 'default' }}
-                    >
-                      <div className="scroll-card-bg"></div>
-                      {ach.icon_url ? (
-                        <img src={ach.icon_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', zIndex: 5, position: 'relative' }} />
-                      ) : (
-                        <span className="material-symbols-outlined scroll-card-icon">award_star</span>
-                      )}
-                    </div>
-                  ))
-                ) : activeTab === 0 && mediaKitItems && mediaKitItems.length > 0 ? (
-                  mediaKitItems.map(item => (
-                    <div 
-                      key={item.id} 
-                      className="liquid-card scroll-card"
-                      onClick={() => item.image_url && setSelectedImage(item.image_url)}
-                      style={{ cursor: item.image_url ? 'zoom-in' : 'default' }}
-                    >
-                      <div className="scroll-card-bg"></div>
-                      {item.image_url ? (
-                        <img src={item.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', zIndex: 5, position: 'relative' }} />
-                      ) : (
-                        <span className="material-symbols-outlined scroll-card-icon">image</span>
-                      )}
-                    </div>
-                  ))
-                ) : (
+            {/* Grid Content */}
+            {!showAddForm && activeTab !== 2 && (
+              <div className="profile-grid-container">
+                {activeTab === 0 && (
                   <>
-                    <div className="liquid-card scroll-card">
-                      <div className="scroll-card-bg"></div>
-                      <span className="material-symbols-outlined scroll-card-icon">image</span>
-                    </div>
-                    <div className="liquid-card scroll-card">
-                      <div className="scroll-card-bg"></div>
-                      <span className="material-symbols-outlined scroll-card-icon">image</span>
-                    </div>
+                    {/* Render Achievements/Portfolio */}
+                    {(() => {
+                      // Combine achievements and media kits for the feed
+                      const combinedItems = [
+                        ...achievements.filter(ach => ach.icon_url).map(ach => ({
+                          id: ach.id,
+                          title: ach.title,
+                          description: ach.description,
+                          image_url: ach.icon_url!,
+                          created_at: ach.created_at
+                        })),
+                        ...(mediaKitItems || []).filter(mk => mk.image_url).map(mk => ({
+                          id: mk.id,
+                          title: mk.title,
+                          description: mk.description,
+                          image_url: mk.image_url!,
+                          created_at: mk.created_at
+                        }))
+                      ];
+
+                      if (combinedItems.length === 0) {
+                        return (
+                          <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '2rem', color: 'var(--text-tertiary)' }}>
+                            No portfolio images yet.
+                          </div>
+                        );
+                      }
+
+                      return combinedItems.map((item, index) => (
+                        <div 
+                          key={item.id} 
+                          className="profile-grid-item"
+                          onClick={() => {
+                            setFeedPosts(combinedItems);
+                            setFeedStartIndex(index);
+                            setIsFeedViewerOpen(true);
+                          }}
+                        >
+                          <img src={item.image_url} alt={item.title} />
+                        </div>
+                      ));
+                    })()}
                   </>
                 )}
-                
-                {!isPublicView && (
-                  <div className="liquid-card scroll-card add-new-card" onClick={() => setShowAddForm(true)}>
-                    <div className="add-new-content">
-                      <span className="material-symbols-outlined add-new-icon">add_circle</span>
-                      <span className="add-new-text">
-                        {activeTab === 0 ? 'New Media Kit Item' : activeTab === 1 ? 'New Project' : 'New Blog Post'}
-                      </span>
-                    </div>
-                  </div>
+
+                {activeTab === 1 && (
+                  <>
+                    {(() => {
+                      const validPosts = posts.filter(post => post.image_url);
+                      if (validPosts.length === 0) {
+                        return (
+                          <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '2rem', color: 'var(--text-tertiary)' }}>
+                            No blog post images yet.
+                          </div>
+                        );
+                      }
+
+                      return validPosts.map((post, index) => (
+                        <div 
+                          key={post.id} 
+                          className="profile-grid-item"
+                          onClick={() => {
+                            setFeedPosts(validPosts);
+                            setFeedStartIndex(index);
+                            setIsFeedViewerOpen(true);
+                          }}
+                        >
+                          <img src={post.image_url!} alt={post.title} />
+                        </div>
+                      ));
+                    })()}
+                  </>
                 )}
               </div>
             )}
