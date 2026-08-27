@@ -374,8 +374,8 @@ const HomeMenuPage: React.FC = () => {
                   </div>
                 </article>
               );
-            })
-          )()}
+            });
+          })()}
         </div>
       </main>
     </div>
