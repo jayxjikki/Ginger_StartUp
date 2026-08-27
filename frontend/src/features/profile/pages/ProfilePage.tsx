@@ -14,7 +14,7 @@ import { useNotificationStore } from '../../../store/notificationStore';
 import { formatDistanceToNow } from 'date-fns';
 import ProfileFeedViewer from '../components/ProfileFeedViewer';
 import ImageUpload from '../../../components/ui/ImageUpload';
-import { uploadToCloudinary, getPdfViewerUrl, getPdfDownloadUrl } from '../../../lib/cloudinary';
+import { uploadToCloudinary, getPdfViewerUrl, triggerFileDownload } from '../../../lib/cloudinary';
 import SettingsModal from '../components/SettingsModal';
 import VerifiedChannelsModal from '../components/VerifiedChannelsModal';
 import ChatModal from '../../../components/ui/ChatModal';
@@ -804,7 +804,7 @@ const ProfilePage: React.FC = () => {
                               }
                               setIsUploadingPdf(true);
                               try {
-                                const url = await uploadToCloudinary(file);
+                                const url = await uploadToCloudinary(file, user?.id);
                                 setImageUrl(url);
                                 const cleanName = file.name.replace(/\.[^/.]+$/, "");
                                 setTitle(cleanName || 'Media Kit Document');
@@ -1082,7 +1082,6 @@ const ProfilePage: React.FC = () => {
                               item.title?.toLowerCase().includes('.pdf') ||
                               item.title?.toLowerCase().includes('document');
                 const viewerUrl = isPdf ? getPdfViewerUrl(item.image_url) : item.image_url;
-                const downloadUrl = isPdf ? getPdfDownloadUrl(item.image_url) : item.image_url;
 
                 return (
                   <div key={item.id} className="media-kit-download-item">
@@ -1114,19 +1113,21 @@ const ProfilePage: React.FC = () => {
                         View
                       </a>
 
-                      {/* Download */}
-                      <a
-                        href={downloadUrl}
-                        download={isPdf ? `${item.title || 'media-kit'}.pdf` : `${item.title || 'media-kit'}.jpg`}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                      {/* Direct Reliable Download */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const filename = isPdf ? `${item.title || 'media-kit'}.pdf` : `${item.title || 'media-kit'}.jpg`;
+                          triggerFileDownload(item.image_url, filename);
+                        }}
                         className={`media-kit-dl-btn ${isPdf ? 'pdf' : 'img'}`}
+                        style={{ cursor: 'pointer', border: 'none' }}
                       >
                         <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>
                           download
                         </span>
                         Download
-                      </a>
+                      </button>
                     </div>
                   </div>
                 );
