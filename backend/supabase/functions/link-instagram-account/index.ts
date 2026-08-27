@@ -13,11 +13,6 @@ serve(async (req) => {
     const { code, redirect_uri, profile_id } = await req.json();
 
     console.log("=== INSTAGRAM LINK START ===");
-    console.log("redirect_uri:", redirect_uri);
-    console.log("profile_id:", profile_id);
-    console.log("Client ID present:", !!INSTAGRAM_CLIENT_ID);
-    console.log("Client Secret present:", !!INSTAGRAM_CLIENT_SECRET);
-
     if (!code || !redirect_uri || !profile_id) {
       throw new Error("Missing required parameters: code, redirect_uri, or profile_id");
     }
@@ -26,7 +21,7 @@ serve(async (req) => {
       throw new Error("Instagram client credentials not configured on the server");
     }
 
-    // Step 1: Exchange authorization code for short-lived token
+    // Step 1: Exchange code for token
     const tokenFormData = new URLSearchParams();
     tokenFormData.append('client_id', INSTAGRAM_CLIENT_ID);
     tokenFormData.append('client_secret', INSTAGRAM_CLIENT_SECRET);
@@ -34,8 +29,7 @@ serve(async (req) => {
     tokenFormData.append('redirect_uri', redirect_uri);
     tokenFormData.append('code', code);
 
-    console.log("Step 1: Exchanging code for short-lived token...");
-
+    console.log("Step 1: Exchanging code for token...");
     const tokenRes = await fetch('https://api.instagram.com/oauth/access_token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -43,9 +37,6 @@ serve(async (req) => {
     });
 
     const tokenText = await tokenRes.text();
-    console.log("Token response status:", tokenRes.status);
-    console.log("Token response:", tokenText);
-
     let tokenData;
     try {
       tokenData = JSON.parse(tokenText);
@@ -53,98 +44,58 @@ serve(async (req) => {
       throw new Error(`Instagram returned non-JSON: ${tokenText}`);
     }
 
-    if (!tokenData.access_token) {
+    if (!tokenData.access_token || !tokenData.user_id) {
       throw new Error(`Token exchange failed: ${tokenData.error_message || tokenData.error_type || 'No access_token'}`);
     }
 
     const shortToken = tokenData.access_token;
-    const igUserId = tokenData.user_id;
-    console.log("Got token! user_id:", igUserId);
+    const userId = tokenData.user_id;
+    console.log("Got token! user_id:", userId);
 
-    // Step 2: Exchange for long-lived token (60 days)
-    let longToken = shortToken;
-    console.log("Step 2: Exchanging for long-lived token...");
-    try {
-      const llRes = await fetch(
-        `https://graph.instagram.com/access_token?grant_type=ig_exchange_token&client_secret=${INSTAGRAM_CLIENT_SECRET}&access_token=${shortToken}`
-      );
-      const llText = await llRes.text();
-      console.log("Long-lived response:", llText);
-      const llData = JSON.parse(llText);
-      if (llData.access_token) {
-        longToken = llData.access_token;
-        console.log("Long-lived token obtained!");
-      }
-    } catch (e) {
-      console.error("Long-lived token failed (will use short-lived):", e);
-    }
-
-    // Step 3: Fetch profile - try multiple approaches
+    // Step 2: Fetch profile using /me and only basic fields first
     let username = '';
     let followers = 0;
-    
-    // Approach A: Use /me endpoint with long-lived token
-    console.log("Step 3A: Trying /me endpoint...");
-    const meRes = await fetch(
-      `https://graph.instagram.com/me?fields=user_id,username,followers_count&access_token=${longToken}`
+
+    console.log(`Step 2: Fetching profile for /me using v21.0...`);
+
+    // Try just username and id first
+    const basicProfileRes = await fetch(
+      `https://graph.instagram.com/v21.0/me?fields=id,username&access_token=${shortToken}`
     );
-    const meText = await meRes.text();
-    console.log("  /me status:", meRes.status, "body:", meText);
 
-    let meData;
-    try { meData = JSON.parse(meText); } catch { meData = null; }
+    const basicProfileText = await basicProfileRes.text();
+    console.log("Basic Profile Fetch Response:", basicProfileRes.status, basicProfileText);
 
-    if (meData && meData.username) {
-      username = meData.username;
-      followers = meData.followers_count || 0;
-      console.log("  /me SUCCESS:", username, followers);
-    } else {
-      // Approach B: Use user_id endpoint with short-lived token
-      console.log("Step 3B: Trying /{user_id} with short token...");
-      const idRes = await fetch(
-        `https://graph.instagram.com/${igUserId}?fields=user_id,username,followers_count&access_token=${shortToken}`
-      );
-      const idText = await idRes.text();
-      console.log("  /{id} status:", idRes.status, "body:", idText);
+    let basicProfileData;
+    try { basicProfileData = JSON.parse(basicProfileText); } catch { basicProfileData = null; }
 
-      let idData;
-      try { idData = JSON.parse(idText); } catch { idData = null; }
-
-      if (idData && idData.username) {
-        username = idData.username;
-        followers = idData.followers_count || 0;
-        console.log("  /{id} SUCCESS:", username, followers);
-      } else {
-        // Approach C: Try with just username field (maybe followers_count needs extra permission)
-        console.log("Step 3C: Trying with just username field...");
-        const minRes = await fetch(
-          `https://graph.instagram.com/me?fields=username&access_token=${shortToken}`
+    if (basicProfileData && basicProfileData.username) {
+      username = basicProfileData.username;
+      
+      // Try getting followers count separately
+      try {
+        const followersRes = await fetch(
+          `https://graph.instagram.com/v21.0/me?fields=followers_count&access_token=${shortToken}`
         );
-        const minText = await minRes.text();
-        console.log("  minimal status:", minRes.status, "body:", minText);
-
-        let minData;
-        try { minData = JSON.parse(minText); } catch { minData = null; }
-
-        if (minData && minData.username) {
-          username = minData.username;
-          console.log("  minimal SUCCESS:", username);
-        } else {
-          // All approaches failed
-          const allErrors = `Approach A: ${meText} | Approach B: ${idText} | Approach C: ${minText}`;
-          throw new Error(`Could not fetch Instagram profile. Details: ${allErrors}`);
+        const followersData = await followersRes.json();
+        if (followersData.followers_count !== undefined) {
+          followers = followersData.followers_count;
         }
+      } catch (e) {
+        console.log("Could not fetch followers, defaulting to 0");
       }
-    }
 
-    console.log("=== FINAL RESULT: username:", username, "followers:", followers, "===");
+      console.log("SUCCESS! Username:", username, "Followers:", followers);
+    } else {
+      throw new Error(`Failed to fetch basic profile data. API Response: ${basicProfileText}`);
+    }
 
     return new Response(
       JSON.stringify({
         success: true,
         username,
         followers,
-        access_token: longToken
+        access_token: shortToken
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
     );
