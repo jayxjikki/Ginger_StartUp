@@ -394,65 +394,92 @@ const ChatModal: React.FC<ChatModalProps> = ({
           </div>
 
           {/* Message Long-Press / Options Modal */}
-          {activeMessageOptions && (
-            <div 
-              className="chat-msg-options-overlay"
-              onClick={() => setActiveMessageOptions(null)}
-            >
+          {activeMessageOptions && (() => {
+            const isOptImage = activeMessageOptions.content.startsWith('[IMAGE]') && activeMessageOptions.content.endsWith('[/IMAGE]');
+            const isOptVideo = activeMessageOptions.content.startsWith('[VIDEO]') && activeMessageOptions.content.endsWith('[/VIDEO]');
+            const isMedia = isOptImage || isOptVideo;
+            const optMediaUrl = isMedia ? activeMessageOptions.content.slice(7, -8) : null;
+
+            return (
               <div 
-                className="chat-msg-options-modal"
-                onClick={(e) => e.stopPropagation()}
+                className="chat-msg-options-overlay"
+                onClick={() => setActiveMessageOptions(null)}
               >
-                <div className="chat-msg-options-header">
-                  <div className="chat-msg-preview-box">
-                    <p className="chat-msg-preview-text">{activeMessageOptions.content}</p>
+                <div 
+                  className="chat-msg-options-modal"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="chat-msg-options-header">
+                    {isOptImage ? (
+                      <div className="chat-msg-preview-media">
+                        <img src={optMediaUrl!} alt="Photo preview" className="chat-msg-preview-thumb" />
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                          <span style={{ fontSize: '14px', fontWeight: 600, color: '#fff' }}>Photo</span>
+                          <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>Image attachment</span>
+                        </div>
+                      </div>
+                    ) : isOptVideo ? (
+                      <div className="chat-msg-preview-media">
+                        <video src={optMediaUrl!} className="chat-msg-preview-thumb" />
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                          <span style={{ fontSize: '14px', fontWeight: 600, color: '#fff' }}>Video</span>
+                          <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>Video attachment</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="chat-msg-preview-box">
+                        <p className="chat-msg-preview-text">{activeMessageOptions.content}</p>
+                      </div>
+                    )}
                   </div>
-                </div>
 
-                <div className="chat-msg-info-list">
-                  <div className="chat-msg-info-row">
-                    <span className="material-symbols-outlined" style={{ fontSize: '18px', color: 'var(--text-secondary)' }}>schedule</span>
-                    <span>Sent: {new Date(activeMessageOptions.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}, {new Date(activeMessageOptions.created_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}</span>
-                  </div>
-
-                  {activeMessageOptions.sender_id === user?.id && (
+                  <div className="chat-msg-info-list">
                     <div className="chat-msg-info-row">
-                      <span 
-                        className="material-symbols-outlined" 
-                        style={{ fontSize: '18px', color: activeMessageOptions.read ? '#60a5fa' : 'var(--text-tertiary)' }}
-                      >
-                        {activeMessageOptions.read ? 'done_all' : 'done'}
-                      </span>
-                      <span style={{ color: activeMessageOptions.read ? '#60a5fa' : 'var(--text-tertiary)', fontWeight: activeMessageOptions.read ? 600 : 400 }}>
-                        {activeMessageOptions.read ? 'Seen by recipient' : 'Delivered'}
-                      </span>
+                      <span className="material-symbols-outlined" style={{ fontSize: '18px', color: 'var(--text-secondary)' }}>schedule</span>
+                      <span>Sent: {new Date(activeMessageOptions.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}, {new Date(activeMessageOptions.created_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}</span>
                     </div>
-                  )}
-                </div>
 
-                <div className="chat-msg-action-btns">
-                  <button 
-                    className="chat-msg-action-btn primary"
-                    onClick={() => {
-                      navigator.clipboard.writeText(activeMessageOptions.content);
-                      toast.success('Message copied to clipboard');
-                      setActiveMessageOptions(null);
-                    }}
-                  >
-                    <span className="material-symbols-outlined">content_copy</span>
-                    Copy Message
-                  </button>
+                    {activeMessageOptions.sender_id === user?.id && (
+                      <div className="chat-msg-info-row">
+                        <span 
+                          className="material-symbols-outlined" 
+                          style={{ fontSize: '18px', color: activeMessageOptions.read ? '#60a5fa' : 'var(--text-tertiary)' }}
+                        >
+                          {activeMessageOptions.read ? 'done_all' : 'done'}
+                        </span>
+                        <span style={{ color: activeMessageOptions.read ? '#60a5fa' : 'var(--text-tertiary)', fontWeight: activeMessageOptions.read ? 600 : 400 }}>
+                          {activeMessageOptions.read ? 'Seen by recipient' : 'Delivered'}
+                        </span>
+                      </div>
+                    )}
+                  </div>
 
-                  <button 
-                    className="chat-msg-action-btn close"
-                    onClick={() => setActiveMessageOptions(null)}
-                  >
-                    Cancel
-                  </button>
+                  <div className="chat-msg-action-btns">
+                    {!isMedia && (
+                      <button 
+                        className="chat-msg-action-btn primary"
+                        onClick={() => {
+                          navigator.clipboard.writeText(activeMessageOptions.content);
+                          toast.success('Message copied to clipboard');
+                          setActiveMessageOptions(null);
+                        }}
+                      >
+                        <span className="material-symbols-outlined">content_copy</span>
+                        Copy Message
+                      </button>
+                    )}
+
+                    <button 
+                      className="chat-msg-action-btn close"
+                      onClick={() => setActiveMessageOptions(null)}
+                    >
+                      Close
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           <div className="chat-detail-input-area">
             {isUploadingMedia && (
