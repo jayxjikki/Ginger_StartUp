@@ -494,14 +494,6 @@ const AccountCentrePage: React.FC = () => {
           <h3 className="account-section-title">Personal Information</h3>
           <div className="glass-panel info-list-container">
             {/* Name */}
-            <div className="info-item liquid-hover" onClick={() => openEditModal('name', 'Name', fullName)}>
-              <div className="info-item-content">
-                <span className="info-item-label">Name</span>
-                <span className="info-item-value">{fullName}</span>
-              </div>
-              <span className="material-symbols-outlined info-item-icon">edit</span>
-            </div>
-            {/* Name */}
             <div className="info-item liquid-hover" onClick={() => openEditModal('name', 'Name', profile?.full_name || '')}>
               <div className="info-item-content">
                 <span className="info-item-label">Name <span style={{fontSize:'11px',color:'var(--text-tertiary)',marginLeft:'4px'}}>· changeable every 30 days</span></span>

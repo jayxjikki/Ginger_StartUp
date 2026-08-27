@@ -188,31 +188,36 @@ const EditProfilePage: React.FC = () => {
         <section className="form-section">
           <div className="input-group">
             <label className="edit-input-label">Name</label>
-            <input 
-              className="glass-input" 
-              type="text" 
-              value={name} 
-              onChange={e => setName(e.target.value)} 
-              onFocus={handleFocus}
-              onBlur={handleBlur}
-            />
+            <div className="locked-input-container" onClick={() => navigate('/profile/account')}>
+              <input 
+                className="glass-input locked-input" 
+                type="text" 
+                value={name} 
+                readOnly
+                disabled
+              />
+              <span className="material-symbols-outlined locked-input-icon">lock</span>
+            </div>
+            <span className="locked-input-subtext">
+              You can't change your name from here. <span className="locked-link" onClick={() => navigate('/profile/account')}>Visit Account Centre</span>
+            </span>
           </div>
+
           <div className="input-group">
             <label className="edit-input-label">Username</label>
-            <input 
-              className="glass-input" 
-              type="text" 
-              value={username} 
-              onChange={e => {
-                let val = e.target.value;
-                if (val && !val.startsWith('@')) {
-                  val = '@' + val;
-                }
-                setUsername(val);
-              }}
-              onFocus={handleFocus}
-              onBlur={handleBlur}
-            />
+            <div className="locked-input-container" onClick={() => navigate('/profile/account')}>
+              <input 
+                className="glass-input locked-input" 
+                type="text" 
+                value={username} 
+                readOnly
+                disabled
+              />
+              <span className="material-symbols-outlined locked-input-icon">lock</span>
+            </div>
+            <span className="locked-input-subtext">
+              You can't change your username from here. <span className="locked-link" onClick={() => navigate('/profile/account')}>Visit Account Centre</span>
+            </span>
           </div>
 
           <div className="input-group">
