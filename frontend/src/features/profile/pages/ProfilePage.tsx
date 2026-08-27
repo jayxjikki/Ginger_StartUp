@@ -105,6 +105,7 @@ const ProfilePage: React.FC = () => {
   // Form states
   const [showAddForm, setShowAddForm] = useState(false);
   const [postType, setPostType] = useState<'media_kit' | 'portfolio' | 'blog'>('portfolio');
+  const [mediaKitFileType, setMediaKitFileType] = useState<'image' | 'pdf' | null>(null);
 
   const { inboxChats } = useChatStore();
   const unreadChatCount = inboxChats.filter(chat => chat.unread).length;
@@ -199,16 +200,22 @@ const ProfilePage: React.FC = () => {
   };
 
   const handleSave = async () => {
-    if (!title) return;
+    // For media_kit, only require an image URL; title is auto-set
+    if (postType !== 'media_kit' && !title) return;
+    if (postType === 'media_kit' && !imageUrl) { 
+      toast.error('Please upload an image or PDF for your media kit.');
+      return;
+    }
     try {
       if (postType === 'media_kit') {
-        // Save Media Kit Item
+        // Save Media Kit Item — auto-generate title if not set
         await createMediaKitItem({
-          title,
-          description: desc,
+          title: title || 'Media Kit',
+          description: '',
           image_url: imageUrl,
         });
-        toast.success("Media Kit item saved!");
+        toast.success("Media Kit saved!");
+        setMediaKitFileType(null);
       } else if (postType === 'blog') {
         // Save as Post
         await createPost({
@@ -655,7 +662,7 @@ const ProfilePage: React.FC = () => {
                     <div className="premium-select-wrapper">
                       <select 
                         value={postType}
-                        onChange={(e) => setPostType(e.target.value as any)}
+                        onChange={(e) => { setPostType(e.target.value as any); setMediaKitFileType(null); }}
                         className="premium-select"
                       >
                         <option value="portfolio">Portfolio & Achievement</option>
@@ -666,36 +673,115 @@ const ProfilePage: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="premium-input-group">
-                    <label>Title</label>
-                    <input 
-                      type="text"
-                      className="premium-input"
-                      placeholder="Give your post a catchy title"
-                      value={title}
-                      onChange={(e) => setTitle(e.target.value)}
-                    />
-                  </div>
+                  {/* Only show Title & Description for non-media-kit types */}
+                  {postType !== 'media_kit' && (
+                    <>
+                      <div className="premium-input-group">
+                        <label>Title</label>
+                        <input 
+                          type="text"
+                          className="premium-input"
+                          placeholder="Give your post a catchy title"
+                          value={title}
+                          onChange={(e) => setTitle(e.target.value)}
+                        />
+                      </div>
 
-                  <div className="premium-input-group">
-                    <label>Description</label>
-                    <textarea 
-                      className="premium-textarea"
-                      placeholder="What's this post about?"
-                      rows={3}
-                      value={desc}
-                      onChange={(e) => setDesc(e.target.value)}
-                    />
-                  </div>
+                      <div className="premium-input-group">
+                        <label>Description</label>
+                        <textarea 
+                          className="premium-textarea"
+                          placeholder="What's this post about?"
+                          rows={3}
+                          value={desc}
+                          onChange={(e) => setDesc(e.target.value)}
+                        />
+                      </div>
+                    </>
+                  )}
 
-                  <div className="premium-input-group">
-                    <ImageUpload 
-                      label="Upload Image" 
-                      className="premium-image-upload"
-                      onUploadSuccess={(url: string) => setImageUrl(url)}
-                      onUploadError={(err: Error) => console.error(err)}
-                    />
-                  </div>
+                  {postType === 'media_kit' ? (
+                    /* Media Kit: accept image OR pdf, single file */
+                    <div className="premium-input-group">
+                      <label>Upload File <span style={{fontSize:'12px',color:'var(--text-tertiary)',fontWeight:400}}>· JPG, PNG or PDF · max 10MB</span></label>
+                      {!mediaKitFileType ? (
+                        <div style={{display:'flex',gap:'10px',marginBottom:'8px'}}>
+                          <button
+                            type="button"
+                            className="media-kit-type-btn"
+                            onClick={() => setMediaKitFileType('image')}
+                          >
+                            <span className="material-symbols-outlined" style={{fontSize:'20px'}}>image</span>
+                            Image
+                          </button>
+                          <button
+                            type="button"
+                            className="media-kit-type-btn"
+                            onClick={() => setMediaKitFileType('pdf')}
+                          >
+                            <span className="material-symbols-outlined" style={{fontSize:'20px'}}>picture_as_pdf</span>
+                            PDF
+                          </button>
+                        </div>
+                      ) : mediaKitFileType === 'image' ? (
+                        <ImageUpload
+                          label=""
+                          className="premium-image-upload"
+                          onUploadSuccess={(url: string) => { setImageUrl(url); setTitle('Media Kit Image'); }}
+                          onUploadError={(err: Error) => console.error(err)}
+                        />
+                      ) : (
+                        /* PDF upload via plain input */
+                        <div className="premium-pdf-upload">
+                          <span className="material-symbols-outlined" style={{fontSize:'32px',color:'#f9c846'}}>picture_as_pdf</span>
+                          <input
+                            type="file"
+                            accept="application/pdf"
+                            style={{display:'none'}}
+                            id="media-kit-pdf-input"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              if (file.size > 10 * 1024 * 1024) { toast.error('PDF must be under 10MB'); return; }
+                              // Upload to Cloudinary
+                              const formData = new FormData();
+                              formData.append('file', file);
+                              formData.append('upload_preset', import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || 'ginger_uploads');
+                              formData.append('resource_type', 'raw');
+                              try {
+                                const res = await fetch(`https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/raw/upload`, { method: 'POST', body: formData });
+                                const data = await res.json();
+                                if (data.secure_url) {
+                                  setImageUrl(data.secure_url);
+                                  setTitle(file.name.replace('.pdf',''));
+                                  toast.success('PDF uploaded!');
+                                } else throw new Error('Upload failed');
+                              } catch { toast.error('Failed to upload PDF'); }
+                            }}
+                          />
+                          <label htmlFor="media-kit-pdf-input" className="media-kit-pdf-label">
+                            {imageUrl ? (
+                              <><span className="material-symbols-outlined" style={{color:'#4ade80'}}>check_circle</span> PDF uploaded</>
+                            ) : 'Click to upload PDF'}
+                          </label>
+                        </div>
+                      )}
+                      {mediaKitFileType && (
+                        <button type="button" style={{fontSize:'12px',color:'var(--text-tertiary)',background:'none',border:'none',cursor:'pointer',marginTop:'4px',padding:'0'}} onClick={() => { setMediaKitFileType(null); setImageUrl(''); setTitle(''); }}>
+                          ← Change file type
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="premium-input-group">
+                      <ImageUpload 
+                        label="Upload Image" 
+                        className="premium-image-upload"
+                        onUploadSuccess={(url: string) => setImageUrl(url)}
+                        onUploadError={(err: Error) => console.error(err)}
+                      />
+                    </div>
+                  )}
 
                   <button className="premium-submit-btn" onClick={handleSave}>
                     <span className="material-symbols-outlined">send</span>
