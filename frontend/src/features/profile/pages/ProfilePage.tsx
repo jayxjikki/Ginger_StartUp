@@ -15,6 +15,7 @@ import ImageUpload from '../../../components/ui/ImageUpload';
 import Button from '../../../components/ui/Button';
 import Card from '../../../components/ui/Card';
 import SettingsModal from '../components/SettingsModal';
+import VerifiedChannelsModal from '../components/VerifiedChannelsModal';
 import ChatModal from '../../../components/ui/ChatModal';
 import TransitionLoader from '../../../components/ui/TransitionLoader';
 import youtubeIcon from '../../../assets/youtube.png';
@@ -755,78 +756,14 @@ const ProfilePage: React.FC = () => {
         </div>
       )}
 
-      {/* Telegram Channels Drawer */}
+      {/* Telegram Channels Modal */}
       {showTelegramChannels && (
-        <div className="drawer-overlay" onClick={() => setShowTelegramChannels(false)}>
-          <div className="drawer-content glass-panel" onClick={(e) => e.stopPropagation()}>
-            <div className="drawer-header">
-              <h3>Verified Channels</h3>
-              <button className="drawer-close" onClick={() => setShowTelegramChannels(false)}>
-                <span className="material-symbols-outlined">close</span>
-              </button>
-            </div>
-            <div className="drawer-body">
-              {profile?.telegram_username ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.05)', padding: '12px', borderRadius: '12px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span className="material-symbols-outlined" style={{ color: '#4ade80' }}>person</span>
-                      <span style={{ fontWeight: '500' }}>@{profile.telegram_username}</span>
-                    </div>
-                    <a 
-                      href={`https://t.me/${profile.telegram_username}`} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      style={{ background: '#0088cc', color: 'white', padding: '6px 12px', borderRadius: '6px', fontSize: '13px', textDecoration: 'none', fontWeight: '500' }}
-                    >
-                      Visit
-                    </a>
-                  </div>
-
-                  {verifiedChannels && verifiedChannels.length > 0 && verifiedChannels.map(ch => (
-                    <div key={ch.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.05)', padding: '12px', borderRadius: '12px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span className="material-symbols-outlined" style={{ color: '#4ade80' }}>verified</span>
-                        <span style={{ fontWeight: '500' }}>{ch.channel_username}</span>
-                      </div>
-                      <a 
-                        href={`https://t.me/${ch.channel_username.replace('@', '')}`} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        style={{ background: '#0088cc', color: 'white', padding: '6px 12px', borderRadius: '6px', fontSize: '13px', textDecoration: 'none', fontWeight: '500' }}
-                      >
-                        Visit
-                      </a>
-                    </div>
-                  ))}
-                </div>
-              ) : (verifiedChannels && verifiedChannels.length > 0) ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  {verifiedChannels.map(ch => (
-                    <div key={ch.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.05)', padding: '12px', borderRadius: '12px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span className="material-symbols-outlined" style={{ color: '#4ade80' }}>verified</span>
-                        <span style={{ fontWeight: '500' }}>{ch.channel_username}</span>
-                      </div>
-                      <a 
-                        href={`https://t.me/${ch.channel_username.replace('@', '')}`} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        style={{ background: '#0088cc', color: 'white', padding: '6px 12px', borderRadius: '6px', fontSize: '13px', textDecoration: 'none', fontWeight: '500' }}
-                      >
-                        Visit
-                      </a>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div style={{ color: 'var(--text-tertiary)', textAlign: 'center', marginTop: '2rem', fontSize: '14px' }}>
-                  No channels verified yet.
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+        <VerifiedChannelsModal 
+          isOpen={showTelegramChannels}
+          onClose={() => setShowTelegramChannels(false)}
+          telegramUsername={profile?.telegram_username}
+          verifiedChannels={verifiedChannels || []}
+        />
       )}
 
     </div>

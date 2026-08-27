@@ -5,6 +5,7 @@ import type { FilterState } from '../components/DiscoverFilterModal';
 import ChatModal from '../../../components/ui/ChatModal';
 import { supabase } from '../../../lib/supabase';
 import { getSocialIcon } from '../../../utils/socialHelpers';
+import VerifiedChannelsModal from '../../profile/components/VerifiedChannelsModal';
 import './DiscoverFeedPage.css';
 
 const DiscoverFeedPage: React.FC = () => {
@@ -68,7 +69,6 @@ const DiscoverFeedPage: React.FC = () => {
         if (error) throw error;
 
         const { data: links } = await supabase.from('social_links').select('*');
-        const { data: channels } = await supabase.from('verified_channels').select('*');
 
         const mappedCreators = (profiles || []).map((p: any) => {
           const userLinks = (links || []).filter((l: any) => l.profile_id === p.id);
@@ -83,7 +83,6 @@ const DiscoverFeedPage: React.FC = () => {
             avatarUrl: p.avatar_url || 'https://via.placeholder.com/150/333/fff?text=?',
             platforms: userLinks.map((l: any) => l.platform.toLowerCase()),
             socialLinks: userLinks,
-            verifiedChannels: (channels || []).filter((c: any) => c.profile_id === p.id),
             pinnedSocials: p.pinned_socials || [],
             telegramUsername: p.telegram_username,
             mediaKit: {
@@ -303,10 +302,14 @@ const DiscoverFeedPage: React.FC = () => {
                           return (
                             <button
                               key={link.platform}
-                              onClick={(e) => {
+                              onClick={async (e) => {
                                 e.stopPropagation();
                                 if (link.platform === 'Telegram') {
-                                  setTelegramModalUser(creator);
+                                  const { data: channels } = await supabase
+                                    .from('verified_channels')
+                                    .select('*')
+                                    .eq('profile_id', creator.id);
+                                  setTelegramModalUser({ ...creator, verifiedChannels: channels || [] });
                                 } else if (link.url !== '#') {
                                   window.open(link.url, '_blank');
                                 }
@@ -381,63 +384,12 @@ const DiscoverFeedPage: React.FC = () => {
         recipientAvatar={activeChatUser?.avatar || null}
       />
 
-      {telegramModalUser && (
-        <div className="drawer-overlay" onClick={() => setTelegramModalUser(null)}>
-          <div className="drawer-content glass-panel" onClick={e => e.stopPropagation()}>
-            <div className="drawer-header">
-              <h3>Verified Channels</h3>
-              <button className="drawer-close" onClick={() => setTelegramModalUser(null)}>
-                <span className="material-symbols-outlined">close</span>
-              </button>
-            </div>
-            
-            <div className="drawer-body">
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {telegramModalUser.telegramUsername && (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.05)', padding: '12px', borderRadius: '12px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span className="material-symbols-outlined" style={{ color: '#4ade80' }}>person</span>
-                    <span style={{ fontWeight: '500' }}>@{telegramModalUser.telegramUsername}</span>
-                  </div>
-                  <button 
-                    className="solid-btn"
-                    onClick={() => {
-                      window.open(`https://t.me/${telegramModalUser.telegramUsername}`, '_blank');
-                      setTelegramModalUser(null);
-                    }}
-                    style={{ background: '#0088cc', color: 'white', padding: '6px 12px', borderRadius: '6px', fontSize: '13px', textDecoration: 'none', fontWeight: '500', border: 'none', cursor: 'pointer' }}
-                  >
-                    Visit
-                  </button>
-                </div>
-              )}
-
-              {telegramModalUser.verifiedChannels?.length > 0 && telegramModalUser.verifiedChannels.map((channel: any) => (
-                <div key={channel.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.05)', padding: '12px', borderRadius: '12px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span className="material-symbols-outlined" style={{ color: '#4ade80' }}>verified</span>
-                    <span style={{ fontWeight: '500' }}>{channel.channel_username}</span>
-                  </div>
-                  <button 
-                    className="solid-btn"
-                    onClick={() => {
-                      const url = channel.channel_username.startsWith('http') 
-                        ? channel.channel_username 
-                        : `https://t.me/${channel.channel_username.replace('@', '')}`;
-                      window.open(url, '_blank');
-                      setTelegramModalUser(null);
-                    }}
-                    style={{ background: '#0088cc', color: 'white', padding: '6px 12px', borderRadius: '6px', fontSize: '13px', textDecoration: 'none', fontWeight: '500', border: 'none', cursor: 'pointer' }}
-                  >
-                    Visit
-                  </button>
-                </div>
-              ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <VerifiedChannelsModal 
+        isOpen={!!telegramModalUser}
+        onClose={() => setTelegramModalUser(null)}
+        telegramUsername={telegramModalUser?.telegramUsername}
+        verifiedChannels={telegramModalUser?.verifiedChannels || []}
+      />
     </div>
   );
 };
