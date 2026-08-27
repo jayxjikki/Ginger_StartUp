@@ -46,9 +46,26 @@ const ChatModal: React.FC<ChatModalProps> = ({
   const [isSending, setIsSending] = useState(false);
   const [isBlockedByThem, setIsBlockedByThem] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [activeMessageOptions, setActiveMessageOptions] = useState<Message | null>(null);
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { blockedUserIds, fetchBlockedUsers, checkIfBlockedByThem, blockUser, unblockUser, reportItem } = useUgcStore();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  const startPressTimer = (msg: Message) => {
+    if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+    longPressTimerRef.current = setTimeout(() => {
+      setActiveMessageOptions(msg);
+      if (navigator.vibrate) navigator.vibrate(40);
+    }, 450);
+  };
+
+  const cancelPressTimer = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
 
   // Close menu on click outside
   useEffect(() => {
@@ -262,11 +279,22 @@ const ChatModal: React.FC<ChatModalProps> = ({
                     key={msg.id} 
                     className={`chat-bubble-wrap ${isMine ? 'mine' : 'theirs'}`}
                   >
-                    <div className="chat-bubble">
+                    <div 
+                      className="chat-bubble"
+                      onMouseDown={() => startPressTimer(msg)}
+                      onMouseUp={cancelPressTimer}
+                      onMouseLeave={cancelPressTimer}
+                      onTouchStart={() => startPressTimer(msg)}
+                      onTouchEnd={cancelPressTimer}
+                      onTouchMove={cancelPressTimer}
+                      onContextMenu={(e) => {
+                        e.preventDefault();
+                        setActiveMessageOptions(msg);
+                      }}
+                    >
                       <p className="chat-bubble-text">{msg.content}</p>
                       <span className="chat-bubble-time">
                         {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        {isMine && msg.read && <span className="chat-bubble-seen text-[10px] ml-1 text-primary-400">Seen</span>}
                       </span>
                     </div>
                   </div>
@@ -275,6 +303,67 @@ const ChatModal: React.FC<ChatModalProps> = ({
             )}
             <div ref={messagesEndRef} />
           </div>
+
+          {/* Message Long-Press / Options Modal */}
+          {activeMessageOptions && (
+            <div 
+              className="chat-msg-options-overlay"
+              onClick={() => setActiveMessageOptions(null)}
+            >
+              <div 
+                className="chat-msg-options-modal"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="chat-msg-options-header">
+                  <div className="chat-msg-preview-box">
+                    <p className="chat-msg-preview-text">{activeMessageOptions.content}</p>
+                  </div>
+                </div>
+
+                <div className="chat-msg-info-list">
+                  <div className="chat-msg-info-row">
+                    <span className="material-symbols-outlined" style={{ fontSize: '18px', color: 'var(--text-secondary)' }}>schedule</span>
+                    <span>Sent: {new Date(activeMessageOptions.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}, {new Date(activeMessageOptions.created_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}</span>
+                  </div>
+
+                  {activeMessageOptions.sender_id === user?.id && (
+                    <div className="chat-msg-info-row">
+                      <span 
+                        className="material-symbols-outlined" 
+                        style={{ fontSize: '18px', color: activeMessageOptions.read ? '#60a5fa' : 'var(--text-tertiary)' }}
+                      >
+                        {activeMessageOptions.read ? 'done_all' : 'done'}
+                      </span>
+                      <span style={{ color: activeMessageOptions.read ? '#60a5fa' : 'var(--text-tertiary)', fontWeight: activeMessageOptions.read ? 600 : 400 }}>
+                        {activeMessageOptions.read ? 'Seen by recipient' : 'Delivered'}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="chat-msg-action-btns">
+                  <button 
+                    className="chat-msg-action-btn primary"
+                    onClick={() => {
+                      navigator.clipboard.writeText(activeMessageOptions.content);
+                      toast.success('Message copied to clipboard');
+                      setActiveMessageOptions(null);
+                    }}
+                  >
+                    <span className="material-symbols-outlined">content_copy</span>
+                    Copy Message
+                  </button>
+
+                  <button 
+                    className="chat-msg-action-btn close"
+                    onClick={() => setActiveMessageOptions(null)}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="chat-detail-input-area">
             {isBlocked ? (
