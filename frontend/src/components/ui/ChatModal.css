@@ -3,9 +3,7 @@
 .chat-detail-overlay {
   position: fixed;
   inset: 0;
-  background-color: rgba(16, 19, 27, 0.85);
-  backdrop-filter: blur(32px);
-  -webkit-backdrop-filter: blur(32px);
+  background-color: #0b0e15;
   z-index: 9999;
   display: flex;
   flex-direction: column;
@@ -33,7 +31,7 @@
   justify-content: space-between;
   padding: 16px 20px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  background-color: rgba(16, 19, 27, 0.5);
+  background-color: #0b0e15;
   flex-shrink: 0;
 }
 
