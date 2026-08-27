@@ -7,7 +7,7 @@ import { useUgcStore } from '../../../store/ugcStore';
 import { useGlobalModalStore } from '../../../store/globalModalStore';
 import { useAuthStore } from '../../../store/authStore';
 import { useProfileStore } from '../../../store/profileStore';
-import { formatPdfUrl } from '../../../lib/cloudinary';
+import { getPdfViewerUrl } from '../../../lib/cloudinary';
 import toast from 'react-hot-toast';
 
 interface FeedPost {
@@ -195,7 +195,7 @@ const ProfileFeedViewer: React.FC<ProfileFeedViewerProps> = ({
                         textAlign: 'center',
                         cursor: 'pointer'
                       }}
-                      onClick={() => window.open(formatPdfUrl(post.image_url), '_blank', 'noopener,noreferrer')}
+                      onClick={() => window.open(getPdfViewerUrl(post.image_url), '_blank', 'noopener,noreferrer')}
                     >
                       <span className="material-symbols-outlined" style={{ fontSize: '64px', color: '#f9c846' }}>picture_as_pdf</span>
                       <h4 style={{ margin: '16px 0 6px 0', color: '#fff', fontSize: '18px' }}>{post.title || 'PDF Media Kit'}</h4>

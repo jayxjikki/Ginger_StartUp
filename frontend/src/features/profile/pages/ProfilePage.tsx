@@ -14,7 +14,7 @@ import { useNotificationStore } from '../../../store/notificationStore';
 import { formatDistanceToNow } from 'date-fns';
 import ProfileFeedViewer from '../components/ProfileFeedViewer';
 import ImageUpload from '../../../components/ui/ImageUpload';
-import { uploadToCloudinary, formatPdfUrl } from '../../../lib/cloudinary';
+import { uploadToCloudinary, getPdfViewerUrl, getPdfDownloadUrl } from '../../../lib/cloudinary';
 import SettingsModal from '../components/SettingsModal';
 import VerifiedChannelsModal from '../components/VerifiedChannelsModal';
 import ChatModal from '../../../components/ui/ChatModal';
@@ -157,20 +157,15 @@ const ProfilePage: React.FC = () => {
   useEffect(() => {
     const state = location.state as any;
     if (state?.openPostId && profile && !isLoading) {
-      // Find the post in all possible collections
-      const combinedItems = [
-        ...achievements.filter(ach => ach.icon_url).map(ach => ({
-          id: ach.id, title: ach.title, description: ach.description, image_url: ach.icon_url!, created_at: (ach as any).created_at, type: 'achievement' as const
-        })),
-        ...(mediaKitItems || []).filter(mk => mk.image_url).map(mk => ({
-          id: mk.id, title: mk.title, description: mk.description, image_url: mk.image_url!, created_at: mk.created_at, type: 'media_kit' as const
-        }))
-      ];
+      // Find the post in achievements or regular posts
+      const achievementItems = achievements.filter(ach => ach.icon_url).map(ach => ({
+        id: ach.id, title: ach.title, description: ach.description, image_url: ach.icon_url!, created_at: (ach as any).created_at, type: 'achievement' as const
+      }));
       
-      let index = combinedItems.findIndex(p => p.id === state.openPostId);
+      let index = achievementItems.findIndex(p => p.id === state.openPostId);
       if (index !== -1) {
         setActiveTab(0);
-        setFeedPosts(combinedItems);
+        setFeedPosts(achievementItems);
         setFeedStartIndex(index);
         setIsFeedViewerOpen(true);
         if (state.returnToChat) setReturnToChat(state.returnToChat);
@@ -875,27 +870,16 @@ const ProfilePage: React.FC = () => {
                   <>
                     {/* Render Achievements/Portfolio */}
                     {(() => {
-                      // Combine achievements and media kits for the feed
-                      const combinedItems = [
-                        ...achievements.filter(ach => ach.icon_url).map(ach => ({
-                          id: ach.id,
-                          title: ach.title,
-                          description: ach.description,
-                          image_url: ach.icon_url!,
-                          created_at: (ach as any).created_at,
-                          type: 'achievement' as const
-                        })),
-                        ...(mediaKitItems || []).filter(mk => mk.image_url).map(mk => ({
-                          id: mk.id,
-                          title: mk.title,
-                          description: mk.description,
-                          image_url: mk.image_url!,
-                          created_at: mk.created_at,
-                          type: 'media_kit' as const
-                        }))
-                      ];
+                      const achievementItems = achievements.filter(ach => ach.icon_url).map(ach => ({
+                        id: ach.id,
+                        title: ach.title,
+                        description: ach.description,
+                        image_url: ach.icon_url!,
+                        created_at: (ach as any).created_at,
+                        type: 'achievement' as const
+                      }));
 
-                      if (combinedItems.length === 0) {
+                      if (achievementItems.length === 0) {
                         return (
                           <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '2rem', color: 'var(--text-tertiary)' }}>
                             No portfolio images yet.
@@ -903,36 +887,19 @@ const ProfilePage: React.FC = () => {
                         );
                       }
 
-                      return combinedItems.map((item, index) => {
-                        const isPdf = item.image_url?.toLowerCase().endsWith('.pdf') || 
-                                      item.image_url?.includes('/raw/upload') || 
-                                      item.title?.toLowerCase().includes('.pdf');
-                        return (
-                          <div 
-                            key={item.id} 
-                            className="profile-grid-item"
-                            onClick={() => {
-                              if (isPdf) {
-                                window.open(formatPdfUrl(item.image_url), '_blank', 'noopener,noreferrer');
-                              } else {
-                                setFeedPosts(combinedItems);
-                                setFeedStartIndex(index);
-                                setIsFeedViewerOpen(true);
-                              }
-                            }}
-                          >
-                            {isPdf ? (
-                              <div className="pdf-grid-preview">
-                                <span className="material-symbols-outlined" style={{ fontSize: '36px', color: '#f9c846' }}>picture_as_pdf</span>
-                                <span className="pdf-grid-label">{item.title || 'PDF Media Kit'}</span>
-                                <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Click to view</span>
-                              </div>
-                            ) : (
-                              <img src={item.image_url} alt={item.title} />
-                            )}
-                          </div>
-                        );
-                      });
+                      return achievementItems.map((item, index) => (
+                        <div 
+                          key={item.id} 
+                          className="profile-grid-item"
+                          onClick={() => {
+                            setFeedPosts(achievementItems);
+                            setFeedStartIndex(index);
+                            setIsFeedViewerOpen(true);
+                          }}
+                        >
+                          <img src={item.image_url} alt={item.title} />
+                        </div>
+                      ));
                     })()}
                   </>
                 )}
@@ -1114,6 +1081,9 @@ const ProfilePage: React.FC = () => {
                               item.image_url?.includes('/raw/upload') || 
                               item.title?.toLowerCase().includes('.pdf') ||
                               item.title?.toLowerCase().includes('document');
+                const viewerUrl = isPdf ? getPdfViewerUrl(item.image_url) : item.image_url;
+                const downloadUrl = isPdf ? getPdfDownloadUrl(item.image_url) : item.image_url;
+
                 return (
                   <div key={item.id} className="media-kit-download-item">
                     <div className="media-kit-item-info">
@@ -1132,20 +1102,31 @@ const ProfilePage: React.FC = () => {
                       </div>
                     </div>
                     <div className="media-kit-download-btns">
-                      {item.image_url && (
-                        <a
-                          href={isPdf ? formatPdfUrl(item.image_url) : item.image_url}
-                          download={isPdf ? `${item.title || 'media-kit'}.pdf` : `${item.title || 'media-kit'}.jpg`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className={`media-kit-dl-btn ${isPdf ? 'pdf' : 'img'}`}
-                        >
-                          <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>
-                            {isPdf ? 'picture_as_pdf' : 'download'}
-                          </span>
-                          {isPdf ? 'PDF' : 'Image'}
-                        </a>
-                      )}
+                      {/* View Online */}
+                      <a
+                        href={viewerUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="media-kit-dl-btn"
+                        style={{ background: 'rgba(255, 255, 255, 0.08)', color: '#fff' }}
+                      >
+                        <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>visibility</span>
+                        View
+                      </a>
+
+                      {/* Download */}
+                      <a
+                        href={downloadUrl}
+                        download={isPdf ? `${item.title || 'media-kit'}.pdf` : `${item.title || 'media-kit'}.jpg`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={`media-kit-dl-btn ${isPdf ? 'pdf' : 'img'}`}
+                      >
+                        <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>
+                          download
+                        </span>
+                        Download
+                      </a>
                     </div>
                   </div>
                 );

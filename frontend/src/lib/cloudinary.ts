@@ -5,14 +5,33 @@
 export const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
 
 /**
+ * Generates a universal, bulletproof PDF viewer URL via Google Docs Viewer
+ * which displays PDFs on all mobile devices and desktop browsers without native plugin dependencies.
+ */
+export const getPdfViewerUrl = (url: string): string => {
+  if (!url) return '';
+  return `https://docs.google.com/viewer?url=${encodeURIComponent(url)}`;
+};
+
+/**
+ * Formats a PDF URL for attachment / direct download from Cloudinary.
+ */
+export const getPdfDownloadUrl = (url: string): string => {
+  if (!url) return '';
+  if (url.includes('/image/upload/') && !url.includes('/fl_attachment/')) {
+    return url.replace('/image/upload/', '/image/upload/fl_attachment/');
+  }
+  if (url.includes('/raw/upload/') && !url.includes('/fl_attachment/')) {
+    return url.replace('/raw/upload/', '/raw/upload/fl_attachment/');
+  }
+  return url;
+};
+
+/**
  * Normalizes PDF URLs so they download/open cleanly even if stored under image/upload.
  */
 export const formatPdfUrl = (url: string): string => {
-  if (!url) return '';
-  if (url.includes('/image/upload/') && !url.includes('/fl_attachment/') && url.toLowerCase().endsWith('.pdf')) {
-    return url.replace('/image/upload/', '/image/upload/fl_attachment/');
-  }
-  return url;
+  return getPdfDownloadUrl(url);
 };
 
 /**
