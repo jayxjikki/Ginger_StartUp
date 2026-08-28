@@ -658,6 +658,25 @@ const ProfilePage: React.FC = () => {
               </span>
             </div>
           )}
+          {isLinked('YouTube') && (
+            <div 
+              className="liquid-card stat-box"
+              onClick={() => {
+                const url = getPlatformUrl('YouTube');
+                if (url) window.open(url, '_blank', 'noopener,noreferrer');
+              }}
+              style={{ cursor: getPlatformUrl('YouTube') ? 'pointer' : 'default' }}
+              title={getPlatformUrl('YouTube') ? "Open YouTube Channel" : "YouTube Subscribers"}
+            >
+              <span className="stat-value text-primary">
+                {formatCount(socialLinks.find(l => l.platform.toLowerCase() === 'youtube')?.followers || 0)}
+              </span>
+              <span className="stat-label" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <img src={youtubeIcon} alt="YouTube" style={{ width: '12px', height: '12px', objectFit: 'contain' }} />
+                Subscribers
+              </span>
+            </div>
+          )}
         </section>
 
         {/* Content Tabs */}
