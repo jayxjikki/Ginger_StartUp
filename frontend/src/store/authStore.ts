@@ -17,7 +17,7 @@ interface AuthState {
 
   // Actions
   initialize: () => Promise<void>;
-  signInWithGoogle: () => Promise<void>;
+  signInWithGoogle: () => void;
   signOut: () => Promise<void>;
   setProfile: (profile: Profile) => void;
   fetchProfile: () => Promise<void>;
@@ -84,23 +84,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  signInWithGoogle: async () => {
-    try {
-      set({ isLoading: true });
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: window.location.origin,
-        },
-      });
-      if (error) throw error;
-    } catch (error: any) {
-      console.error('Google sign-in error:', error);
-      if (typeof window !== 'undefined') {
-        toast.error(`Sign in failed: ${error?.message || 'Unknown error'}`);
-      }
-      set({ isLoading: false });
-    }
+  signInWithGoogle: () => {
+    set({ isLoading: true });
+    // Hardcode to guarantee no environment variable issues on Vercel
+    const supabaseUrl = 'https://ywpgnkvlzxwzuptaxqyw.supabase.co';
+    const redirectUrl = encodeURIComponent(window.location.origin);
+    // Instant direct navigation, bypassing all buggy Javascript promises and local storage locks
+    window.location.href = `${supabaseUrl}/auth/v1/authorize?provider=google&redirect_to=${redirectUrl}`;
   },
 
   signOut: async () => {
