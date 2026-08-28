@@ -27,9 +27,13 @@ interface WalletState {
   error: string | null;
 
   fetchWalletData: (userId: string) => Promise<void>;
+  subscribeToWallet: (userId: string) => void;
+  unsubscribeFromWallet: () => void;
 }
 
-export const useWalletStore = create<WalletState>((set) => ({
+let walletChannel: ReturnType<typeof supabase.channel> | null = null;
+
+export const useWalletStore = create<WalletState>((set, get) => ({
   balance: {
     available: 0,
     pending: 0,
@@ -87,4 +91,26 @@ export const useWalletStore = create<WalletState>((set) => ({
       set({ isLoading: false });
     }
   },
+
+  subscribeToWallet: (userId: string) => {
+    if (walletChannel) return;
+    
+    walletChannel = supabase.channel('public:wallet_transactions')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'wallet_transactions', filter: `user_id=eq.${userId}` },
+        () => {
+           // On any transaction change, just refetch the wallet data to recalculate balance correctly
+           get().fetchWalletData(userId);
+        }
+      )
+      .subscribe();
+  },
+  
+  unsubscribeFromWallet: () => {
+    if (walletChannel) {
+      supabase.removeChannel(walletChannel);
+      walletChannel = null;
+    }
+  }
 }));

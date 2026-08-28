@@ -38,7 +38,13 @@ interface FeedState {
     posterId: string,
     customMessage?: string
   }) => Promise<void>;
+  
+  // Realtime Subscriptions
+  subscribeToFeedUpdates: () => void;
+  unsubscribeFromFeedUpdates: () => void;
 }
+
+let feedChannel: ReturnType<typeof supabase.channel> | null = null;
 
 export const useFeedStore = create<FeedState>((set, get) => ({
   postLikesCount: {},
@@ -239,6 +245,79 @@ export const useFeedStore = create<FeedState>((set, get) => ({
     } catch (err) {
       console.error('Error sharing post:', err);
       throw err;
+    }
+  },
+
+  subscribeToFeedUpdates: () => {
+    if (feedChannel) return;
+    
+    feedChannel = supabase.channel('public:feed_interactions')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'interactions_likes' },
+        (payload) => {
+           const entityId = payload.new.entity_id;
+           set(state => ({
+             postLikesCount: {
+               ...state.postLikesCount,
+               [entityId]: (state.postLikesCount[entityId] || 0) + 1
+             }
+           }));
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'interactions_likes' },
+        (payload) => {
+           const entityId = payload.old.entity_id;
+           set(state => ({
+             postLikesCount: {
+               ...state.postLikesCount,
+               [entityId]: Math.max(0, (state.postLikesCount[entityId] || 0) - 1)
+             }
+           }));
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'interactions_comments' },
+        async (payload) => {
+           const entityId = payload.new.entity_id;
+           set(state => ({
+             postCommentsCount: {
+               ...state.postCommentsCount,
+               [entityId]: (state.postCommentsCount[entityId] || 0) + 1
+             }
+           }));
+           
+           const existingComments = get().postComments[entityId];
+           if (existingComments) {
+             const { data } = await supabase
+               .from('interactions_comments')
+               .select(`*, profiles:user_id (full_name, username, avatar_url)`)
+               .eq('id', payload.new.id)
+               .single();
+             if (data) {
+               set(state => {
+                  const comments = state.postComments[entityId] || [];
+                  if (!comments.find(c => c.id === data.id)) {
+                    return {
+                      postComments: { ...state.postComments, [entityId]: [...comments, data] }
+                    }
+                  }
+                  return state;
+               });
+             }
+           }
+        }
+      )
+      .subscribe();
+  },
+  
+  unsubscribeFromFeedUpdates: () => {
+    if (feedChannel) {
+      supabase.removeChannel(feedChannel);
+      feedChannel = null;
     }
   }
 }));

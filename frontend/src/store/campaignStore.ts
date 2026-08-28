@@ -35,7 +35,13 @@ interface CampaignState {
   flagSubmissionByAdvertiser: (submissionId: string) => Promise<void>;
   approveSubmissionByAdvertiser: (submissionId: string) => Promise<void>;
   submitCampaignToAdmin: (campaignId: string) => Promise<void>;
+  
+  // Realtime Subscriptions
+  subscribeToCampaigns: (userId: string) => void;
+  unsubscribeFromCampaigns: () => void;
 }
+
+let campaignChannel: ReturnType<typeof supabase.channel> | null = null;
 
 const defaultFilters: CampaignFilters = {
   search: '',
@@ -403,4 +409,26 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
 
     set({ filteredCampaigns: result });
   },
+
+  subscribeToCampaigns: (userId: string) => {
+    if (campaignChannel) return;
+    
+    campaignChannel = supabase.channel('public:submissions')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'submissions', filter: `creator_id=eq.${userId}` },
+        () => {
+           // Refetch submissions to update statuses instantly
+           get().fetchMySubmissions(userId);
+        }
+      )
+      .subscribe();
+  },
+
+  unsubscribeFromCampaigns: () => {
+    if (campaignChannel) {
+      supabase.removeChannel(campaignChannel);
+      campaignChannel = null;
+    }
+  }
 }));

@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FiVideo, FiTrendingUp, FiDollarSign } from 'react-icons/fi';
+import { FiArrowRight, FiCheckCircle, FiPlayCircle, FiDollarSign } from 'react-icons/fi';
 import { useAuthStore } from '../../../store/authStore';
 import './LandingPage.css';
 
@@ -18,120 +18,156 @@ const LandingPage: React.FC = () => {
 
   return (
     <div className="landing-page">
-      <div className="landing-ambient-glow"></div>
-
-      {/* Navbar */}
-      <nav className="landing-nav">
-        <div className="landing-logo">gingerproject</div>
-        <div className="landing-nav-links">
-          <button className="landing-login-btn" onClick={() => navigate('/login')}>Log In</button>
-          <button className="landing-signup-btn" onClick={() => navigate('/login')}>Sign Up</button>
+      {/* Editorial Navbar */}
+      <nav className="landing-nav-editorial">
+        <div className="landing-logo-editorial">GINGER</div>
+        <div className="landing-nav-links-editorial">
+          <button className="landing-btn-text" onClick={() => navigate('/login')}>Log In</button>
+          <button className="landing-btn-primary" onClick={() => navigate('/login')}>Get Started</button>
         </div>
       </nav>
 
       {/* Hero Section */}
-      <main className="landing-hero">
-        <motion.h1 
-          className="landing-hero-title"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-        >
-          The Ultimate UGC Marketing Platform
-        </motion.h1>
-        
-        <motion.p 
-          className="landing-hero-subtitle"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-        >
-          GINGER connects innovative brands with creative talent. Participate in campaigns, submit user-generated videos, and earn rewards securely.
-        </motion.p>
+      <main className="editorial-hero">
+        <div className="editorial-hero-content">
+          <motion.h1 
+            className="editorial-hero-title"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+          >
+            Turn your content into cash.
+          </motion.h1>
+          <motion.p 
+            className="editorial-hero-subtitle"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+          >
+            GINGER connects creators directly with top brands. Shoot videos, submit them, and get paid instantly to your wallet.
+          </motion.p>
+          <motion.div 
+            className="editorial-hero-cta"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+          >
+            <button className="landing-btn-primary large" onClick={() => navigate('/login')}>
+              Join as a Creator <FiArrowRight />
+            </button>
+            <button className="landing-btn-secondary large" onClick={() => navigate('/login')}>
+              I'm a Brand
+            </button>
+          </motion.div>
+        </div>
         
         <motion.div 
-          className="landing-cta-group"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.4 }}
+          className="editorial-hero-image"
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.8, delay: 0.2 }}
         >
-          <button className="landing-primary-cta" onClick={() => navigate('/login')}>
-            Get Started
-          </button>
+          <img src="/images/app_mockup.jpg" alt="GINGER App Interface Mockup" />
         </motion.div>
       </main>
 
-      {/* Features Section */}
-      <section className="landing-features">
-        <h2 className="landing-features-title">Why choose GINGER?</h2>
-        <div className="landing-features-grid">
-          
-          <motion.div 
-            className="landing-feature-card"
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5 }}
-          >
-            <div className="landing-feature-icon">
-              <FiVideo />
-            </div>
-            <h3>For Creators</h3>
-            <p>Discover exciting campaigns from top brands. Submit your creative videos and get paid directly to your wallet for verified submissions.</p>
-          </motion.div>
+      {/* Trust Marquee */}
+      <section className="editorial-marquee-section">
+        <p className="marquee-label">Trusted by innovative brands and thousands of creators</p>
+        <div className="marquee-container">
+          <div className="marquee-track">
+            <span>Glossier</span>
+            <span>Gymshark</span>
+            <span>Olipop</span>
+            <span>Nike</span>
+            <span>Rhode</span>
+            <span>Starbucks</span>
+            {/* Duplicate for infinite scroll */}
+            <span>Glossier</span>
+            <span>Gymshark</span>
+            <span>Olipop</span>
+            <span>Nike</span>
+            <span>Rhode</span>
+            <span>Starbucks</span>
+          </div>
+        </div>
+      </section>
 
+      {/* How it Works - Split Section */}
+      <section className="editorial-split-section">
+        <div className="split-content">
           <motion.div 
-            className="landing-feature-card"
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5, delay: 0.1 }}
+            className="split-text"
+            initial={{ opacity: 0, x: -30 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true, margin: "-100px" }}
           >
-            <div className="landing-feature-icon">
-              <FiTrendingUp />
-            </div>
-            <h3>For Brands</h3>
-            <p>Launch targeted UGC campaigns with specific prize pools. Review submissions easily and only pay for high-quality, verified content.</p>
+            <h2>How it works for Creators</h2>
+            <ul className="editorial-steps">
+              <li>
+                <div className="step-icon"><FiPlayCircle /></div>
+                <div>
+                  <strong>Browse Campaigns</strong>
+                  <p>Find products you love on the GINGER marketplace.</p>
+                </div>
+              </li>
+              <li>
+                <div className="step-icon"><FiCheckCircle /></div>
+                <div>
+                  <strong>Submit Content</strong>
+                  <p>Shoot a short UGC video and upload it directly.</p>
+                </div>
+              </li>
+              <li>
+                <div className="step-icon"><FiDollarSign /></div>
+                <div>
+                  <strong>Get Paid Instantly</strong>
+                  <p>Once approved, funds hit your GINGER wallet immediately.</p>
+                </div>
+              </li>
+            </ul>
           </motion.div>
-
           <motion.div 
-            className="landing-feature-card"
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5, delay: 0.2 }}
+            className="split-image"
+            initial={{ opacity: 0, x: 30 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true, margin: "-100px" }}
           >
-            <div className="landing-feature-icon">
-              <FiDollarSign />
-            </div>
-            <h3>Secure Payments</h3>
-            <p>Automated batch payments and escrow systems ensure that creators are paid fairly and advertisers' budgets are handled transparently.</p>
+            <img src="/images/creator_lifestyle.jpg" alt="Creator filming a UGC video" />
           </motion.div>
         </div>
+      </section>
 
-        {/* Data Transparency Notice for Google OAuth */}
-        <motion.div 
-          className="landing-transparency-notice"
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          style={{ marginTop: '4rem', textAlign: 'center', maxWidth: '800px', margin: '4rem auto 0', padding: '0 2rem' }}
-        >
-          <h3 style={{ fontSize: '1.2rem', marginBottom: '1rem', color: 'var(--color-text-secondary)' }}>How We Use Your Data</h3>
-          <p style={{ fontSize: '0.9rem', color: 'var(--color-text-secondary)', lineHeight: '1.6', opacity: 0.8 }}>
-            GINGER requests access to your YouTube and social media profile data solely to verify your identity as a creator. This helps us prevent fake profiles, maintain a trusted community for brands, and ensure that your campaign rewards are fairly distributed based on authentic engagement. We do not sell or share your data with third parties.
-          </p>
-        </motion.div>
+      {/* Platform Stats */}
+      <section className="editorial-stats-section">
+        <div className="stats-grid">
+          <div className="stat-item">
+            <h3>$500k+</h3>
+            <p>Paid to Creators</p>
+          </div>
+          <div className="stat-item">
+            <h3>10,000+</h3>
+            <p>Active Campaigns</p>
+          </div>
+          <div className="stat-item">
+            <h3>24hr</h3>
+            <p>Average Payout Time</p>
+          </div>
+        </div>
       </section>
 
       {/* Footer */}
-      <footer className="landing-footer">
-        <div className="landing-footer-links">
-          <a href="/privacy-policy" className="landing-footer-link" onClick={(e) => { e.preventDefault(); navigate('/privacy-policy'); }}>Privacy Policy</a>
-          <a href="/terms-of-service" className="landing-footer-link" onClick={(e) => { e.preventDefault(); navigate('/terms-of-service'); }}>Terms of Service</a>
+      <footer className="editorial-footer">
+        <div className="footer-top">
+          <div className="footer-brand">GINGER</div>
+          <div className="footer-links">
+            <a href="/privacy-policy" onClick={(e) => { e.preventDefault(); navigate('/privacy-policy'); }}>Privacy Policy</a>
+            <a href="/terms-of-service" onClick={(e) => { e.preventDefault(); navigate('/terms-of-service'); }}>Terms of Service</a>
+          </div>
         </div>
-        <div className="landing-copyright">
-          &copy; {new Date().getFullYear()} GINGER (gingerproject). All rights reserved.
+        <div className="footer-bottom">
+          <p>&copy; {new Date().getFullYear()} GINGER. All rights reserved.</p>
+          <p className="footer-disclaimer">GINGER requests access to your social media data solely to verify your identity. We never sell your data.</p>
         </div>
       </footer>
     </div>

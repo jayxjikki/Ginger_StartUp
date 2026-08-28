@@ -10,6 +10,8 @@ import { useAuthStore } from './store/authStore';
 import { useCampaignStore } from './store/campaignStore';
 import { useChatStore } from './store/chatStore';
 import { useNotificationStore } from './store/notificationStore';
+import { useFeedStore } from './store/feedStore';
+import { useWalletStore } from './store/walletStore';
 import { useLocation } from 'react-router-dom';
 
 // Pages
@@ -122,6 +124,9 @@ const GlobalRealtimeInitializer: React.FC = () => {
   const { user } = useAuthStore();
   const { fetchInbox, subscribeToMessages, subscribeToGlobalPresence, unsubscribeFromMessages, unsubscribeFromGlobalPresence } = useChatStore();
   const { fetchNotifications, subscribeToNotifications, unsubscribeFromNotifications } = useNotificationStore();
+  const { subscribeToFeedUpdates, unsubscribeFromFeedUpdates } = useFeedStore();
+  const { subscribeToWallet, unsubscribeFromWallet } = useWalletStore();
+  const { subscribeToCampaigns, unsubscribeFromCampaigns } = useCampaignStore();
 
   useEffect(() => {
     if (user) {
@@ -133,18 +138,29 @@ const GlobalRealtimeInitializer: React.FC = () => {
       // Notifications
       fetchNotifications(user.id);
       subscribeToNotifications(user.id);
+      
+      // Feed & Wallet & Campaigns
+      subscribeToFeedUpdates();
+      subscribeToWallet(user.id);
+      subscribeToCampaigns(user.id);
     } else {
       unsubscribeFromMessages();
       unsubscribeFromGlobalPresence();
       unsubscribeFromNotifications();
+      unsubscribeFromFeedUpdates();
+      unsubscribeFromWallet();
+      unsubscribeFromCampaigns();
     }
     
     return () => {
       unsubscribeFromMessages();
       unsubscribeFromGlobalPresence();
       unsubscribeFromNotifications();
+      unsubscribeFromFeedUpdates();
+      unsubscribeFromWallet();
+      unsubscribeFromCampaigns();
     };
-  }, [user, fetchInbox, subscribeToMessages, subscribeToGlobalPresence, unsubscribeFromMessages, unsubscribeFromGlobalPresence, fetchNotifications, subscribeToNotifications, unsubscribeFromNotifications]);
+  }, [user, fetchInbox, subscribeToMessages, subscribeToGlobalPresence, unsubscribeFromMessages, unsubscribeFromGlobalPresence, fetchNotifications, subscribeToNotifications, unsubscribeFromNotifications, subscribeToFeedUpdates, unsubscribeFromFeedUpdates, subscribeToWallet, unsubscribeFromWallet, subscribeToCampaigns, unsubscribeFromCampaigns]);
 
   return null;
 };
