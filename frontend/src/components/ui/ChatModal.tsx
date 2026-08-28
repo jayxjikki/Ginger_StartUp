@@ -255,9 +255,8 @@ const ChatModal: React.FC<ChatModalProps> = ({
               <span className="material-symbols-outlined">close</span>
             </button>
             <div className="chat-detail-user-info">
-              <div className="chat-detail-avatar-container">
+              <div className={`chat-detail-avatar-container ${isOnline ? 'is-online' : 'is-offline'}`}>
                 <Avatar src={displayAvatar} name={displayName} size="sm" />
-                {isOnline && <span className="chat-avatar-online-dot" />}
               </div>
               <div className="chat-detail-title-group">
                 <h2 className="chat-detail-name">{displayName}</h2>
