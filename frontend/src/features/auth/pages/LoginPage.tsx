@@ -9,7 +9,7 @@ import gingerback1Bg from '../../../assets/gingerback1.jpeg';
 
 
 const LoginPage: React.FC = () => {
-  const { signInWithGoogle, isLoading, user, isInitialized } = useAuthStore();
+  const { user, isInitialized } = useAuthStore();
   const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
@@ -92,14 +92,19 @@ const LoginPage: React.FC = () => {
 
         {/* Authentication Options */}
         <div className="login-auth-options">
-          <button 
-            className="liquid-chrome" 
-            onClick={signInWithGoogle}
-            disabled={isLoading || !isTermsAccepted}
+          <a 
+            href={`https://ywpgnkvlzxwzuptaxqyw.supabase.co/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(window.location.origin)}`}
+            style={{ textDecoration: 'none', display: 'block', pointerEvents: isTermsAccepted ? 'auto' : 'none', opacity: isTermsAccepted ? 1 : 0.5 }}
           >
-            <span className="material-symbols-outlined">mail</span>
-            <span>{isLoading ? 'Connecting...' : 'Continue with Google'}</span>
-          </button>
+            <button 
+              className="liquid-chrome" 
+              type="button"
+              style={{ width: '100%', margin: 0 }}
+            >
+              <span className="material-symbols-outlined">mail</span>
+              <span>Continue with Google</span>
+            </button>
+          </a>
           
           <button className="ghost-button" disabled={!isTermsAccepted}>
             <span className="material-symbols-outlined">phone_iphone</span>
