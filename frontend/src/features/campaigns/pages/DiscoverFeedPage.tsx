@@ -1,5 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import DiscoverFilterModal from '../components/DiscoverFilterModal';
 import type { FilterState } from '../components/DiscoverFilterModal';
 import ChatModal from '../../../components/ui/ChatModal';
@@ -7,6 +8,9 @@ import { supabase } from '../../../lib/supabase';
 import { getSocialIcon } from '../../../utils/socialHelpers';
 import VerifiedChannelsModal from '../../profile/components/VerifiedChannelsModal';
 import { useUgcStore } from '../../../store/ugcStore';
+import { useGlobalModalStore } from '../../../store/globalModalStore';
+import { formatCount } from '../../../utils/formatters';
+import { getPdfViewerUrl, triggerFileDownload } from '../../../lib/cloudinary';
 import './DiscoverFeedPage.css';
 
 const DiscoverFeedPage: React.FC = () => {
@@ -14,10 +18,11 @@ const DiscoverFeedPage: React.FC = () => {
   const [activeCategory, setActiveCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   
-  // Media Kit state
+  // 3-dot dropdown menu state
+  const [activeOptionsCreatorId, setActiveOptionsCreatorId] = useState<string | null>(null);
 
-
-
+  // Media Kit Modal state
+  const [activeMediaKitCreator, setActiveMediaKitCreator] = useState<any | null>(null);
 
   // Filter Modal state
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
@@ -29,6 +34,8 @@ const DiscoverFeedPage: React.FC = () => {
   // Telegram Modal state
   const [telegramModalUser, setTelegramModalUser] = useState<any>(null);
 
+  const { blockUser, reportItem } = useUgcStore();
+
   const [activeFilters, setActiveFilters] = useState<FilterState>({
     platforms: [],
     minFollowers: 0,
@@ -37,6 +44,13 @@ const DiscoverFeedPage: React.FC = () => {
     maxRate: 500, // 500K
     location: ''
   });
+
+  // Close 3-dot dropdown menu on outside click
+  useEffect(() => {
+    const closeDropdown = () => setActiveOptionsCreatorId(null);
+    document.addEventListener('click', closeDropdown);
+    return () => document.removeEventListener('click', closeDropdown);
+  }, []);
 
   const openChat = (id: string, name: string, avatar: string | null) => {
     setActiveChatUser({ id, name, avatar });
@@ -61,7 +75,6 @@ const DiscoverFeedPage: React.FC = () => {
     const fetchCreators = async () => {
       setIsLoading(true);
       try {
-        setIsLoading(true);
         const { data: profiles, error } = await supabase
           .from('profiles')
           .select('*')
@@ -70,6 +83,8 @@ const DiscoverFeedPage: React.FC = () => {
         if (error) throw error;
 
         const { data: links } = await supabase.from('social_links').select('*');
+        const { data: mediaKits } = await supabase.from('media_kit_items').select('*');
+        const { data: channels } = await supabase.from('verified_channels').select('*');
         const { blockedUserIds, blockedByThemIds } = useUgcStore.getState();
         const allBlocked = new Set([...blockedUserIds, ...blockedByThemIds]);
 
@@ -77,11 +92,15 @@ const DiscoverFeedPage: React.FC = () => {
           .filter((p: any) => !allBlocked.has(p.id))
           .map((p: any) => {
           const userLinks = (links || []).filter((l: any) => l.profile_id === p.id);
+          const userMediaKits = (mediaKits || []).filter((m: any) => m.profile_id === p.id);
+          const userChannels = (channels || []).filter((c: any) => c.profile_id === p.id);
+          const telegramSum = userChannels.reduce((sum: number, ch: any) => sum + (ch.member_count || 0), 0);
+
           return {
             id: p.id,
             fullName: p.full_name || 'Unknown',
             handle: p.username || '',
-            category: p.category || 'Other',
+            category: p.category || '',
             followers: p.follower_count || 0,
             perPost: p.rates?.per_post || 0,
             location: p.location || '',
@@ -90,10 +109,10 @@ const DiscoverFeedPage: React.FC = () => {
             socialLinks: userLinks,
             pinnedSocials: p.pinned_socials || [],
             telegramUsername: p.telegram_username,
-            mediaKit: {
-              type: 'image',
-              url: 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?q=80&w=1000'
-            }
+            telegramMembers: telegramSum,
+            hasMediaKit: userMediaKits.length > 0,
+            mediaKitItems: userMediaKits,
+            verifiedChannels: userChannels
           };
         });
 
@@ -282,91 +301,181 @@ const DiscoverFeedPage: React.FC = () => {
                     <p className="creator-handle">{creator.handle}</p>
                   </div>
                   
-                  <div style={{ marginLeft: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '12px' }}>
-                    <button 
-                      className="liquid-btn icon-only"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openChat(creator.id, creator.fullName, creator.avatarUrl);
-                      }}
-                      title="Send Message"
-                      style={{ padding: '8px', minWidth: 'unset', height: 'unset', borderRadius: '50%' }}
-                    >
-                      <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>chat</span>
-                    </button>
-                    
-                    {creator.pinnedSocials && creator.pinnedSocials.length > 0 ? (
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        {creator.pinnedSocials.map((platform: string) => {
-                          const link = platform === 'Telegram' 
+                  <div className="creator-card-actions-col">
+                    <div className="creator-top-buttons-row">
+                      {/* 3-Dot Options Button */}
+                      <div className="creator-options-menu-wrap">
+                        <button 
+                          className="creator-options-trigger"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveOptionsCreatorId(activeOptionsCreatorId === creator.id ? null : creator.id);
+                          }}
+                          title="More Options"
+                          aria-label="Options"
+                        >
+                          <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>more_vert</span>
+                        </button>
+
+                        {activeOptionsCreatorId === creator.id && (
+                          <div className="creator-dropdown-menu" onClick={(e) => e.stopPropagation()}>
+                            <button 
+                              className="creator-menu-item"
+                              onClick={() => {
+                                setActiveOptionsCreatorId(null);
+                                navigate(`/profile/${creator.id}`);
+                              }}
+                            >
+                              <span className="material-symbols-outlined">person</span>
+                              Visit Profile
+                            </button>
+                            <button 
+                              className="creator-menu-item"
+                              onClick={() => {
+                                setActiveOptionsCreatorId(null);
+                                navigator.clipboard.writeText(`${window.location.origin}/profile/${creator.id}`);
+                                toast.success('Profile link copied!');
+                              }}
+                            >
+                              <span className="material-symbols-outlined">share</span>
+                              Share Profile
+                            </button>
+                            <button 
+                              className="creator-menu-item text-warning"
+                              onClick={async () => {
+                                setActiveOptionsCreatorId(null);
+                                const conf = await useGlobalModalStore.getState().showConfirm('Report this creator for inappropriate content?', 'Report Creator');
+                                if (conf) {
+                                  await reportItem(creator.id, 'profile', 'Inappropriate content');
+                                  toast.success('Creator reported');
+                                }
+                              }}
+                            >
+                              <span className="material-symbols-outlined">flag</span>
+                              Report User
+                            </button>
+                            <button 
+                              className="creator-menu-item text-danger"
+                              onClick={async () => {
+                                setActiveOptionsCreatorId(null);
+                                const conf = await useGlobalModalStore.getState().showConfirm('Block this user? You will no longer see their profile or messages.', 'Block User');
+                                if (conf) {
+                                  await blockUser(creator.id);
+                                  setCreators(prev => prev.filter(c => c.id !== creator.id));
+                                  toast.success('User blocked');
+                                }
+                              }}
+                            >
+                              <span className="material-symbols-outlined">block</span>
+                              Block User
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Message Button */}
+                      <button 
+                        className="creator-msg-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openChat(creator.id, creator.fullName, creator.avatarUrl);
+                        }}
+                        title="Send Message"
+                        aria-label="Message"
+                      >
+                        <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>chat</span>
+                      </button>
+                    </div>
+
+                    {/* Pinned Socials with Count below Logo */}
+                    {creator.pinnedSocials && creator.pinnedSocials.length > 0 && (
+                      <div className="creator-pinned-socials-row">
+                        {creator.pinnedSocials.slice(0, 3).map((platform: string) => {
+                          const isTelegram = platform.toLowerCase() === 'telegram';
+                          const link = isTelegram 
                             ? { platform: 'Telegram', url: creator.telegramUsername ? `https://t.me/${creator.telegramUsername}` : '#' }
                             : creator.socialLinks.find((l: any) => l.platform.toLowerCase() === platform.toLowerCase());
                           
-                          if (!link) return null;
+                          if (!link && !isTelegram) return null;
+
+                          let countText = 'NA';
+                          if (isTelegram) {
+                            const members = creator.telegramMembers;
+                            countText = (members !== undefined && members !== null && members > 0) ? formatCount(members) : (creator.telegramUsername ? '0' : 'NA');
+                          } else if (link) {
+                            if (link.followers !== undefined && link.followers !== null && link.followers > 0) {
+                              countText = formatCount(link.followers);
+                            } else if (link.followers === 0) {
+                              countText = '0';
+                            } else {
+                              countText = 'NA';
+                            }
+                          }
 
                           return (
-                            <button
-                              key={link.platform}
+                            <div 
+                              key={platform}
+                              className="creator-pinned-pill"
                               onClick={async (e) => {
                                 e.stopPropagation();
-                                if (link.platform === 'Telegram') {
-                                  const { data: channels } = await supabase
-                                    .from('verified_channels')
-                                    .select('*')
-                                    .eq('profile_id', creator.id);
-                                  setTelegramModalUser({ ...creator, verifiedChannels: channels || [] });
-                                } else if (link.url !== '#') {
+                                if (isTelegram) {
+                                  setTelegramModalUser(creator);
+                                } else if (link?.url && link.url !== '#') {
                                   window.open(link.url, '_blank');
                                 }
                               }}
-                              title={link.platform}
-                              style={{ 
-                                background: 'rgba(255,255,255,0.05)', 
-                                border: 'none',
-                                borderRadius: '50%',
-                                width: '32px', 
-                                height: '32px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                cursor: 'pointer',
-                                transition: 'background 0.2s'
-                              }}
-                              onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
-                              onMouseOut={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                              title={`${platform} · ${countText}`}
                             >
-                              <img 
-                                src={getSocialIcon(link.platform)} 
-                                alt={link.platform} 
-                                style={{ width: '18px', height: '18px', objectFit: 'contain' }} 
-                                onError={(e) => {
-                                  e.currentTarget.style.display = 'none';
-                                  e.currentTarget.parentElement!.innerHTML = '<span class="material-symbols-outlined" style="font-size: 16px; color: #a1a1aa">link</span>';
-                                }} 
-                              />
-                            </button>
+                              <div className="creator-pinned-icon-circle">
+                                <img 
+                                  src={getSocialIcon(platform)} 
+                                  alt={platform} 
+                                  className="creator-pinned-icon-img"
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = 'none';
+                                  }} 
+                                />
+                              </div>
+                              <span className="creator-pinned-count">{countText}</span>
+                            </div>
                           );
                         })}
                       </div>
-                    ) : (
-                      // Fallback if no pinned socials, show none or prioritize telegram if available? 
-                      // Wait, the prompt said: "only 3 icons which the user pins in the account centre ... whatever the pin platform is it should be visible in the feed tab in that order"
-                      // "also note : if i have only telegram linked i can only link telegram and only that will be visible in the feed below the message icon."
-                      // If there's no pinned socials, we don't show any.
-                      <></>
                     )}
                   </div>
                 </div>
                 
-                <div className="creator-stats-grid" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-                  <div className="creator-stat-box" style={{ flex: 1, textAlign: 'left', padding: '0 8px' }}>
-                    <div className="stat-value">{creator.followersStr}</div>
-                    <div className="stat-label">Followers</div>
+                {/* Bottom Row: Media Kit + Category Bullet Point + Location */}
+                <div className="creator-card-bottom-row">
+                  <div className="creator-bottom-left-group">
+                    <button
+                      className={`creator-media-kit-btn ${creator.hasMediaKit ? 'active-shine' : 'empty-inactive'}`}
+                      title={creator.hasMediaKit ? "View Media Kit" : "Media Kit not uploaded"}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (creator.hasMediaKit) {
+                          setActiveMediaKitCreator(creator);
+                        }
+                      }}
+                    >
+                      <span className="material-symbols-outlined" style={{ fontSize: '13px' }}>auto_awesome</span>
+                      <span>Media Kit</span>
+                    </button>
+
+                    {creator.category && creator.category.trim() !== '' && (
+                      <div className="creator-category-badge">
+                        <span className="category-bullet">•</span>
+                        <span className="category-text">{creator.category}</span>
+                      </div>
+                    )}
                   </div>
-                  <div className="creator-location" style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#8fa696', fontSize: '12px', padding: '0 8px', paddingBottom: '4px' }}>
-                    <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>location_on</span>
-                    <span>{creator.location || 'Unknown'}</span>
-                  </div>
+
+                  {creator.location && (
+                    <div className="creator-location-badge">
+                      <span className="material-symbols-outlined" style={{ fontSize: '13px' }}>location_on</span>
+                      <span>{creator.location}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             ))
@@ -388,6 +497,117 @@ const DiscoverFeedPage: React.FC = () => {
         recipientName={activeChatUser?.name || ''}
         recipientAvatar={activeChatUser?.avatar || null}
       />
+
+      {/* Telegram Verified Channels Modal */}
+      {telegramModalUser && (
+        <VerifiedChannelsModal 
+          isOpen={!!telegramModalUser}
+          onClose={() => setTelegramModalUser(null)}
+          telegramUsername={telegramModalUser.telegramUsername}
+          verifiedChannels={telegramModalUser.verifiedChannels || []}
+        />
+      )}
+
+      {/* Media Kit Viewer Modal for Discover Page */}
+      {activeMediaKitCreator && (
+        <div className="media-kit-modal-overlay" onClick={() => setActiveMediaKitCreator(null)}>
+          <div className="media-kit-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="media-kit-modal-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span className="material-symbols-outlined" style={{ fontSize: '24px', color: '#f9c846' }}>auto_awesome</span>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700 }}>Media Kit</h3>
+              </div>
+              <button 
+                className="media-kit-close-btn" 
+                onClick={() => setActiveMediaKitCreator(null)}
+                aria-label="Close"
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>close</span>
+              </button>
+            </div>
+            
+            <p className="media-kit-subtitle">{activeMediaKitCreator.fullName}'s media kit assets</p>
+            
+            <div className="media-kit-items-list">
+              {(activeMediaKitCreator.mediaKitItems || []).map((item: any) => {
+                const isPdf = item.image_url?.toLowerCase().endsWith('.pdf') || 
+                              item.image_url?.includes('/raw/upload') || 
+                              item.title?.toLowerCase().includes('.pdf') ||
+                              item.title?.toLowerCase().includes('document');
+                const viewerUrl = isPdf ? getPdfViewerUrl(item.image_url) : item.image_url;
+
+                return (
+                  <div key={item.id} className="media-kit-download-item">
+                    <div className="media-kit-item-info">
+                      {isPdf ? (
+                        <div className="media-kit-pdf-thumb">
+                          <span className="material-symbols-outlined" style={{ fontSize: '24px', color: '#f9c846' }}>picture_as_pdf</span>
+                        </div>
+                      ) : (
+                        item.image_url && (
+                          <img src={item.image_url} alt={item.title} className="media-kit-thumb" />
+                        )
+                      )}
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div className="media-kit-item-title">{item.title || (isPdf ? 'Media Kit Document' : 'Media Kit Image')}</div>
+                        <div className="media-kit-item-desc">{isPdf ? 'PDF Document' : 'Image File'}</div>
+                      </div>
+                    </div>
+
+                    <div className="media-kit-item-actions">
+                      {isPdf ? (
+                        <>
+                          <a
+                            href={viewerUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="media-kit-action-btn view-btn"
+                            title="View Document"
+                          >
+                            <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>visibility</span>
+                            <span>View</span>
+                          </a>
+                          <button
+                            type="button"
+                            className="media-kit-action-btn dl-btn"
+                            onClick={async (e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              try {
+                                toast.loading('Preparing download...', { id: 'pdf-dl' });
+                                await triggerFileDownload(item.image_url, item.title ? `${item.title}.pdf` : 'media-kit.pdf');
+                                toast.success('Download started!', { id: 'pdf-dl' });
+                              } catch (err) {
+                                window.open(item.image_url, '_blank');
+                                toast.dismiss('pdf-dl');
+                              }
+                            }}
+                            title="Download Document"
+                          >
+                            <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>download</span>
+                            <span>Download</span>
+                          </button>
+                        </>
+                      ) : (
+                        <a
+                          href={item.image_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="media-kit-action-btn view-btn"
+                          title="View Full Size"
+                        >
+                          <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>visibility</span>
+                          <span>View</span>
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       <VerifiedChannelsModal 
         isOpen={!!telegramModalUser}
