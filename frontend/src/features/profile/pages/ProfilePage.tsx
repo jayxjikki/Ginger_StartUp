@@ -673,7 +673,7 @@ const ProfilePage: React.FC = () => {
               </span>
               <span className="stat-label" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                 <img src={youtubeIcon} alt="YouTube" style={{ width: '12px', height: '12px', objectFit: 'contain' }} />
-                Subscribers
+                Subs
               </span>
             </div>
           )}
