@@ -17,7 +17,7 @@ interface AuthState {
 
   // Actions
   initialize: () => Promise<void>;
-  signInWithGoogle: () => void;
+  signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   setProfile: (profile: Profile) => void;
   fetchProfile: () => Promise<void>;
@@ -84,23 +84,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  signInWithGoogle: () => {
+  signInWithGoogle: async () => {
     try {
       set({ isLoading: true });
-      // 1. Force clear any stuck Supabase auth locks that might be hanging around
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && key.includes('supabase.auth.lock')) {
-          localStorage.removeItem(key);
-        }
-      }
-      
-      // 2. Build the exact Supabase Auth URL
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const redirectUrl = encodeURIComponent(window.location.origin);
-      
-      // 3. Force the browser to jump directly to the Supabase OAuth provider
-      window.location.href = `${supabaseUrl}/auth/v1/authorize?provider=google&redirect_to=${redirectUrl}`;
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin,
+        },
+      });
+      if (error) throw error;
     } catch (error: any) {
       console.error('Google sign-in error:', error);
       if (typeof window !== 'undefined') {
