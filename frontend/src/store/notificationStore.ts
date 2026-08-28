@@ -32,6 +32,50 @@ interface NotificationState {
 
 let notificationSubscription: ReturnType<typeof supabase.channel> | null = null;
 
+const resolveNotificationActors = async (rawNotifs: any[]): Promise<Notification[]> => {
+  if (!rawNotifs || rawNotifs.length === 0) return [];
+
+  const needsActorIds = Array.from(
+    new Set(
+      rawNotifs
+        .filter((n) => n.actor_id && (!n.actor || typeof n.actor !== 'object' || !n.actor.full_name))
+        .map((n) => n.actor_id)
+    )
+  ) as string[];
+
+  let profilesMap: Record<string, { full_name: string; username: string; avatar_url: string }> = {};
+
+  if (needsActorIds.length > 0) {
+    try {
+      const { data: profs } = await supabase
+        .from('profiles')
+        .select('id, full_name, username, avatar_url')
+        .in('id', needsActorIds);
+
+      if (profs) {
+        profs.forEach((p) => {
+          profilesMap[p.id] = {
+            full_name: p.full_name || 'Someone',
+            username: p.username || '',
+            avatar_url: p.avatar_url || '',
+          };
+        });
+      }
+    } catch (err) {
+      console.warn('Could not batch load notification actors:', err);
+    }
+  }
+
+  return rawNotifs.map((n) => {
+    const joinedActor = n.actor && typeof n.actor === 'object' && n.actor.full_name ? n.actor : undefined;
+    const resolvedActor = n.actor_id ? profilesMap[n.actor_id] || joinedActor : undefined;
+    return {
+      ...n,
+      actor: resolvedActor || joinedActor,
+    } as Notification;
+  });
+};
+
 export const useNotificationStore = create<NotificationState>((set) => ({
   notifications: [],
   unreadCount: 0,
@@ -42,21 +86,14 @@ export const useNotificationStore = create<NotificationState>((set) => ({
     try {
       const { data, error } = await supabase
         .from('notifications')
-        .select(`
-          *,
-          actor:profiles!actor_id (
-            full_name,
-            username,
-            avatar_url
-          )
-        `)
+        .select('*')
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
         .limit(50);
 
       if (error) throw error;
 
-      const notifications = data as Notification[];
+      const notifications = await resolveNotificationActors(data || []);
       const unreadCount = notifications.filter(n => !n.is_read).length;
 
       set({ notifications, unreadCount, isLoading: false });
@@ -123,24 +160,16 @@ export const useNotificationStore = create<NotificationState>((set) => ({
           filter: `user_id=eq.${userId}`
         },
         async (payload) => {
-          // A new notification was received!
-          // We fetch it specifically to get the nested actor details
           const { data, error } = await supabase
             .from('notifications')
-            .select(`
-              *,
-              actor:profiles!actor_id (
-                full_name,
-                username,
-                avatar_url
-              )
-            `)
+            .select('*')
             .eq('id', payload.new.id)
             .single();
 
           if (!error && data) {
+            const [resolved] = await resolveNotificationActors([data]);
             set(state => ({
-              notifications: [data as Notification, ...state.notifications],
+              notifications: [resolved, ...state.notifications],
               unreadCount: state.unreadCount + 1
             }));
             
