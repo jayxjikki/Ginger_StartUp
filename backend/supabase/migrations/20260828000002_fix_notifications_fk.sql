@@ -1,20 +1,28 @@
 -- ═══════════════════════════════════════════════════════════
--- GINGER — Fix Notifications Table Foreign Key & Schema Cache
+-- GINGER — Safely Upgrade Notifications Table Schema & Foreign Keys
 -- ═══════════════════════════════════════════════════════════
 
--- 1. Ensure table exists with all columns
+-- 1. Ensure table exists
 CREATE TABLE IF NOT EXISTS public.notifications (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID NOT NULL,
-  actor_id UUID,
-  type TEXT NOT NULL CHECK (type IN ('like', 'comment', 'system', 'admin')),
-  entity_id UUID,
-  content TEXT NOT NULL,
-  is_read BOOLEAN DEFAULT false,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 2. Safely add Foreign Key constraint for actor_id -> profiles(id)
+-- 2. Safely add all missing columns to notifications table
+ALTER TABLE public.notifications 
+  ADD COLUMN IF NOT EXISTS actor_id UUID,
+  ADD COLUMN IF NOT EXISTS entity_id UUID,
+  ADD COLUMN IF NOT EXISTS type TEXT DEFAULT 'system',
+  ADD COLUMN IF NOT EXISTS content TEXT,
+  ADD COLUMN IF NOT EXISTS is_read BOOLEAN DEFAULT false;
+
+-- 3. Populate 'content' from 'body' or 'title' if null
+UPDATE public.notifications 
+SET content = COALESCE(content, 'Notification')
+WHERE content IS NULL;
+
+-- 4. Safely ensure Foreign Key constraint for actor_id -> profiles(id)
 DO $$
 BEGIN
   IF NOT EXISTS (
@@ -29,7 +37,7 @@ BEGIN
   END IF;
 END $$;
 
--- 3. Safely add Foreign Key constraint for user_id -> profiles(id)
+-- 5. Safely ensure Foreign Key constraint for user_id -> profiles(id)
 DO $$
 BEGIN
   IF NOT EXISTS (
@@ -44,7 +52,7 @@ BEGIN
   END IF;
 END $$;
 
--- 4. Enable RLS and create policies
+-- 6. Enable RLS and setup policies
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Users can view own notifications" ON public.notifications;
@@ -63,5 +71,5 @@ CREATE POLICY "Users can delete own notifications"
   ON public.notifications FOR DELETE
   USING (auth.uid() = user_id);
 
--- 5. Reload PostgREST schema cache
+-- 7. Reload PostgREST schema cache
 NOTIFY pgrst, 'reload schema';
