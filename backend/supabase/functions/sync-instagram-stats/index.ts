@@ -50,6 +50,16 @@ serve(async (req: Request) => {
 
         if (statsData.error) {
            console.error(`Graph API Error for ${link.username}:`, statsData.error);
+           
+           // Handle expired token (OAuthException code 190)
+           if (statsData.error.code === 190) {
+             console.log(`Token expired for ${link.username}, removing social link so user can reconnect.`);
+             await supabase
+               .from('social_links')
+               .delete()
+               .eq('id', link.id);
+           }
+           
            errors.push({ type: 'graph_api', username: link.username, error: statsData.error });
            failedCount++;
            continue;
