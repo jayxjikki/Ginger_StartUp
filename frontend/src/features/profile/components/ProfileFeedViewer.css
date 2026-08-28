@@ -168,12 +168,32 @@
   margin-right: 6px;
 }
 
+.feed-post-comments-link {
+  color: #a8a8a8;
+  font-size: 14px;
+  padding: 0 16px;
+  margin-bottom: 4px;
+  cursor: pointer;
+  width: fit-content;
+  user-select: none;
+  transition: color 0.15s ease;
+}
+
+.feed-post-comments-link:hover {
+  color: #ffffff;
+}
+
+.feed-post-comments-link.empty {
+  color: #737373;
+  font-size: 13px;
+}
+
 .feed-post-date {
   color: #a8a8a8;
   font-size: 12px;
   padding: 0 16px;
   text-transform: uppercase;
-  margin-top: 4px;
+  margin-top: 2px;
 }
 
 .double-click-heart-overlay {

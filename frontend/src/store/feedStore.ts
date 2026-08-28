@@ -15,9 +15,10 @@ interface FeedComment {
 }
 
 interface FeedState {
-  // Likes
+  // Likes & Comments Count
   postLikesCount: Record<string, number>;
   userLikedPosts: Record<string, boolean>;
+  postCommentsCount: Record<string, number>;
   
   fetchLikes: (entityIds: string[]) => Promise<void>;
   toggleLike: (entityId: string) => Promise<void>;
@@ -42,6 +43,7 @@ interface FeedState {
 export const useFeedStore = create<FeedState>((set, get) => ({
   postLikesCount: {},
   userLikedPosts: {},
+  postCommentsCount: {},
   postComments: {},
 
   fetchLikes: async (entityIds: string[]) => {
@@ -50,7 +52,7 @@ export const useFeedStore = create<FeedState>((set, get) => ({
     try {
       const { data: { session } } = await supabase.auth.getSession();
       
-      // Fetch counts (group by entity_id)
+      // 1. Fetch likes count (group by entity_id)
       const { data: countData, error: countError } = await supabase
         .from('interactions_likes')
         .select('entity_id')
@@ -59,11 +61,22 @@ export const useFeedStore = create<FeedState>((set, get) => ({
       if (countError) throw countError;
       
       const counts: Record<string, number> = {};
-      countData.forEach(row => {
+      countData?.forEach(row => {
         counts[row.entity_id] = (counts[row.entity_id] || 0) + 1;
       });
+
+      // 2. Fetch comments count
+      const { data: commentsCountData } = await supabase
+        .from('interactions_comments')
+        .select('entity_id')
+        .in('entity_id', entityIds);
+
+      const commentsCounts: Record<string, number> = {};
+      commentsCountData?.forEach(row => {
+        commentsCounts[row.entity_id] = (commentsCounts[row.entity_id] || 0) + 1;
+      });
       
-      // Fetch user's likes
+      // 3. Fetch user's own likes
       const userLikes: Record<string, boolean> = {};
       if (session) {
         const { data: userData, error: userError } = await supabase
@@ -81,10 +94,11 @@ export const useFeedStore = create<FeedState>((set, get) => ({
       
       set(state => ({
         postLikesCount: { ...state.postLikesCount, ...counts },
+        postCommentsCount: { ...state.postCommentsCount, ...commentsCounts },
         userLikedPosts: { ...state.userLikedPosts, ...userLikes }
       }));
     } catch (err) {
-      console.error('Error fetching likes:', err);
+      console.error('Error fetching likes and comments counts:', err);
     }
   },
 
@@ -173,10 +187,15 @@ export const useFeedStore = create<FeedState>((set, get) => ({
       if (data) {
         set(state => {
           const existing = state.postComments[entityId] || [];
+          const currentCount = state.postCommentsCount[entityId] !== undefined ? state.postCommentsCount[entityId] : existing.length;
           return {
             postComments: {
               ...state.postComments,
               [entityId]: [...existing, data]
+            },
+            postCommentsCount: {
+              ...state.postCommentsCount,
+              [entityId]: currentCount + 1
             }
           };
         });

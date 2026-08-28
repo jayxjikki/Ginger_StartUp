@@ -48,7 +48,7 @@ const ProfileFeedViewer: React.FC<ProfileFeedViewerProps> = ({
 
   const { user } = useAuthStore();
   const { deleteItem } = useProfileStore();
-  const { postLikesCount, userLikedPosts, fetchLikes, toggleLike } = useFeedStore();
+  const { postLikesCount, postCommentsCount, userLikedPosts, fetchLikes, toggleLike } = useFeedStore();
   const [activeCommentPostId, setActiveCommentPostId] = useState<string | null>(null);
   const [activeSharePost, setActiveSharePost] = useState<FeedPost | null>(null);
   const [heartAnimations, setHeartAnimations] = useState<Record<string, boolean>>({});
@@ -244,17 +244,38 @@ const ProfileFeedViewer: React.FC<ProfileFeedViewerProps> = ({
               </div>
 
               {/* Likes Count */}
-              {likesCount > 0 && (
-                <div className="feed-post-likes">
-                  {likesCount} {likesCount === 1 ? 'like' : 'likes'}
-                </div>
-              )}
+              <div className="feed-post-likes">
+                {likesCount} {likesCount === 1 ? 'like' : 'likes'}
+              </div>
 
               {/* Caption */}
               <div className="feed-post-caption-box">
                 <span className="feed-post-caption-username">{username}</span>
                 <span>{getCaption(post)}</span>
               </div>
+
+              {/* Comments Count / View Comments */}
+              {(() => {
+                const commentsCount = postCommentsCount[post.id] || 0;
+                if (commentsCount > 0) {
+                  return (
+                    <div 
+                      className="feed-post-comments-link" 
+                      onClick={() => setActiveCommentPostId(post.id)}
+                    >
+                      View all {commentsCount} {commentsCount === 1 ? 'comment' : 'comments'}
+                    </div>
+                  );
+                }
+                return (
+                  <div 
+                    className="feed-post-comments-link empty" 
+                    onClick={() => setActiveCommentPostId(post.id)}
+                  >
+                    Add a comment...
+                  </div>
+                );
+              })()}
 
               {/* Date */}
               {post.created_at && (
