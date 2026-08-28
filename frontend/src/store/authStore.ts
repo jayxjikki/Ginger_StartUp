@@ -17,7 +17,7 @@ interface AuthState {
 
   // Actions
   initialize: () => Promise<void>;
-  signInWithGoogleToken: (token: string) => Promise<void>;
+  signInWithGoogle: () => void;
   signOut: () => Promise<void>;
   setProfile: (profile: Profile) => void;
   fetchProfile: () => Promise<void>;
@@ -84,26 +84,28 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  signInWithGoogleToken: async (token: string) => {
-    set({ isLoading: true });
+  signInWithGoogle: () => {
     try {
-      const { data, error } = await supabase.auth.signInWithIdToken({
-        provider: 'google',
-        token,
-      });
-
-      if (error) throw error;
-      
-      if (data.session) {
-        set({ user: data.session.user, session: data.session });
-        await get().fetchProfile();
+      set({ isLoading: true });
+      // 1. Force clear any stuck Supabase auth locks that might be hanging around
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.includes('supabase.auth.lock')) {
+          localStorage.removeItem(key);
+        }
       }
+      
+      // 2. Build the exact Supabase Auth URL
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const redirectUrl = encodeURIComponent(window.location.origin);
+      
+      // 3. Force the browser to jump directly to the Supabase OAuth provider
+      window.location.href = `${supabaseUrl}/auth/v1/authorize?provider=google&redirect_to=${redirectUrl}`;
     } catch (error: any) {
-      console.error('Google token sign-in error:', error);
+      console.error('Google sign-in error:', error);
       if (typeof window !== 'undefined') {
         toast.error(`Sign in failed: ${error?.message || 'Unknown error'}`);
       }
-    } finally {
       set({ isLoading: false });
     }
   },
