@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../../store/authStore';
+import { GoogleLogin } from '@react-oauth/google';
+import toast from 'react-hot-toast';
 import TransitionLoader from '../../../components/ui/TransitionLoader';
 import TermsModal from '../components/TermsModal';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -9,7 +11,7 @@ import gingerback1Bg from '../../../assets/gingerback1.jpeg';
 
 
 const LoginPage: React.FC = () => {
-  const { signInWithGoogle, isLoading, user, isInitialized } = useAuthStore();
+  const { signInWithGoogleToken, isLoading, user, isInitialized } = useAuthStore();
   const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
@@ -91,15 +93,33 @@ const LoginPage: React.FC = () => {
         </div>
 
         {/* Authentication Options */}
-        <div className="login-auth-options">
-          <button 
-            className="liquid-chrome" 
-            onClick={signInWithGoogle}
-            disabled={isLoading || !isTermsAccepted}
-          >
-            <span className="material-symbols-outlined">mail</span>
-            <span>{isLoading ? 'Connecting...' : 'Continue with Google'}</span>
-          </button>
+        <div className="login-auth-options" style={{ position: 'relative' }}>
+          {!isTermsAccepted && (
+            <div 
+              style={{ position: 'absolute', inset: 0, zIndex: 10, cursor: 'not-allowed' }} 
+              onClick={() => toast.error("Please accept the Terms & Conditions first")}
+            />
+          )}
+          <div style={{ opacity: isTermsAccepted && !isLoading ? 1 : 0.5, pointerEvents: isTermsAccepted && !isLoading ? 'auto' : 'none' }}>
+            <GoogleLogin
+              onSuccess={(credentialResponse) => {
+                if (credentialResponse.credential) {
+                  signInWithGoogleToken(credentialResponse.credential);
+                } else {
+                  toast.error("Google sign in failed: No credential received");
+                }
+              }}
+              onError={() => {
+                toast.error("Google sign in failed");
+              }}
+              useOneTap={false}
+              theme="filled_black"
+              shape="pill"
+              size="large"
+              text="continue_with"
+              width="100%"
+            />
+          </div>
           
           <button className="ghost-button" disabled={!isTermsAccepted}>
             <span className="material-symbols-outlined">phone_iphone</span>

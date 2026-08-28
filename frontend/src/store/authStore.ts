@@ -16,7 +16,7 @@ interface AuthState {
 
   // Actions
   initialize: () => Promise<void>;
-  signInWithGoogle: () => Promise<void>;
+  signInWithGoogleToken: (token: string) => Promise<void>;
   signOut: () => Promise<void>;
   setProfile: (profile: Profile) => void;
   fetchProfile: () => Promise<void>;
@@ -83,18 +83,24 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  signInWithGoogle: async () => {
+  signInWithGoogleToken: async (token: string) => {
     set({ isLoading: true });
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { data, error } = await supabase.auth.signInWithIdToken({
         provider: 'google',
-        options: {
-          redirectTo: window.location.origin,
-        },
+        token,
       });
+
       if (error) throw error;
-    } catch (error) {
-      console.error('Google sign-in error:', error);
+      
+      if (data.session) {
+        set({ user: data.session.user, session: data.session });
+        await get().fetchProfile();
+      }
+    } catch (error: any) {
+      console.error('Google token sign-in error:', error);
+      // Optional: add toast notification logic here
+    } finally {
       set({ isLoading: false });
     }
   },
