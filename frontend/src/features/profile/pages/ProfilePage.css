@@ -275,10 +275,10 @@
 /* Stats Grid */
 .profile-stats-grid {
   display: flex;
-  gap: 1rem;
+  gap: 10px;
   margin-bottom: 2rem;
   overflow-x: auto;
-  padding-bottom: 8px; /* Room for scrollbar/shadows */
+  padding: 4px 2px 12px 2px;
   -ms-overflow-style: none;
   scrollbar-width: none;
   scroll-snap-type: x mandatory;
@@ -290,32 +290,60 @@
 
 .stat-box {
   flex: 1;
-  min-width: 90px;
-  scroll-snap-align: center;
-  padding: 0.5rem;
+  min-width: 96px;
+  max-width: 120px;
+  min-height: 74px;
+  scroll-snap-align: start;
+  padding: 0.6rem 0.45rem;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 18px;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0.02) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
   flex-shrink: 0;
+  box-sizing: border-box;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.stat-box:active {
+  transform: scale(0.97);
 }
 
 .stat-value {
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 700;
-  margin-bottom: 0.25rem;
+  line-height: 1.1;
+  margin-bottom: 4px;
+  letter-spacing: -0.02em;
 }
 
 .stat-label {
-  font-family: 'Geist', sans-serif;
-  font-size: 10px;
-  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 9.5px;
+  font-weight: 600;
+  color: var(--text-secondary, #94a3b8);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.03em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3.5px;
+  text-align: center;
+  max-width: 100%;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+.stat-label img {
+  width: 11px;
+  height: 11px;
+  object-fit: contain;
+  flex-shrink: 0;
 }
 
 /* Tabs (Instagram Style) */
