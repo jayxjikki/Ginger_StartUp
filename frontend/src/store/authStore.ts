@@ -6,6 +6,7 @@ import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import type { Profile } from '../types/user.types';
 import type { Session, User } from '@supabase/supabase-js';
+import toast from 'react-hot-toast';
 
 interface AuthState {
   user: User | null;
