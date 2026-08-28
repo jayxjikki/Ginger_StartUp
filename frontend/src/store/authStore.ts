@@ -6,6 +6,7 @@ import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import type { Profile } from '../types/user.types';
 import type { Session, User } from '@supabase/supabase-js';
+import toast from 'react-hot-toast';
 
 interface AuthState {
   user: User | null;
@@ -16,7 +17,7 @@ interface AuthState {
 
   // Actions
   initialize: () => Promise<void>;
-  signInWithGoogle: () => void;
+  signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   setProfile: (profile: Profile) => void;
   fetchProfile: () => Promise<void>;
@@ -83,13 +84,23 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  signInWithGoogle: () => {
-    set({ isLoading: true });
-    // Hardcode to guarantee no environment variable issues on Vercel
-    const supabaseUrl = 'https://ywpgnkvlzxwzuptaxqyw.supabase.co';
-    const redirectUrl = encodeURIComponent(window.location.origin);
-    // Instant direct navigation, bypassing all buggy Javascript promises and local storage locks
-    window.location.href = `${supabaseUrl}/auth/v1/authorize?provider=google&redirect_to=${redirectUrl}`;
+  signInWithGoogle: async () => {
+    try {
+      set({ isLoading: true });
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin,
+        },
+      });
+      if (error) throw error;
+    } catch (error: any) {
+      console.error('Google sign-in error:', error);
+      if (typeof window !== 'undefined') {
+        toast.error(`Sign in failed: ${error?.message || 'Unknown error'}`);
+      }
+      set({ isLoading: false });
+    }
   },
 
   signOut: async () => {
