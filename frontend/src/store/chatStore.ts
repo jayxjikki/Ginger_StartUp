@@ -88,7 +88,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
   typingUsers: {},
 
   setActiveRecipient: (id: string | null) => {
-    set({ activeRecipientId: id, messages: [], partnerTyping: false }); // clear messages on switch
+    const isTyping = id ? !!get().typingUsers[id] : false;
+    set({ activeRecipientId: id, messages: [], partnerTyping: isTyping });
   },
 
   fetchInbox: async (currentUserId: string) => {
@@ -361,27 +362,52 @@ export const useChatStore = create<ChatState>((set, get) => ({
         const onlineUsers = Object.keys(state);
         
         let isPartnerTyping = false;
-        const typingUsers: Record<string, boolean> = {};
+        const typingUsers: Record<string, boolean> = { ...get().typingUsers };
         const { activeRecipientId } = get();
         
         for (const [key, value] of Object.entries(state)) {
           if (key !== currentUserId) {
-            // value is an array of presence states for this user
             const isTypingToMe = (value as any[]).some(p => p.typingTo === currentUserId);
             if (isTypingToMe) {
               typingUsers[key] = true;
               if (activeRecipientId === key) {
                 isPartnerTyping = true;
               }
+            } else if (typingUsers[key] && (value as any[]).every(p => !p.typingTo)) {
+              typingUsers[key] = false;
             }
           }
         }
         
-        set({ onlineUsers, typingUsers, partnerTyping: isPartnerTyping });
+        set({ onlineUsers, typingUsers, partnerTyping: activeRecipientId ? !!typingUsers[activeRecipientId] : isPartnerTyping });
+      })
+      .on('presence', { event: 'join' }, ({ key }: { key: string }) => {
+        set((state) => ({
+          onlineUsers: Array.from(new Set([...state.onlineUsers, key]))
+        }));
+      })
+      .on('presence', { event: 'leave' }, ({ key }: { key: string }) => {
+        set((state) => ({
+          onlineUsers: state.onlineUsers.filter(u => u !== key),
+          typingUsers: { ...state.typingUsers, [key]: false },
+          partnerTyping: state.activeRecipientId === key ? false : state.partnerTyping
+        }));
+      })
+      .on('broadcast', { event: 'user_typing' }, (payload: any) => {
+        const data = payload?.payload || {};
+        if (data.recipientId === currentUserId) {
+          const senderId = data.senderId;
+          const isTyping = !!data.isTyping;
+          set((state) => {
+            const typingUsers = { ...state.typingUsers, [senderId]: isTyping };
+            const partnerTyping = state.activeRecipientId === senderId ? isTyping : state.partnerTyping;
+            return { typingUsers, partnerTyping };
+          });
+        }
       })
       .subscribe(async (status: string) => {
         if (status === 'SUBSCRIBED') {
-          await globalPresenceChannel.track({ typingTo: null });
+          await globalPresenceChannel.track({ typingTo: null, onlineAt: Date.now() });
         }
       });
   },
@@ -395,7 +421,28 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   setTypingStatus: async (isTyping: boolean, recipientId: string) => {
     if (globalPresenceChannel) {
-      await globalPresenceChannel.track({ typingTo: isTyping ? recipientId : null });
+      try {
+        await globalPresenceChannel.track({ typingTo: isTyping ? recipientId : null, onlineAt: Date.now() });
+      } catch (e) {
+        // ignore
+      }
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const currentUserId = session?.user?.id;
+        if (currentUserId) {
+          await globalPresenceChannel.send({
+            type: 'broadcast',
+            event: 'user_typing',
+            payload: {
+              senderId: currentUserId,
+              recipientId,
+              isTyping
+            }
+          });
+        }
+      } catch (e) {
+        // ignore
+      }
     }
   },
 

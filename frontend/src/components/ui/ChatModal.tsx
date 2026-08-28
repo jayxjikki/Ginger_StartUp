@@ -31,6 +31,8 @@ const ChatModal: React.FC<ChatModalProps> = ({
     messages, 
     isLoading, 
     partnerTyping,
+    onlineUsers,
+    typingUsers,
     fetchHistory, 
     sendMessage, 
     subscribeToMessages, 
@@ -120,6 +122,7 @@ const ChatModal: React.FC<ChatModalProps> = ({
     if (!content.trim() || !user || !recipientId) return;
 
     setIsSending(true);
+    setTypingStatus(false, recipientId);
     try {
       await sendMessage(user.id, recipientId, content.trim());
       setContent('');
@@ -239,6 +242,8 @@ const ChatModal: React.FC<ChatModalProps> = ({
 
   const displayName = isBlockedByThem ? 'Ginger user' : recipientName;
   const displayAvatar = isBlockedByThem ? null : recipientAvatar;
+  const isPartnerTyping = partnerTyping || (recipientId ? !!typingUsers[recipientId] : false);
+  const isOnline = !isBlocked && onlineUsers.includes(recipientId);
 
   return (
     <AnimatePresence>
@@ -250,10 +255,25 @@ const ChatModal: React.FC<ChatModalProps> = ({
               <span className="material-symbols-outlined">close</span>
             </button>
             <div className="chat-detail-user-info">
-              <Avatar src={displayAvatar} name={displayName} size="sm" />
+              <div className="chat-detail-avatar-container">
+                <Avatar src={displayAvatar} name={displayName} size="sm" />
+                {isOnline && <span className="chat-avatar-online-dot" />}
+              </div>
               <div className="chat-detail-title-group">
                 <h2 className="chat-detail-name">{displayName}</h2>
-                {partnerTyping && <span className="chat-detail-typing text-xs text-primary-500">Typing...</span>}
+                {isPartnerTyping ? (
+                  <span className="chat-detail-status-typing">
+                    <span className="typing-pulse-dot" />
+                    typing...
+                  </span>
+                ) : isOnline ? (
+                  <span className="chat-detail-status-online">
+                    <span className="chat-status-green-dot" />
+                    Active now
+                  </span>
+                ) : (
+                  <span className="chat-detail-status-offline">Offline</span>
+                )}
               </div>
             </div>
             
@@ -390,6 +410,20 @@ const ChatModal: React.FC<ChatModalProps> = ({
                 );
               })
             )}
+
+            {/* Realtime Partner Typing Bubble */}
+            {isPartnerTyping && (
+              <div className="chat-bubble-wrap received typing-indicator-bubble-wrap">
+                <div className="chat-bubble chat-bubble-received typing-indicator-bubble">
+                  <div className="typing-dots-wave">
+                    <span className="typing-dot-circle" />
+                    <span className="typing-dot-circle" />
+                    <span className="typing-dot-circle" />
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div ref={messagesEndRef} />
           </div>
 
