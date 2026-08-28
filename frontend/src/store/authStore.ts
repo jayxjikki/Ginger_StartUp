@@ -99,7 +99,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       }
     } catch (error: any) {
       console.error('Google token sign-in error:', error);
-      // Optional: add toast notification logic here
+      if (typeof window !== 'undefined') {
+        toast.error(`Sign in failed: ${error?.message || 'Unknown error'}`);
+      }
     } finally {
       set({ isLoading: false });
     }
