@@ -20,7 +20,10 @@ const LandingPage: React.FC = () => {
     <div className="landing-page">
       {/* Editorial Navbar */}
       <nav className="landing-nav-editorial">
-        <div className="landing-logo-editorial">GINGER</div>
+        <div className="landing-logo-editorial" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <img src="/logo.jpg" alt="Ginger Logo" style={{ height: '40px', width: '40px', borderRadius: '8px', objectFit: 'cover' }} />
+          GINGER
+        </div>
         <div className="landing-nav-links-editorial">
           <button className="landing-btn-text" onClick={() => navigate('/login')}>Log In</button>
           <button className="landing-btn-primary" onClick={() => navigate('/login')}>Get Started</button>
@@ -156,10 +159,30 @@ const LandingPage: React.FC = () => {
         </div>
       </section>
 
+      {/* Data Transparency Section (Required by Google/Meta) */}
+      <section className="editorial-transparency-section" style={{ padding: '60px 5%', backgroundColor: '#111', borderTop: '1px solid #333', borderBottom: '1px solid #333' }}>
+        <div style={{ maxWidth: '800px', margin: '0 auto', textAlign: 'center' }}>
+          <h2 style={{ fontSize: '24px', marginBottom: '16px', color: '#fff' }}>How We Use Your Data</h2>
+          <p style={{ color: '#aaa', lineHeight: '1.6', marginBottom: '24px' }}>
+            Ginger is an influencer marketplace. To verify your eligibility for brand campaigns, we request read-only access to your YouTube channel statistics (subscribers, views) and Instagram insights. We only use this data to display your verified audience size to brands. We <strong>never</strong> sell your data, upload content on your behalf, or request passwords.
+          </p>
+          <button 
+            className="landing-btn-secondary" 
+            onClick={() => navigate('/privacy-policy')}
+            style={{ display: 'inline-flex', padding: '10px 20px', border: '1px solid #555', borderRadius: '8px', color: '#fff' }}
+          >
+            Read our Privacy Policy
+          </button>
+        </div>
+      </section>
+
       {/* Footer */}
       <footer className="editorial-footer">
         <div className="footer-top">
-          <div className="footer-brand">GINGER</div>
+          <div className="footer-brand" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <img src="/logo.jpg" alt="Ginger Logo" style={{ height: '40px', width: '40px', borderRadius: '8px', objectFit: 'cover' }} />
+            GINGER
+          </div>
           <div className="footer-links">
             <a href="/privacy-policy" onClick={(e) => { e.preventDefault(); navigate('/privacy-policy'); }}>Privacy Policy</a>
             <a href="/terms-of-service" onClick={(e) => { e.preventDefault(); navigate('/terms-of-service'); }}>Terms of Service</a>

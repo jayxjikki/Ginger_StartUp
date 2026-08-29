@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../../store/authStore';
 import { useProfileStore } from '../../../store/profileStore';
-
+import { useGlobalModalStore } from '../../../store/globalModalStore';
 import { useGoogleLogin } from '@react-oauth/google';
 import { uploadToCloudinary } from '../../../lib/cloudinary';
 import instagramIcon from '../../../assets/instagram.png';
@@ -60,6 +60,7 @@ const OnboardingPage: React.FC = () => {
 
   const loginWithGoogle = useGoogleLogin({
     scope: 'https://www.googleapis.com/auth/youtube.readonly',
+    state: 'ginger_auth_state_' + Math.random().toString(36).substring(7),
     onSuccess: async (tokenResponse) => {
       try {
         const res = await fetch('https://youtube.googleapis.com/youtube/v3/channels?part=snippet,statistics&mine=true', {
@@ -142,8 +143,17 @@ const OnboardingPage: React.FC = () => {
   };
 
   const handleOAuthLink = async (platform: 'google' | 'instagram') => {
+    const { showConfirm } = useGlobalModalStore.getState();
+
     if (platform === 'google') {
-      loginWithGoogle();
+      showConfirm(
+        'Connect YouTube',
+        'Ginger requests read-only access to your YouTube channel statistics (subscribers, views) to verify your audience size for brand campaigns.',
+        () => {
+          loginWithGoogle();
+        },
+        'Continue to Google'
+      );
       return;
     }
 
@@ -154,10 +164,17 @@ const OnboardingPage: React.FC = () => {
         return;
       }
       
-      // Meta requires HTTPS for redirect URIs, even for localhost
-      const redirectUri = `${window.location.origin}/auth/instagram/callback`;
-      const authUrl = `https://api.instagram.com/oauth/authorize?enable_fb_login=0&force_authentication=1&client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=instagram_business_basic,instagram_business_manage_insights`;
-      window.location.href = authUrl;
+      showConfirm(
+        'Connect Instagram',
+        'You must have an Instagram Professional or Creator account linked to a Facebook Page to connect. Ginger requests access to your insights to verify your audience size.',
+        () => {
+          // Meta requires HTTPS for redirect URIs, even for localhost
+          const redirectUri = `${window.location.origin}/auth/instagram/callback`;
+          const authUrl = `https://api.instagram.com/oauth/authorize?enable_fb_login=0&force_authentication=1&client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=instagram_business_basic,instagram_business_manage_insights`;
+          window.location.href = authUrl;
+        },
+        'Continue to Instagram'
+      );
     }
   };
 

@@ -50,8 +50,17 @@ const PrivacyPolicyPage: React.FC = () => {
         <h2 className="text-2xl text-white font-semibold mt-8 mb-4">7. Mandatory Disclosure</h2>
         <p>We reserve the right to disclose your personal information if required to do so by law, court order, subpoena, or government request, or if we believe in good faith that such action is necessary to protect the rights, property, or safety of Ginger, its users, or the public.</p>
 
-        <h2 className="text-2xl text-white font-semibold mt-8 mb-4">8. Your Rights & Account Deletion</h2>
-        <p>You have the right to access, update, or delete your personal information. You can permanently delete your account and associated data directly from the Account Centre in the app.</p>
+        <h2 className="text-2xl text-white font-semibold mt-8 mb-4">8. Data Deletion Instructions</h2>
+        <p>You have the right to request the deletion of your personal data at any time. To delete your data from our platform:</p>
+        <ol className="list-decimal pl-5 space-y-2 mt-4 text-gray-300">
+          <li>Log in to your Ginger account.</li>
+          <li>Navigate to your Profile by clicking your avatar in the top right corner.</li>
+          <li>Open the Settings menu.</li>
+          <li>Click on "Account Centre" (or navigate directly to <code>/account-centre</code>).</li>
+          <li>Scroll to the bottom of the page and click the "Delete Account" button.</li>
+          <li>Confirm the deletion in the prompt that appears.</li>
+        </ol>
+        <p className="mt-4 text-gray-300">This action is irreversible and will permanently delete your profile, linked social accounts, campaigns, and all associated User Generated Content from our servers. If you encounter any issues or are unable to access your account, you can also email us at <strong>legal@ginger.inc</strong> with the subject "Data Deletion Request".</p>
       </div>
     </div>
   );

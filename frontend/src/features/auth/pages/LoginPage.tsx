@@ -137,7 +137,7 @@ const LoginPage: React.FC = () => {
 
           <p>
             By continuing, you agree to Ginger's <br />
-            <a href="#" className="login-footer-link">Terms of Service</a> and <a href="#" className="login-footer-link">Privacy Policy</a>.
+            <a href="/terms-of-service" className="login-footer-link">Terms of Service</a> and <a href="/privacy-policy" className="login-footer-link">Privacy Policy</a>.
           </p>
         </div>
       </div>
