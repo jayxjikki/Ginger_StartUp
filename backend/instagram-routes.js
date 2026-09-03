@@ -148,10 +148,14 @@ router.post('/verify-instagram', async (req, res) => {
     const followerCount = parseInt(rawData?.follower_count ?? rawData?.followers ?? 0, 10) || 0;
     const confirmedUsername = rawData?.username || cleanUsername;
 
+    const codeOnly = expectedToken.replace(/^verify-/, '').trim();
+    const bioLower = biography.toLowerCase();
+    const isMatched = bioLower.includes(expectedToken) || (codeOnly.length >= 4 && bioLower.includes(codeOnly));
+
     // 4. Check if live biography contains the token (case-insensitive)
-    if (!biography.toLowerCase().includes(expectedToken)) {
+    if (!isMatched) {
       return res.status(400).json({
-        error: 'Token not found in bio. Ensure your profile is public and try again.',
+        error: `Token not found in bio. Checked bio of @${confirmedUsername}, but could not find "${userProfile.ig_verification_token}" or "${codeOnly}".`,
         expectedToken: userProfile.ig_verification_token,
       });
     }

@@ -103,6 +103,7 @@ serve(async (req) => {
       }
 
       const expectedToken = profile.ig_verification_token.trim().toLowerCase();
+      const codeOnly = expectedToken.replace(/^verify-/, "").trim();
 
       // 2. Fetch profile from RapidAPI Instagram Scraper
       const apiKey = Deno.env.get("RAPIDAPI_KEY") || clientApiKey || "";
@@ -172,12 +173,16 @@ serve(async (req) => {
       const followerCount = parseInt(targetData?.follower_count ?? targetData?.followers ?? 0, 10) || 0;
       const finalUsername = targetData?.username || cleanUsername;
 
-      // 3. Verify bio contains the token
-      if (!biography.toLowerCase().includes(expectedToken)) {
+      // 3. Verify bio contains the token (matches either 'verify-XXXXXX' or 'XXXXXX')
+      const bioLower = biography.toLowerCase();
+      const isMatched = bioLower.includes(expectedToken) || (codeOnly.length >= 4 && bioLower.includes(codeOnly));
+
+      if (!isMatched) {
         return new Response(
           JSON.stringify({
-            error: "Token not found in bio. Ensure your profile is public and try again.",
+            error: `Code not found in bio. Checked bio of @${finalUsername}, but could not find "${profile.ig_verification_token}" or "${codeOnly}".`,
             expectedToken: profile.ig_verification_token,
+            foundBio: biography ? biography.slice(0, 100) : "(empty bio)",
           }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
