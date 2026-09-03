@@ -20,19 +20,17 @@
 }
 
 .discover-top-bar {
-  background: rgba(19, 19, 19, 0.8);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  position: fixed;
-  top: 0;
+  background: transparent;
+  position: relative;
   width: 100%;
-  z-index: 50;
-  border-bottom: 1px solid rgba(53, 53, 52, 0.2);
+  max-width: 1440px;
+  margin: 0 auto;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0 20px;
-  height: 64px;
+  padding: 16px 20px 0 20px;
+  height: auto;
+  border-bottom: none;
 }
 
 .discover-title-wrap {
@@ -57,7 +55,7 @@
 
 .discover-main {
   flex: 1;
-  padding-top: 80px;
+  padding-top: 16px;
   padding-bottom: 100px;
   padding-left: 20px;
   padding-right: 20px;
