@@ -124,11 +124,12 @@ router.post('/verify-instagram', async (req, res) => {
 
     let rapidResponse;
     try {
-      rapidResponse = await axios.get('https://instagram-scraper-api2.p.rapidapi.com/v1/info', {
-        params: { username_or_id_or_url: cleanUsername },
+      const postData = new URLSearchParams({ username_or_url: cleanUsername }).toString();
+      rapidResponse = await axios.post('https://instagram-scraper-stable-api.p.rapidapi.com/ig_get_fb_profile_v3.php', postData, {
         headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
           'x-rapidapi-key': rapidApiKey,
-          'x-rapidapi-host': 'instagram-scraper-api2.p.rapidapi.com',
+          'x-rapidapi-host': 'instagram-scraper-stable-api.p.rapidapi.com',
         },
         timeout: 15000, // 15 second timeout
       });

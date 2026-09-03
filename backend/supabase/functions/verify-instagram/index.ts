@@ -113,7 +113,10 @@ serve(async (req) => {
         );
       }
 
-      const rapidApiUrl = `https://instagram-scraper-api2.p.rapidapi.com/v1/info?username_or_id_or_url=${encodeURIComponent(cleanUsername)}`;
+      const rapidApiUrl = `https://instagram-scraper-stable-api.p.rapidapi.com/ig_get_fb_profile_v3.php`;
+      const postBody = new URLSearchParams({
+        username_or_url: cleanUsername,
+      }).toString();
       
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 12000);
@@ -121,11 +124,13 @@ serve(async (req) => {
       let rapidRes: Response;
       try {
         rapidRes = await fetch(rapidApiUrl, {
-          method: "GET",
+          method: "POST",
           headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
             "x-rapidapi-key": apiKey,
-            "x-rapidapi-host": "instagram-scraper-api2.p.rapidapi.com",
+            "x-rapidapi-host": "instagram-scraper-stable-api.p.rapidapi.com",
           },
+          body: postBody,
           signal: controller.signal,
         });
       } catch (fetchErr: any) {
@@ -152,15 +157,6 @@ serve(async (req) => {
           const parsed = JSON.parse(errorText);
           parsedMsg = parsed.message || parsed.error || "";
         } catch {}
-
-        if (rapidRes.status === 403 && parsedMsg.toLowerCase().includes("not subscribed")) {
-          return new Response(
-            JSON.stringify({ 
-              error: "RapidAPI Subscription Required: Your RapidAPI account must subscribe to 'instagram-scraper-api2' (Free plan). Visit https://rapidapi.com/rocky-rocky-default/api/instagram-scraper-api2/pricing and click 'Subscribe'." 
-            }),
-            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
 
         return new Response(
           JSON.stringify({ 
