@@ -34,10 +34,25 @@ const AccountCentrePage: React.FC = () => {
   const pinnedSocials = profile?.pinned_socials || [];
 
   const actualAvatarUrl = profile?.avatar_url || 'https://via.placeholder.com/150';
-  const fullName = profile?.full_name || 'Jikki Thakur';
+  const fullName = profile?.full_name || 'Not set';
   
   const [localEmail] = useState(user?.email || '');
   const [localDob, setLocalDob] = useState(profile?.date_of_birth ? new Date(profile.date_of_birth).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Not set');
+
+  useEffect(() => {
+    if (profile?.date_of_birth) {
+      setLocalDob(new Date(profile.date_of_birth).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }));
+    } else {
+      setLocalDob('Not set');
+    }
+  }, [profile?.date_of_birth]);
+
+  useEffect(() => {
+    if (user?.id) {
+      useProfileStore.getState().fetchProfileData(user.id);
+      useAuthStore.getState().fetchProfile();
+    }
+  }, [user?.id]);
 
   const [isNavigating, setIsNavigating] = useState(false);
   const [isEntering, setIsEntering] = useState((location.state as any)?.fromTransition || false);
@@ -236,62 +251,73 @@ const AccountCentrePage: React.FC = () => {
   const handleSaveEdit = async () => {
     if (!editField) return;
     const { key, value } = editField;
+    const trimmedVal = value ? value.trim() : '';
     const now = new Date();
 
-    if (key === 'name') {
-      const lastChanged = profile?.name_changed_at ? new Date(profile.name_changed_at as any) : null;
-      if (lastChanged) {
-        const daysSince = (now.getTime() - lastChanged.getTime()) / (1000 * 60 * 60 * 24);
-        if (daysSince < 30) {
-          const daysLeft = Math.ceil(30 - daysSince);
-          toast.error(`You can only change your name once every 30 days. Try again in ${daysLeft} day${daysLeft > 1 ? 's' : ''}.`);
-          setEditField(null);
+    if (!trimmedVal) {
+      toast.error(`${editField.label} cannot be empty.`);
+      return;
+    }
+
+    try {
+      if (key === 'name') {
+        const lastChanged = profile?.name_changed_at ? new Date(profile.name_changed_at as any) : null;
+        if (lastChanged) {
+          const daysSince = (now.getTime() - lastChanged.getTime()) / (1000 * 60 * 60 * 24);
+          if (daysSince < 30) {
+            const daysLeft = Math.ceil(30 - daysSince);
+            toast.error(`You can only change your name once every 30 days. Try again in ${daysLeft} day${daysLeft > 1 ? 's' : ''}.`);
+            setEditField(null);
+            return;
+          }
+        }
+        await updateProfile({ full_name: trimmedVal, name_changed_at: now.toISOString() } as any);
+        toast.success('Name updated!');
+      } else if (key === 'username') {
+        const lastChanged = profile?.username_changed_at ? new Date(profile.username_changed_at as any) : null;
+        if (lastChanged) {
+          const daysSince = (now.getTime() - lastChanged.getTime()) / (1000 * 60 * 60 * 24);
+          if (daysSince < 14) {
+            const daysLeft = Math.ceil(14 - daysSince);
+            toast.error(`You can only change your username once every 14 days. Try again in ${daysLeft} day${daysLeft > 1 ? 's' : ''}.`);
+            setEditField(null);
+            return;
+          }
+        }
+        await updateProfile({ username: trimmedVal, username_changed_at: now.toISOString() } as any);
+        toast.success('Username updated!');
+      } else if (key === 'location') {
+        const lastChanged = profile?.location_changed_at ? new Date(profile.location_changed_at as any) : null;
+        if (lastChanged) {
+          const daysSince = (now.getTime() - lastChanged.getTime()) / (1000 * 60 * 60 * 24);
+          if (daysSince < 7) {
+            const daysLeft = Math.ceil(7 - daysSince);
+            toast.error(`You can only change your location once every 7 days. Try again in ${daysLeft} day${daysLeft > 1 ? 's' : ''}.`);
+            setEditField(null);
+            return;
+          }
+        }
+        await updateProfile({ location: trimmedVal, location_changed_at: now.toISOString() } as any);
+        toast.success('Location updated!');
+      } else if (key === 'dob') {
+        // Validate age >= 18
+        const dobDate = new Date(trimmedVal);
+        if (isNaN(dobDate.getTime())) {
+          toast.error('Please enter a valid date (YYYY-MM-DD).');
           return;
         }
-      }
-      await updateProfile({ full_name: value, name_changed_at: now.toISOString() } as any);
-      toast.success('Name updated!');
-    } else if (key === 'username') {
-      const lastChanged = profile?.username_changed_at ? new Date(profile.username_changed_at as any) : null;
-      if (lastChanged) {
-        const daysSince = (now.getTime() - lastChanged.getTime()) / (1000 * 60 * 60 * 24);
-        if (daysSince < 14) {
-          const daysLeft = Math.ceil(14 - daysSince);
-          toast.error(`You can only change your username once every 14 days. Try again in ${daysLeft} day${daysLeft > 1 ? 's' : ''}.`);
-          setEditField(null);
+        const age = (now.getTime() - dobDate.getTime()) / (1000 * 60 * 60 * 24 * 365.25);
+        if (age < 18) {
+          toast.error('You must be at least 18 years old.');
           return;
         }
+        await updateProfile({ date_of_birth: trimmedVal } as any);
+        setLocalDob(dobDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }));
+        toast.success('Date of birth updated!');
       }
-      await updateProfile({ username: value, username_changed_at: now.toISOString() } as any);
-      toast.success('Username updated!');
-    } else if (key === 'location') {
-      const lastChanged = profile?.location_changed_at ? new Date(profile.location_changed_at as any) : null;
-      if (lastChanged) {
-        const daysSince = (now.getTime() - lastChanged.getTime()) / (1000 * 60 * 60 * 24);
-        if (daysSince < 7) {
-          const daysLeft = Math.ceil(7 - daysSince);
-          toast.error(`You can only change your location once every 7 days. Try again in ${daysLeft} day${daysLeft > 1 ? 's' : ''}.`);
-          setEditField(null);
-          return;
-        }
-      }
-      await updateProfile({ location: value, location_changed_at: now.toISOString() } as any);
-      toast.success('Location updated!');
-    } else if (key === 'dob') {
-      // Validate age >= 18
-      const dobDate = new Date(value);
-      if (isNaN(dobDate.getTime())) {
-        toast.error('Please enter a valid date (YYYY-MM-DD).');
-        return;
-      }
-      const age = (now.getTime() - dobDate.getTime()) / (1000 * 60 * 60 * 24 * 365.25);
-      if (age < 18) {
-        toast.error('You must be at least 18 years old.');
-        return;
-      }
-      await updateProfile({ date_of_birth: value } as any);
-      setLocalDob(dobDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }));
-      toast.success('Date of birth updated!');
+    } catch (err: any) {
+      console.error('Failed to update personal information:', err);
+      toast.error(err.message || 'Failed to update personal information');
     }
     setEditField(null);
   };

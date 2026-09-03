@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../../store/authStore';
+import { useProfileStore } from '../../../store/profileStore';
 import { supabase } from '../../../lib/supabase';
 import { uploadToCloudinary } from '../../../lib/cloudinary';
 import './EditProfilePage.css';
@@ -48,14 +49,11 @@ const EditProfilePage: React.FC = () => {
       const { error } = await supabase
         .from('profiles')
         .update({
-          full_name: name,
-          username: username,
           bio: bio,
           avatar_url: avatarUrl,
           banner_url: bannerUrl,
           gender: gender,
           mobile_number: mobile,
-          location: location,
           category: category,
         })
         .eq('id', user.id);
@@ -63,9 +61,12 @@ const EditProfilePage: React.FC = () => {
       if (error) throw error;
       
       await fetchProfile(); // refresh authStore
+      await useProfileStore.getState().fetchProfileData(user.id); // refresh profileStore
+      toast.success('Profile saved!');
       navigate('/profile'); // go back
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error saving profile:', err);
+      toast.error(err.message || 'Failed to save profile');
     } finally {
       setIsSaving(false);
     }
@@ -237,15 +238,19 @@ const EditProfilePage: React.FC = () => {
           </div>
           <div className="input-group">
             <label className="edit-input-label">Location</label>
-            <input 
-              className="glass-input" 
-              type="text" 
-              value={location} 
-              onChange={e => setLocation(e.target.value)}
-              onFocus={handleFocus}
-              onBlur={handleBlur}
-              placeholder="e.g. New York, USA"
-            />
+            <div className="locked-input-container" onClick={() => navigate('/profile/account')}>
+              <input 
+                className="glass-input locked-input" 
+                type="text" 
+                value={location || 'Not set'} 
+                readOnly
+                disabled
+              />
+              <span className="material-symbols-outlined locked-input-icon">lock</span>
+            </div>
+            <span className="locked-input-subtext">
+              You can't change your location from here. <span className="locked-link" onClick={() => navigate('/profile/account')}>Visit Account Centre</span>
+            </span>
           </div>
           <div className="input-group">
             <label className="edit-input-label">Bio</label>

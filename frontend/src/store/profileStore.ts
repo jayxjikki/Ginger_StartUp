@@ -6,6 +6,7 @@
 import { create } from 'zustand';
 import { persist, devtools } from 'zustand/middleware';
 import { supabase } from '../lib/supabase';
+import { useAuthStore } from './authStore';
 import type { Profile } from '../types/user.types';
 
 interface Achievement {
@@ -414,9 +415,27 @@ export const useProfileStore = create<ProfileState>()(
           }
         },
         updateProfile: async (updates) => {
-          set((state) => ({
-            profile: state.profile ? { ...state.profile, ...updates } : null
-          }));
+          const { profile } = get();
+          if (!profile) return;
+
+          try {
+            const { error } = await supabase
+              .from('profiles')
+              .update(updates)
+              .eq('id', profile.id);
+
+            if (error) throw error;
+
+            set((state) => ({
+              profile: state.profile ? { ...state.profile, ...updates } : null
+            }));
+
+            // Sync authStore so EditProfilePage and global listeners immediately reflect changes
+            await useAuthStore.getState().fetchProfile();
+          } catch (err: any) {
+            console.error('Error updating profile in Supabase:', err);
+            throw err;
+          }
         },
         togglePinnedSocial: async (platform: string) => {
           const { profile } = get();
