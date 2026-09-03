@@ -303,7 +303,7 @@ const CampaignDetailPage: React.FC = () => {
 
         {/* Payout Tiers */}
         <motion.div variants={fadeUp}>
-          <h5 className="section-title">Payout Tiers</h5>
+          <h5 className="section-title">{campaign.type === 'discount' ? 'Discount Tiers' : 'Payout Tiers'}</h5>
           <div className="payout-tiers">
             {campaign.payout_tiers?.map((tier, idx) => (
               <motion.div
@@ -319,7 +319,11 @@ const CampaignDetailPage: React.FC = () => {
                 </div>
                 <div className="tier-arrow">→</div>
                 <div className="tier-reward">
-                  <span className="tier-amount">{formatCurrency(tier.payout_amount, true)}</span>
+                  <span className="tier-amount">
+                    {tier.reward_type === 'discount' || campaign.type === 'discount'
+                      ? `${tier.payout_amount}% Off`
+                      : formatCurrency(tier.payout_amount, true)}
+                  </span>
                   {tier.reward_description && (
                     <span className="tier-bonus">{tier.reward_description}</span>
                   )}

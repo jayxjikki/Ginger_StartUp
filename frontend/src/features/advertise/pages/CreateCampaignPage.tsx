@@ -87,6 +87,40 @@ const CreateCampaignPage: React.FC = () => {
     }));
   };
 
+  const handleTypeSelect = (typeId: string) => {
+    if (typeId === 'discount' && formData.type !== 'discount') {
+      const isDefaultPoolTiers = 
+        formData.tiers.length === 2 && 
+        formData.tiers[0].amount === '1000' && 
+        formData.tiers[1].amount === '10000';
+      
+      setFormData(prev => ({
+        ...prev,
+        type: typeId,
+        tiers: isDefaultPoolTiers ? [
+          { minViews: '1000', amount: '15' },
+          { minViews: '5000', amount: '30' }
+        ] : prev.tiers
+      }));
+    } else if (typeId === 'pool' && formData.type === 'discount') {
+      const isDefaultDiscountTiers = 
+        formData.tiers.length === 2 && 
+        formData.tiers[0].amount === '15' && 
+        formData.tiers[1].amount === '30';
+
+      setFormData(prev => ({
+        ...prev,
+        type: typeId,
+        tiers: isDefaultDiscountTiers ? [
+          { minViews: '1000', amount: '1000' },
+          { minViews: '10000', amount: '10000' }
+        ] : prev.tiers
+      }));
+    } else {
+      updateField('type', typeId);
+    }
+  };
+
   const addTier = () => {
     setFormData((prev) => ({
       ...prev,
@@ -137,14 +171,15 @@ const CreateCampaignPage: React.FC = () => {
         slogan: formData.slogan,
         keywords: formData.keywords,
         location: formData.location,
-        discount_percent: Number(formData.discountPercent) || 0,
+        discount_percent: Number(formData.discountPercent) || (formData.type === 'discount' && formData.tiers.length > 0 ? Number(formData.tiers[0].amount) : 0),
         verification_days: formData.verificationDays,
         image_url: formData.image_url,
         end_date: formData.endDate ? new Date(formData.endDate).toISOString() : undefined,
         payout_tiers: formData.tiers.map((t) => ({
           min_views: Number(t.minViews) || 0,
           payout_amount: Number(t.amount) || 0,
-          reward_type: 'cash' as any,
+          reward_type: (formData.type === 'discount' ? 'discount' : 'cash') as any,
+          reward_description: formData.type === 'discount' ? `${t.amount}% Discount` : null,
         })) as any,
       });
       navigate('/campaigns');
@@ -240,7 +275,7 @@ const CreateCampaignPage: React.FC = () => {
                     <div
                       key={type.id}
                       className={`campaign-type-card ${isSelected ? 'selected' : ''}`}
-                      onClick={() => updateField('type', type.id)}
+                      onClick={() => handleTypeSelect(type.id)}
                     >
                       <div className="campaign-type-info">
                         <h4 className="campaign-type-title">{type.label}</h4>
@@ -432,7 +467,7 @@ const CreateCampaignPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Payout Tiers */}
+                {/* Payout Tiers (Prize Pool / Hybrid) */}
                 {(formData.type === 'pool' || formData.type === 'hybrid') && (
                   <div className="form-group">
                     <div className="tiers-section-header">
@@ -488,6 +523,64 @@ const CreateCampaignPage: React.FC = () => {
                     </div>
                   </div>
                 )}
+
+                {/* Discount Tiers (Discount Offer) */}
+                {formData.type === 'discount' && (
+                  <div className="form-group">
+                    <div className="tiers-section-header">
+                      <label className="form-label">Discount Tiers</label>
+                      <p className="field-hint">Set progressive discounts unlocked as creator videos reach view milestones.</p>
+                    </div>
+
+                    <div className="tiers-builder">
+                      {formData.tiers.map((tier, idx) => (
+                        <div key={idx} className="tier-card">
+                          <div className="tier-card-header">
+                            <span className="tier-badge">Tier {idx + 1}</span>
+                            {formData.tiers.length > 1 && (
+                              <button
+                                type="button"
+                                className="tier-delete-btn"
+                                onClick={() => removeTier(idx)}
+                                title="Remove tier"
+                                aria-label={`Remove tier ${idx + 1}`}
+                              >
+                                <FiTrash2 size={15} />
+                              </button>
+                            )}
+                          </div>
+                          <div className="tier-inputs-grid">
+                            <Input
+                              label="Discount (%)"
+                              type="number"
+                              min="1"
+                              max="100"
+                              value={tier.amount}
+                              onChange={(e) => updateTier(idx, 'amount', e.target.value)}
+                              placeholder="e.g., 15"
+                            />
+                            <div className="tier-arrow-indicator">
+                              <FiArrowRight size={18} />
+                            </div>
+                            <Input
+                              label="Min. Views"
+                              type="number"
+                              min="0"
+                              value={tier.minViews}
+                              onChange={(e) => updateTier(idx, 'minViews', e.target.value)}
+                              placeholder="e.g., 1000"
+                            />
+                          </div>
+                        </div>
+                      ))}
+
+                      <button type="button" className="tier-add-btn" onClick={addTier}>
+                        <FiPlus size={16} />
+                        <span>Add Another Tier</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </motion.div>
           )}
@@ -523,16 +616,30 @@ const CreateCampaignPage: React.FC = () => {
                       <span className="review-label">Location</span>
                       <span className="review-value">{formData.location || 'Online / Anywhere'}</span>
                     </div>
-                    <div className="review-row">
-                      <span className="review-label">Prize Pool</span>
-                      <span className="review-value prize-highlight">₹{Number(formData.prizePool || 0).toLocaleString()}</span>
-                    </div>
-                    {formData.discountPercent && (
+                    {formData.type !== 'discount' ? (
+                      <div className="review-row">
+                        <span className="review-label">Prize Pool</span>
+                        <span className="review-value prize-highlight">₹{Number(formData.prizePool || 0).toLocaleString()}</span>
+                      </div>
+                    ) : (
+                      <div className="review-row">
+                        <span className="review-label">Campaign Type</span>
+                        <span className="review-value prize-highlight">Discount Offer</span>
+                      </div>
+                    )}
+                    {formData.type === 'discount' && formData.tiers.length > 0 ? (
+                      <div className="review-row">
+                        <span className="review-label">Discount Tiers</span>
+                        <span className="review-value text-ginger font-semibold">
+                          {formData.tiers.map((t) => `${t.amount || '0'}% (${Number(t.minViews || 0).toLocaleString()} views)`).join(', ')}
+                        </span>
+                      </div>
+                    ) : formData.discountPercent ? (
                       <div className="review-row">
                         <span className="review-label">Discount</span>
                         <span className="review-value">{formData.discountPercent}% Off</span>
                       </div>
-                    )}
+                    ) : null}
                     <div className="review-row">
                       <span className="review-label">Verification Window</span>
                       <span className="review-value">{formData.verificationDays} days</span>
