@@ -122,17 +122,39 @@ router.post('/verify-instagram', async (req, res) => {
       });
     }
 
-    let rapidResponse;
+    let biography = '';
+    let followerCount = 0;
+    let confirmedUsername = cleanUsername;
+
     try {
-      const postData = new URLSearchParams({ username_or_url: cleanUsername }).toString();
-      rapidResponse = await axios.post('https://instagram-scraper-stable-api.p.rapidapi.com/ig_get_fb_profile_v3.php', postData, {
+      // Step 1: lookup user_id
+      const idRes = await axios.get(`https://instagram-cheapest.p.rapidapi.com/api/v1/instagram/user_id/${encodeURIComponent(cleanUsername)}`, {
         headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
           'x-rapidapi-key': rapidApiKey,
-          'x-rapidapi-host': 'instagram-scraper-stable-api.p.rapidapi.com',
+          'x-rapidapi-host': 'instagram-cheapest.p.rapidapi.com',
         },
-        timeout: 15000, // 15 second timeout
+        timeout: 10000,
       });
+
+      const targetUid = idRes.data?.user_id;
+      if (!targetUid) {
+        return res.status(400).json({ error: `Could not find Instagram user @${cleanUsername}. Please check spelling.` });
+      }
+
+      // Step 2: fetch user profile
+      const profRes = await axios.get('https://instagram-cheapest.p.rapidapi.com/api/v1/instagram/user_by_user_id', {
+        params: { user_id: targetUid },
+        headers: {
+          'x-rapidapi-key': rapidApiKey,
+          'x-rapidapi-host': 'instagram-cheapest.p.rapidapi.com',
+        },
+        timeout: 10000,
+      });
+
+      const userObj = profRes.data?.data?.user || profRes.data?.data || profRes.data;
+      biography = (userObj?.biography ?? userObj?.bio ?? '').toString();
+      followerCount = parseInt(userObj?.follower_count ?? userObj?.followers ?? 0, 10) || 0;
+      confirmedUsername = userObj?.username || cleanUsername;
     } catch (apiErr) {
       console.error('RapidAPI Request Error:', apiErr.response?.data || apiErr.message);
       if (apiErr.code === 'ECONNABORTED') {
@@ -142,11 +164,6 @@ router.post('/verify-instagram', async (req, res) => {
         error: 'Could not retrieve Instagram profile. Ensure the username is public and spelled correctly.',
       });
     }
-
-    const rawData = rapidResponse.data?.data || rapidResponse.data;
-    const biography = (rawData?.biography || rawData?.bio || '').toString();
-    const followerCount = parseInt(rawData?.follower_count ?? rawData?.followers ?? 0, 10) || 0;
-    const confirmedUsername = rawData?.username || cleanUsername;
 
     const codeOnly = expectedToken.replace(/^verify-/, '').trim();
     const bioLower = biography.toLowerCase();

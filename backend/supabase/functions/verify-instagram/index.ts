@@ -119,50 +119,65 @@ serve(async (req) => {
       let finalUsername = cleanUsername;
       let lastErrorMessage = "";
 
-      // Provider 1: Instagram Scraper Stable API
+      // Provider 1: Instagram Cheapest (Real-time live bio & follower count)
       try {
-        const rapidApiUrl = `https://instagram-scraper-stable-api.p.rapidapi.com/ig_get_fb_profile_v3.php`;
-        const postBody = new URLSearchParams({ username_or_url: cleanUsername }).toString();
-        const p1Res = await fetch(rapidApiUrl, {
-          method: "POST",
+        const idUrl = `https://instagram-cheapest.p.rapidapi.com/api/v1/instagram/user_id/${encodeURIComponent(cleanUsername)}`;
+        const idRes = await fetch(idUrl, {
+          method: "GET",
           headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
             "x-rapidapi-key": apiKey,
-            "x-rapidapi-host": "instagram-scraper-stable-api.p.rapidapi.com",
+            "x-rapidapi-host": "instagram-cheapest.p.rapidapi.com",
           },
-          body: postBody,
         });
 
-        if (p1Res.ok) {
-          const json = await p1Res.json();
-          const target = json?.data || json;
-          biography = (target?.biography ?? target?.bio ?? "").toString();
-          followerCount = parseInt(target?.follower_count ?? target?.followers ?? 0, 10) || 0;
-          finalUsername = target?.username || cleanUsername;
-        } else {
-          const errText = await p1Res.text();
-          try {
-            const parsed = JSON.parse(errText);
-            lastErrorMessage = parsed.message || parsed.error || errText;
-          } catch {
-            lastErrorMessage = errText;
+        if (idRes.ok) {
+          const idData = await idRes.json();
+          const targetUid = idData?.user_id;
+
+          if (targetUid) {
+            const profUrl = `https://instagram-cheapest.p.rapidapi.com/api/v1/instagram/user_by_user_id?user_id=${encodeURIComponent(targetUid)}`;
+            const profRes = await fetch(profUrl, {
+              method: "GET",
+              headers: {
+                "x-rapidapi-key": apiKey,
+                "x-rapidapi-host": "instagram-cheapest.p.rapidapi.com",
+              },
+            });
+
+            if (profRes.ok) {
+              const profData = await profRes.json();
+              const userObj = profData?.data?.user || profData?.data || profData;
+              biography = (userObj?.biography ?? userObj?.bio ?? "").toString();
+              followerCount = parseInt(userObj?.follower_count ?? userObj?.followers ?? 0, 10) || 0;
+              finalUsername = userObj?.username || cleanUsername;
+            } else {
+              const errTxt = await profRes.text();
+              console.warn("Instagram Cheapest profile fetch failed:", profRes.status, errTxt);
+              lastErrorMessage = errTxt;
+            }
           }
-          console.warn("Provider 1 failed:", p1Res.status, lastErrorMessage);
+        } else {
+          const errTxt = await idRes.text();
+          console.warn("Instagram Cheapest user_id lookup failed:", idRes.status, errTxt);
+          lastErrorMessage = errTxt;
         }
       } catch (err: any) {
-        console.warn("Provider 1 error:", err.message);
+        console.warn("Instagram Cheapest provider error:", err.message);
       }
 
-      // Provider 2 Fallback: instagram-scraper-api2
+      // Provider 2 Fallback: Instagram Scraper Stable API
       if (!biography && !followerCount) {
         try {
-          const p2Url = `https://instagram-scraper-api2.p.rapidapi.com/v1/info?username_or_id_or_url=${encodeURIComponent(cleanUsername)}`;
-          const p2Res = await fetch(p2Url, {
-            method: "GET",
+          const rapidApiUrl = `https://instagram-scraper-stable-api.p.rapidapi.com/ig_get_fb_profile_v3.php`;
+          const postBody = new URLSearchParams({ username_or_url: cleanUsername }).toString();
+          const p2Res = await fetch(rapidApiUrl, {
+            method: "POST",
             headers: {
+              "Content-Type": "application/x-www-form-urlencoded",
               "x-rapidapi-key": apiKey,
-              "x-rapidapi-host": "instagram-scraper-api2.p.rapidapi.com",
+              "x-rapidapi-host": "instagram-scraper-stable-api.p.rapidapi.com",
             },
+            body: postBody,
           });
 
           if (p2Res.ok) {
@@ -171,34 +186,17 @@ serve(async (req) => {
             biography = (target?.biography ?? target?.bio ?? "").toString();
             followerCount = parseInt(target?.follower_count ?? target?.followers ?? 0, 10) || 0;
             finalUsername = target?.username || cleanUsername;
-          } else if (!lastErrorMessage) {
-            const p2Err = await p2Res.text();
-            try {
-              const parsed = JSON.parse(p2Err);
-              lastErrorMessage = parsed.message || parsed.error || p2Err;
-            } catch {
-              lastErrorMessage = p2Err;
-            }
           }
         } catch (err: any) {
           console.warn("Provider 2 error:", err.message);
         }
       }
 
-      // If neither scraper could fetch profile
+      // If no scraper could fetch profile
       if (!biography && !followerCount) {
-        if (lastErrorMessage.toLowerCase().includes("quota") || lastErrorMessage.toLowerCase().includes("exceeded")) {
-          return new Response(
-            JSON.stringify({ 
-              error: "RapidAPI Monthly Quota Exceeded: Your plan on 'Instagram Scraper Stable API' ran out of requests. Please subscribe to 'instagram-scraper-api2' (Free Plan) on RapidAPI or use a fresh RapidAPI key." 
-            }),
-            { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-
         return new Response(
           JSON.stringify({ 
-            error: lastErrorMessage ? `Scraper Error: ${lastErrorMessage}` : "Could not fetch Instagram profile. Ensure the username is public." 
+            error: "Could not fetch Instagram profile. Please ensure the username is spelled correctly and your profile is public." 
           }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
