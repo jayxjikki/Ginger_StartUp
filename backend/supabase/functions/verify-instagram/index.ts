@@ -146,8 +146,26 @@ serve(async (req) => {
       if (!rapidRes.ok) {
         const errorText = await rapidRes.text();
         console.error("RapidAPI Error:", rapidRes.status, errorText);
+
+        let parsedMsg = "";
+        try {
+          const parsed = JSON.parse(errorText);
+          parsedMsg = parsed.message || parsed.error || "";
+        } catch {}
+
+        if (rapidRes.status === 403 && parsedMsg.toLowerCase().includes("not subscribed")) {
+          return new Response(
+            JSON.stringify({ 
+              error: "RapidAPI Subscription Required: Your RapidAPI account must subscribe to 'instagram-scraper-api2' (Free plan). Visit https://rapidapi.com/rocky-rocky-default/api/instagram-scraper-api2/pricing and click 'Subscribe'." 
+            }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
         return new Response(
-          JSON.stringify({ error: "Could not fetch Instagram profile. Please make sure the username is correct and public." }),
+          JSON.stringify({ 
+            error: parsedMsg ? `Instagram Scraper: ${parsedMsg}` : "Could not fetch Instagram profile. Please make sure the username is correct and public." 
+          }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
