@@ -8,7 +8,7 @@ SELECT cron.schedule(
   '0 0 * * *',           -- Every day at midnight (Cron syntax)
   $$
     SELECT net.http_post(
-      url:='https://ywpgnkvlzxwzuptaxqyw.supabase.co/functions/v1/sync-telegram-stats',
+      url:='https://gugjrgpfgkonmiqdghbe.supabase.co/functions/v1/sync-telegram-stats',
       headers:='{"Content-Type": "application/json"}'::jsonb
     )
   $$

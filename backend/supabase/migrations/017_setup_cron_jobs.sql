@@ -15,7 +15,7 @@ SELECT cron.schedule(
   '*/30 * * * *',
   $$
     SELECT net.http_post(
-        url:='https://ywpgnkvlzxwzuptaxqyw.supabase.co/functions/v1/verify-video',
+        url:='https://gugjrgpfgkonmiqdghbe.supabase.co/functions/v1/verify-video',
         headers:='{"Content-Type": "application/json", "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl3cGdua3Zsenh3enVwdGF4cXl3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODczMzA3ODAsImV4cCI6MjEwMjkwNjc4MH0.Reb1p2Dwz7-uV9JVE4UesNxBSmkjKwM1pjxkr1Chm3Q"}'::jsonb
     ) as request_id;
   $$
@@ -27,7 +27,7 @@ SELECT cron.schedule(
   '0 0 * * *',
   $$
     SELECT net.http_post(
-        url:='https://ywpgnkvlzxwzuptaxqyw.supabase.co/functions/v1/storage-cleanup',
+        url:='https://gugjrgpfgkonmiqdghbe.supabase.co/functions/v1/storage-cleanup',
         headers:='{"Content-Type": "application/json", "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl3cGdua3Zsenh3enVwdGF4cXl3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODczMzA3ODAsImV4cCI6MjEwMjkwNjc4MH0.Reb1p2Dwz7-uV9JVE4UesNxBSmkjKwM1pjxkr1Chm3Q"}'::jsonb
     ) as request_id;
   $$

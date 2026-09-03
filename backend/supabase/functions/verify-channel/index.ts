@@ -41,9 +41,13 @@ serve(async (req) => {
     }
 
     // 2. Format the channel name properly (must start with @ for public channels)
-    const formattedChannel = channelUsername.startsWith('@') 
-      ? channelUsername 
-      : `@${channelUsername}`;
+    const cleanUsername = channelUsername
+      .trim()
+      .replace(/^https?:\/\/t\.me\//i, '')
+      .replace(/^t\.me\//i, '')
+      .replace(/^@/, '')
+      .trim();
+    const formattedChannel = `@${cleanUsername}`;
 
     // 3. Ask Telegram for the list of administrators in this channel/group
     const tgRes = await fetch(
@@ -53,7 +57,7 @@ serve(async (req) => {
 
     if (!tgData.ok) {
       return new Response(JSON.stringify({ 
-        error: 'Bot is not an admin in that channel, or the channel does not exist/is not public.' 
+        error: 'Bot is not an admin in that channel/group, or the channel does not exist/is not public.' 
       }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
@@ -62,7 +66,7 @@ serve(async (req) => {
       (admin: any) => admin.user.id.toString() === profile.telegram_id.toString()
     );
 
-    // 5. Check their status. 'creator' means they are the owner.
+    // 5. Check their status. Strictly 'creator' (the true owner only)
     if (adminRecord && adminRecord.status === 'creator') {
       
       let memberCount = 0;
@@ -77,30 +81,48 @@ serve(async (req) => {
       }
 
       // Check if it already exists
-      const { data: existing } = await supabase
+      const { data: existing, error: existingError } = await supabase
         .from('verified_channels')
         .select('id')
         .eq('profile_id', userId)
-        .eq('channel_username', formattedChannel)
-        .single();
+        .ilike('channel_username', formattedChannel)
+        .maybeSingle();
+
+      if (existingError) {
+        console.error("Error querying existing channel:", existingError);
+      }
         
       if (!existing) {
         // Verification passed! Save to the verified_channels table
-        await supabase.from('verified_channels').insert({
+        const { error: insertError } = await supabase.from('verified_channels').insert({
           profile_id: userId,
           channel_username: formattedChannel,
           is_verified: true,
           member_count: memberCount
         });
+        if (insertError) {
+          console.error("Error inserting verified channel:", insertError);
+          return new Response(JSON.stringify({ error: insertError.message || 'Failed to save verified channel' }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
       } else {
-        await supabase.from('verified_channels').update({ member_count: memberCount }).eq('id', existing.id);
+        const { error: updateError } = await supabase.from('verified_channels').update({ member_count: memberCount }).eq('id', existing.id);
+        if (updateError) {
+          console.error("Error updating verified channel:", updateError);
+          return new Response(JSON.stringify({ error: updateError.message || 'Failed to update verified channel' }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
       }
 
       return new Response(JSON.stringify({ success: true, message: 'Channel verified successfully!' }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    if (adminRecord && adminRecord.status !== 'creator') {
+      return new Response(JSON.stringify({ 
+        error: 'Only the true owner (creator) of this channel or group can verify it. Administrators cannot verify.' 
+      }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     return new Response(JSON.stringify({ 
-      error: 'You are not the owner or administrator of this channel.' 
+      error: 'You are not the owner of this channel or group.' 
     }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   } catch (err: any) {

@@ -4,6 +4,7 @@ import TransitionLoader from '../../../../components/ui/TransitionLoader';
 import { useAuthStore } from '../../../../store/authStore';
 import { supabase } from '../../../../lib/supabase';
 import { toast } from 'react-hot-toast';
+import { useProfileStore } from '../../../../store/profileStore';
 import '../ActivityPage.css';
 
 const platformStyles: Record<string, { color: string; bg: string; icon: string; name: string }> = {
@@ -62,15 +63,48 @@ const UnlinkPage: React.FC = () => {
     
     try {
       if (unlinkTarget.type === 'telegram') {
+        // 1. Delete all verified channels and groups for this user
+        const { error: channelsErr } = await supabase
+          .from('verified_channels')
+          .delete()
+          .eq('profile_id', profile.id);
+        if (channelsErr) console.error('Error deleting verified channels:', channelsErr);
+
+        // 2. Remove Telegram from pinned socials if present
+        const currentPinned = profile.pinned_socials || [];
+        const updatedPinned = currentPinned.filter(p => p.toLowerCase() !== 'telegram');
+
+        // 3. Clear profile telegram fields and verification token
         const { error } = await supabase
           .from('profiles')
-          .update({ telegram_id: null, telegram_username: null })
+          .update({ 
+            telegram_id: null, 
+            telegram_username: null,
+            verify_token: null,
+            pinned_socials: updatedPinned
+          })
           .eq('id', profile.id);
 
         if (error) throw error;
-        setProfile({ ...profile, telegram_id: undefined, telegram_username: undefined });
-        toast.success('Telegram unlinked successfully');
+
+        setProfile({ 
+          ...profile, 
+          telegram_id: undefined, 
+          telegram_username: undefined,
+          verify_token: undefined,
+          pinned_socials: updatedPinned
+        });
+        useProfileStore.getState().fetchProfileData(profile.id);
+        toast.success('Telegram and all verified channels unlinked successfully');
       } else {
+        const currentPinned = profile.pinned_socials || [];
+        const updatedPinned = currentPinned.filter(p => p.toLowerCase() !== unlinkTarget.name.toLowerCase());
+
+        await supabase
+          .from('profiles')
+          .update({ pinned_socials: updatedPinned })
+          .eq('id', profile.id);
+
         const { error } = await supabase
           .from('social_links')
           .delete()
@@ -78,6 +112,8 @@ const UnlinkPage: React.FC = () => {
 
         if (error) throw error;
         setSocialLinks(prev => prev.filter(link => link.id !== unlinkTarget.id));
+        setProfile({ ...profile, pinned_socials: updatedPinned });
+        useProfileStore.getState().fetchProfileData(profile.id);
         toast.success(`${unlinkTarget.name} unlinked successfully`);
       }
     } catch (err: any) {

@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../../lib/supabase';
 import { useAuthStore } from '../../../store/authStore';
+import { useProfileStore } from '../../../store/profileStore';
+import { toast } from 'react-hot-toast';
 
 export default function ConnectTelegram() {
   const { profile } = useAuthStore();
@@ -8,6 +10,7 @@ export default function ConnectTelegram() {
   
   const [telegramUser, setTelegramUser] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [isUnlinking, setIsUnlinking] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Verification state
@@ -34,10 +37,84 @@ export default function ConnectTelegram() {
 
   // Load initial status
   useEffect(() => {
-    if (profile?.telegram_username) {
+    if (profile?.telegram_id) {
+      setTelegramUser(profile.telegram_username || 'Connected');
+    } else if (profile?.telegram_username) {
       setTelegramUser(profile.telegram_username);
+    } else {
+      setTelegramUser(null);
     }
   }, [profile]);
+
+  // Delete a specific verified channel
+  const handleDeleteChannel = async (channelId: string) => {
+    if (!userId) return;
+    try {
+      const { error: delErr } = await supabase
+        .from('verified_channels')
+        .delete()
+        .eq('id', channelId)
+        .eq('profile_id', userId);
+      if (delErr) throw delErr;
+      setChannels(prev => prev.filter(ch => ch.id !== channelId));
+      toast.success('Channel removed');
+    } catch (err: any) {
+      console.error('Error removing channel:', err);
+      toast.error('Failed to remove channel');
+    }
+  };
+
+  // Unlink Telegram account and remove all data
+  const handleUnlinkTelegram = async () => {
+    if (!userId) return;
+    const confirmed = window.confirm(
+      'Are you sure you want to unlink Telegram? All your verified channels and groups will be removed and you will have to link your account again.'
+    );
+    if (!confirmed) return;
+
+    setIsUnlinking(true);
+    try {
+      // 1. Delete all verified channels
+      const { error: chErr } = await supabase
+        .from('verified_channels')
+        .delete()
+        .eq('profile_id', userId);
+      if (chErr) console.error('Error deleting channels:', chErr);
+
+      // 2. Remove Telegram from pinned_socials
+      const currentPinned = profile?.pinned_socials || [];
+      const updatedPinned = currentPinned.filter(p => p.toLowerCase() !== 'telegram');
+
+      // 3. Clear profile telegram fields and verification token
+      const { error: profErr } = await supabase
+        .from('profiles')
+        .update({
+          telegram_id: null,
+          telegram_username: null,
+          verify_token: null,
+          pinned_socials: updatedPinned
+        })
+        .eq('id', userId);
+      if (profErr) throw profErr;
+
+      // 4. Reset states so user starts completely fresh
+      setTelegramUser(null);
+      setChannels([]);
+      setShowAddForm(false);
+      setLoading(false);
+
+      // 5. Update global stores
+      await useAuthStore.getState().fetchProfile();
+      useProfileStore.getState().fetchProfileData(userId);
+
+      toast.success('Telegram unlinked and all channels removed.');
+    } catch (err: any) {
+      console.error('Error unlinking Telegram:', err);
+      toast.error('Failed to unlink Telegram.');
+    } finally {
+      setIsUnlinking(false);
+    }
+  };
 
   // 1. Generate token and open Telegram deep link
   const handleConnect = async () => {
@@ -58,7 +135,7 @@ export default function ConnectTelegram() {
       if (updateError) throw updateError;
       
       // Open Ginger_verification_bot with the start token
-      const botName = import.meta.env.VITE_TELEGRAM_BOT_USERNAME || 'Ginger_verification_bot';
+      const botName = (import.meta.env.VITE_TELEGRAM_BOT_USERNAME || 'Ginger_verification_bot').trim();
       window.open(`https://t.me/${botName}?start=${token}`, '_blank');
     } catch (err: any) {
       console.error("Error generating token:", err);
@@ -85,6 +162,7 @@ export default function ConnectTelegram() {
           if (payload.new.telegram_id) {
             setTelegramUser(payload.new.telegram_username || 'Connected');
             setLoading(false);
+            useAuthStore.getState().fetchProfile();
           }
         }
       )
@@ -94,6 +172,27 @@ export default function ConnectTelegram() {
       supabase.removeChannel(channel);
     };
   }, [userId]);
+
+  // 3. Fallback polling while waiting for connection
+  useEffect(() => {
+    if (!loading || !userId) return;
+
+    const interval = setInterval(async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('telegram_id, telegram_username')
+        .eq('id', userId)
+        .single();
+
+      if (data?.telegram_id) {
+        setTelegramUser(data.telegram_username || 'Connected');
+        setLoading(false);
+        useAuthStore.getState().fetchProfile();
+      }
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [loading, userId]);
 
   const handleVerifyChannel = async () => {
     if (!userId) return;
@@ -188,7 +287,7 @@ export default function ConnectTelegram() {
 
             <div style={{ display: 'flex', gap: '12px' }}>
               <div style={{ minWidth: '22px', height: '22px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '12px', fontWeight: 'bold' }}>4</div>
-              <div style={{ lineHeight: '1.5', marginTop: '2px' }}>Click <strong style={{ color: 'white' }}>Verify</strong>. You can add multiple channels!</div>
+              <div style={{ lineHeight: '1.5', marginTop: '2px' }}>Click <strong style={{ color: 'white' }}>Verify</strong>. (Only the owner/creator can verify).</div>
             </div>
 
             <div style={{ display: 'flex', gap: '12px' }}>
@@ -208,9 +307,29 @@ export default function ConnectTelegram() {
 
       {telegramUser ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span className="material-symbols-outlined" style={{ color: '#4ade80' }}>check_circle</span>
-            <p style={{ color: '#4ade80', margin: 0, fontWeight: '500' }}>Connected as @{telegramUser}</p>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span className="material-symbols-outlined" style={{ color: '#4ade80' }}>check_circle</span>
+              <p style={{ color: '#4ade80', margin: 0, fontWeight: '500' }}>Connected as @{telegramUser}</p>
+            </div>
+            <button
+              onClick={handleUnlinkTelegram}
+              disabled={isUnlinking}
+              style={{
+                background: 'rgba(255, 59, 48, 0.1)',
+                color: '#FF3B30',
+                border: '1px solid rgba(255, 59, 48, 0.2)',
+                borderRadius: '8px',
+                padding: '4px 10px',
+                fontSize: '12px',
+                fontWeight: 600,
+                cursor: isUnlinking ? 'not-allowed' : 'pointer',
+                opacity: isUnlinking ? 0.6 : 1,
+                transition: 'all 0.2s ease',
+              }}
+            >
+              {isUnlinking ? 'Unlinking...' : 'Unlink'}
+            </button>
           </div>
           
           <div style={{ paddingTop: '16px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
@@ -235,9 +354,29 @@ export default function ConnectTelegram() {
             {channels.length > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: showAddForm ? '16px' : '0' }}>
                 {channels.map((ch) => (
-                  <div key={ch.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px' }}>
-                    <span className="material-symbols-outlined" style={{ fontSize: '18px', color: '#4ade80' }}>verified</span>
-                    <span style={{ fontSize: '14px' }}>{ch.channel_username}</span>
+                  <div key={ch.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: '18px', color: '#4ade80' }}>verified</span>
+                      <span style={{ fontSize: '14px' }}>{ch.channel_username}</span>
+                    </div>
+                    <button
+                      onClick={() => handleDeleteChannel(ch.id)}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: 'rgba(255,255,255,0.4)',
+                        cursor: 'pointer',
+                        padding: '2px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        transition: 'color 0.2s',
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.color = '#FF3B30'}
+                      onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.4)'}
+                      title="Remove channel"
+                    >
+                      <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>delete</span>
+                    </button>
                   </div>
                 ))}
               </div>

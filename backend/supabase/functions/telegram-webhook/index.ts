@@ -15,17 +15,37 @@ serve(async (req) => {
   try {
     const update = await req.json();
 
-    // Check if the message is "/start <token>"
-    if (update.message?.text?.startsWith('/start ')) {
-      const token = update.message.text.split(' ')[1]?.trim();
+    const text = update.message?.text?.trim();
+
+    // Check if the message is a /start command
+    if (text?.startsWith('/start')) {
+      const parts = text.split(/\s+/);
+      const token = parts.length > 1 ? parts[1].trim() : null;
       const telegramUser = update.message.from;
       
       const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
       const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? '';
       const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? '';
 
-      // Verified directly by Telegram
-      if (token && telegramUser && supabaseUrl && supabaseServiceKey) {
+      // If user just sent /start without a token
+      if (!token) {
+        if (botToken) {
+          const res = await fetch(
+            `https://api.telegram.org/bot${botToken}/sendMessage`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chat_id: update.message.chat.id,
+                text: '👋 Welcome to Ginger! To link your Telegram account, please click "Connect Telegram" on the Ginger website and open the bot link provided.',
+              }),
+            }
+          );
+          if (!res.ok) {
+            console.error("Telegram API Error:", await res.text());
+          }
+        }
+      } else if (telegramUser && supabaseUrl && supabaseServiceKey) {
         // Initialize Supabase admin client
         const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
@@ -49,7 +69,7 @@ serve(async (req) => {
 
           // 3. Send confirmation in Telegram
           if (botToken) {
-            await fetch(
+            const res = await fetch(
               `https://api.telegram.org/bot${botToken}/sendMessage`,
               {
                 method: 'POST',
@@ -62,10 +82,11 @@ serve(async (req) => {
                 }),
               }
             );
+            if (!res.ok) console.error("Telegram API Error:", await res.text());
           }
         } else {
             if (botToken) {
-                await fetch(
+                const res = await fetch(
                   `https://api.telegram.org/bot${botToken}/sendMessage`,
                   {
                     method: 'POST',
@@ -78,6 +99,7 @@ serve(async (req) => {
                     }),
                   }
                 );
+                if (!res.ok) console.error("Telegram API Error:", await res.text());
             }
         }
       }

@@ -20,6 +20,7 @@ export interface Profile {
   is_verified: boolean;
   telegram_id?: string;
   telegram_username?: string;
+  verify_token?: string | null;
   role?: string;
   is_banned?: boolean;
   pinned_socials?: string[];
