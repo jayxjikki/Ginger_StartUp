@@ -21,6 +21,10 @@ export interface Profile {
   telegram_id?: string;
   telegram_username?: string;
   verify_token?: string | null;
+  ig_username?: string | null;
+  ig_followers_count?: number;
+  ig_verification_token?: string | null;
+  ig_token_expires_at?: string | null;
   role?: string;
   is_banned?: boolean;
   pinned_socials?: string[];

@@ -100,9 +100,17 @@ const UnlinkPage: React.FC = () => {
         const currentPinned = profile.pinned_socials || [];
         const updatedPinned = currentPinned.filter(p => p.toLowerCase() !== unlinkTarget.name.toLowerCase());
 
+        const profileUpdates: any = { pinned_socials: updatedPinned };
+        if (unlinkTarget.name.toLowerCase() === 'instagram') {
+          profileUpdates.ig_username = null;
+          profileUpdates.ig_followers_count = 0;
+          profileUpdates.ig_verification_token = null;
+          profileUpdates.ig_token_expires_at = null;
+        }
+
         await supabase
           .from('profiles')
-          .update({ pinned_socials: updatedPinned })
+          .update(profileUpdates)
           .eq('id', profile.id);
 
         const { error } = await supabase
@@ -112,7 +120,7 @@ const UnlinkPage: React.FC = () => {
 
         if (error) throw error;
         setSocialLinks(prev => prev.filter(link => link.id !== unlinkTarget.id));
-        setProfile({ ...profile, pinned_socials: updatedPinned });
+        setProfile({ ...profile, ...profileUpdates });
         useProfileStore.getState().fetchProfileData(profile.id);
         toast.success(`${unlinkTarget.name} unlinked successfully`);
       }

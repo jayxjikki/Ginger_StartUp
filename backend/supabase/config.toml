@@ -16,3 +16,7 @@ verify_jwt = false
 [functions.verify-channel]
 verify_jwt = false
 
+[functions.verify-instagram]
+verify_jwt = false
+
+

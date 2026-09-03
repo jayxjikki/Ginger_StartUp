@@ -23,6 +23,7 @@ import pinterestIcon from '../../../assets/pinterest.png';
 import snapchatIcon from '../../../assets/snapchat.png';
 import githubIcon from '../../../assets/github.png';
 import ConnectTelegram from '../components/ConnectTelegram';
+import ConnectInstagram from '../components/ConnectInstagram';
 import './AccountCentrePage.css';
 
 const AccountCentrePage: React.FC = () => {
@@ -117,23 +118,7 @@ const AccountCentrePage: React.FC = () => {
       return;
     }
     if (platform === 'Instagram') {
-      const clientId = import.meta.env.VITE_INSTAGRAM_CLIENT_ID;
-      if (!clientId) {
-        toast.error("Instagram Client ID is not configured.");
-        return;
-      }
-      
-      const confirmed = await showConfirm(
-        'You must have an Instagram Professional or Creator account linked to a Facebook Page to connect. Ginger requests access to your insights to verify your audience size.',
-        'Connect Instagram'
-      );
-      
-      if (confirmed) {
-        // Meta requires HTTPS for redirect URIs, even for localhost
-        const redirectUri = `${window.location.origin}/auth/instagram/callback`;
-        const authUrl = `https://api.instagram.com/oauth/authorize?enable_fb_login=0&force_authentication=1&client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=instagram_business_basic,instagram_business_manage_insights`;
-        window.location.href = authUrl;
-      }
+      setActiveLinkPlatform('Instagram');
       return;
     }
     setActiveLinkPlatform(platform);
@@ -374,7 +359,7 @@ const AccountCentrePage: React.FC = () => {
               <div>
                 <div className="account-card-name">Instagram</div>
                 <div className="account-status">
-                  {isLinked('Instagram') ? (
+                  {profile?.ig_username || isLinked('Instagram') ? (
                     <><span className="status-dot"></span> Linked</>
                   ) : (
                     <span style={{ color: '#c4c7c8' }}>Not linked</span>
@@ -601,7 +586,7 @@ const AccountCentrePage: React.FC = () => {
       </main>
 
     {/* Link Platform Modal */}
-      {activeLinkPlatform && activeLinkPlatform !== 'Telegram' && (
+      {activeLinkPlatform && activeLinkPlatform !== 'Telegram' && activeLinkPlatform !== 'Instagram' && (
         <div className="link-platform-modal-overlay" onClick={closeLinkModal}>
           <div className="link-platform-modal-content glass-panel" onClick={(e) => e.stopPropagation()}>
             <div className="link-modal-header">
@@ -641,6 +626,23 @@ const AccountCentrePage: React.FC = () => {
             </div>
             <div className="link-modal-body">
               <ConnectTelegram />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Instagram Link Modal */}
+      {activeLinkPlatform === 'Instagram' && (
+        <div className="link-platform-modal-overlay" onClick={closeLinkModal}>
+          <div className="link-platform-modal-content glass-panel" onClick={(e) => e.stopPropagation()}>
+            <div className="link-modal-header">
+              <h3>Link Instagram</h3>
+              <button className="link-modal-close" onClick={closeLinkModal}>
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <div className="link-modal-body">
+              <ConnectInstagram />
             </div>
           </div>
         </div>
