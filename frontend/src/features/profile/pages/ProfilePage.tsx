@@ -553,6 +553,34 @@ const ProfilePage: React.FC = () => {
           <p className="profile-bio">
             {profile.bio || 'Tech professional & passionate world traveler. Exploring the intersection of innovation and global culture.'}
           </p>
+
+          {profile.category && profile.category.trim() !== '' && (
+            <div className="profile-pinned-categories" style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '8px', marginTop: '12px' }}>
+              {profile.category.split(',').map((s: string) => s.trim()).filter(Boolean).map((cat: string) => (
+                <span 
+                  key={cat} 
+                  className="profile-category-pill"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    padding: '4px 10px',
+                    borderRadius: '9999px',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    background: 'rgba(247, 147, 30, 0.12)',
+                    border: '1px solid rgba(247, 147, 30, 0.4)',
+                    color: '#ff9d33',
+                    boxShadow: '0 0 10px rgba(247, 147, 30, 0.15)'
+                  }}
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: '13px', fontVariationSettings: "'FILL' 1", color: '#F7931E' }}>push_pin</span>
+                  {cat}
+                </span>
+              ))}
+            </div>
+          )}
+
           {isPublicView && !isBlockedByMe && !isBlockedByThem && (
             <div className="profile-public-actions" style={{ display: 'flex', justifyContent: 'center', marginTop: '24px' }}>
               <button 

@@ -12,11 +12,13 @@ import { useGlobalModalStore } from '../../../store/globalModalStore';
 import { formatCount } from '../../../utils/formatters';
 import { getPdfViewerUrl, triggerFileDownload } from '../../../lib/cloudinary';
 import { INDIAN_STATES_AND_CITIES } from '../../../lib/indianLocations';
+import { CATEGORIES_DATA } from '../../../lib/categoriesData';
 import './DiscoverFeedPage.css';
 
 const DiscoverFeedPage: React.FC = () => {
   const navigate = useNavigate();
   const [activeCategory, setActiveCategory] = useState('All');
+  const [activeSubcategory, setActiveSubcategory] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   
   // 3-dot dropdown menu state
@@ -59,17 +61,6 @@ const DiscoverFeedPage: React.FC = () => {
     setActiveChatUser({ id, name, avatar });
     setIsChatModalOpen(true);
   };
-
-  const categories = [
-    'All',
-    'Education',
-    'Fitness & Gym',
-    'Gaming',
-    'Travel',
-    'Food & Restaurant',
-    'Technology',
-    'Fashion'
-  ];
 
   const [creators, setCreators] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -136,9 +127,21 @@ const DiscoverFeedPage: React.FC = () => {
 
   const filteredCreators = useMemo(() => {
     return creators.filter(creator => {
-      // 1. Category Filter
-      if (activeCategory !== 'All' && creator.category !== activeCategory) {
-        return false;
+      // 1. Category & Subcategory Filter
+      if (activeCategory !== 'All') {
+        const creatorCatStr = (creator.category || '').toLowerCase();
+        if (activeSubcategory) {
+          if (!creatorCatStr.includes(activeSubcategory.toLowerCase())) {
+            return false;
+          }
+        } else {
+          const group = CATEGORIES_DATA.find(c => c.name === activeCategory);
+          const matchesParent = creatorCatStr.includes(activeCategory.toLowerCase());
+          const matchesSub = group?.subcategories.some(sub => creatorCatStr.includes(sub.toLowerCase()));
+          if (!matchesParent && !matchesSub) {
+            return false;
+          }
+        }
       }
 
       // 2. Search Query (Name, Handle, or Category)
@@ -180,7 +183,7 @@ const DiscoverFeedPage: React.FC = () => {
 
       return true;
     });
-  }, [creators, activeCategory, searchQuery, activeFilters]);
+  }, [creators, activeCategory, activeSubcategory, searchQuery, activeFilters]);
 
   // Reset filters when the category tab changes, or when 'reset-feed-filters' event fires
   React.useEffect(() => {
@@ -200,6 +203,7 @@ const DiscoverFeedPage: React.FC = () => {
 
     const handleTabReset = () => {
       setActiveCategory('All');
+      setActiveSubcategory('');
       resetFilters();
     };
 
@@ -216,6 +220,7 @@ const DiscoverFeedPage: React.FC = () => {
   // Also reset search and advanced filters when clicking a different category chip
   const handleCategoryChange = (cat: string) => {
     setActiveCategory(cat);
+    setActiveSubcategory('');
     setSearchQuery('');
     setActiveFilters({
       platforms: [],
@@ -229,7 +234,9 @@ const DiscoverFeedPage: React.FC = () => {
     });
   };
 
-
+  const handleSubcategoryChange = (sub: string) => {
+    setActiveSubcategory(prev => (prev === sub ? '' : sub));
+  };
 
   return (
     <div className="discover-page">
@@ -262,18 +269,49 @@ const DiscoverFeedPage: React.FC = () => {
           </button>
         </div>
 
-        {/* Horizontal Chips */}
+        {/* Horizontal Category Chips */}
         <div className="chips-scroll-area hide-scrollbar">
-          {categories.map(cat => (
+          <button 
+            className={`discover-chip ${activeCategory === 'All' ? 'active' : ''}`}
+            onClick={() => handleCategoryChange('All')}
+          >
+            All
+          </button>
+          {CATEGORIES_DATA.map(group => (
             <button 
-              key={cat}
-              className={`discover-chip ${activeCategory === cat ? 'active' : ''}`}
-              onClick={() => handleCategoryChange(cat)}
+              key={group.id}
+              className={`discover-chip ${activeCategory === group.name ? 'active' : ''}`}
+              onClick={() => handleCategoryChange(group.name)}
             >
-              {cat}
+              {group.name}
             </button>
           ))}
         </div>
+
+        {/* Dynamic Subcategory Chips Row (shown when a category is selected) */}
+        {activeCategory !== 'All' && (() => {
+          const currentGroup = CATEGORIES_DATA.find(c => c.name === activeCategory);
+          if (!currentGroup) return null;
+          return (
+            <div className="subchips-scroll-area hide-scrollbar">
+              <button
+                className={`discover-subchip ${activeSubcategory === '' ? 'active' : ''}`}
+                onClick={() => handleSubcategoryChange('')}
+              >
+                All {currentGroup.shortName}
+              </button>
+              {currentGroup.subcategories.map(sub => (
+                <button
+                  key={sub}
+                  className={`discover-subchip ${activeSubcategory === sub ? 'active' : ''}`}
+                  onClick={() => handleSubcategoryChange(sub)}
+                >
+                  {sub}
+                </button>
+              ))}
+            </div>
+          );
+        })()}
 
         {/* Creator Cards List */}
         <div className="creator-list">
@@ -485,9 +523,13 @@ const DiscoverFeedPage: React.FC = () => {
                     </button>
 
                     {creator.category && creator.category.trim() !== '' && (
-                      <div className="creator-category-badge">
-                        <span className="category-bullet">•</span>
-                        <span className="category-text">{creator.category}</span>
+                      <div className="creator-category-badge-list">
+                        {creator.category.split(',').map((s: string) => s.trim()).filter(Boolean).map((cat: string) => (
+                          <div key={cat} className="creator-category-badge">
+                            <span className="category-bullet">•</span>
+                            <span className="category-text">{cat}</span>
+                          </div>
+                        ))}
                       </div>
                     )}
                   </div>

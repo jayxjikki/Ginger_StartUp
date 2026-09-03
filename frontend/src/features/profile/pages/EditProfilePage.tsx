@@ -5,6 +5,7 @@ import { useAuthStore } from '../../../store/authStore';
 import { useProfileStore } from '../../../store/profileStore';
 import { supabase } from '../../../lib/supabase';
 import { uploadToCloudinary } from '../../../lib/cloudinary';
+import { CATEGORIES_DATA, ALL_SUBCATEGORIES } from '../../../lib/categoriesData';
 import './EditProfilePage.css';
 import { getCategoryBanner } from './ProfilePage';
 
@@ -18,7 +19,9 @@ const EditProfilePage: React.FC = () => {
   const [mobile, setMobile] = useState('');
   const [bio, setBio] = useState('');
   const [location, setLocation] = useState('');
-  const [category, setCategory] = useState('Personal Use');
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [activeGroupTab, setActiveGroupTab] = useState<string>(CATEGORIES_DATA[0].name);
+  const [categorySearch, setCategorySearch] = useState<string>('');
   const [avatarUrl, setAvatarUrl] = useState('');
   const [bannerUrl, setBannerUrl] = useState('');
   const [isSaving, setIsSaving] = useState(false);
@@ -38,14 +41,35 @@ const EditProfilePage: React.FC = () => {
       setGender(profile.gender || 'Male');
       setMobile(profile.mobile_number || '');
       setLocation(profile.location || '');
-      setCategory(profile.category || 'Personal Use');
+      if (profile.category) {
+        const parsed = profile.category
+          .split(',')
+          .map((s: string) => s.trim())
+          .filter(Boolean);
+        setSelectedCategories(parsed.slice(0, 3));
+      } else {
+        setSelectedCategories([]);
+      }
     }
   }, [profile]);
+
+  const toggleCategory = (cat: string) => {
+    if (selectedCategories.includes(cat)) {
+      setSelectedCategories(selectedCategories.filter(c => c !== cat));
+    } else {
+      if (selectedCategories.length >= 3) {
+        toast.error('You can select and pin up to 3 categories.');
+        return;
+      }
+      setSelectedCategories([...selectedCategories, cat]);
+    }
+  };
 
   const handleSave = async () => {
     if (!user) return;
     setIsSaving(true);
     try {
+      const categoryStr = selectedCategories.join(', ');
       const { error } = await supabase
         .from('profiles')
         .update({
@@ -54,7 +78,7 @@ const EditProfilePage: React.FC = () => {
           banner_url: bannerUrl,
           gender: gender,
           mobile_number: mobile,
-          category: category,
+          category: categoryStr,
         })
         .eq('id', user.id);
         
@@ -127,7 +151,7 @@ const EditProfilePage: React.FC = () => {
     }
   };
 
-  const bannerBg = getCategoryBanner(category);
+  const bannerBg = getCategoryBanner(selectedCategories[0] || null);
 
   return (
     <div className="edit-profile-wrapper liquid-bg">
@@ -265,19 +289,119 @@ const EditProfilePage: React.FC = () => {
             />
           </div>
           <div className="input-group">
-            <label className="edit-input-label">Category</label>
-            <div className="category-scroll-container">
-              {['Personal Use', 'Brand', 'Influencer', 'Travel', 'Foodie', 'Entrepreneur', 'Clothing', 'Business', 'Gaming', 'Other'].map((cat) => (
-                <button
-                  key={cat}
-                  type="button"
-                  className={`category-chip ${category === cat ? 'active' : ''}`}
-                  onClick={() => setCategory(cat)}
-                >
-                  {cat}
-                </button>
-              ))}
+            <div className="category-section-top">
+              <label className="edit-input-label">Categories & Niches</label>
+              <span className="category-count-badge">
+                {selectedCategories.length}/3 Pinned
+              </span>
             </div>
+            <p className="field-subtext">
+              Choose up to 3 categories to pin to your profile and discover card.
+            </p>
+
+            {/* Pinned Categories Display */}
+            {selectedCategories.length > 0 && (
+              <div className="pinned-categories-tray">
+                {selectedCategories.map((cat, idx) => (
+                  <div key={cat} className="pinned-category-chip">
+                    <span className="pin-indicator">
+                      <span className="material-symbols-outlined" style={{ fontSize: '14px', fontVariationSettings: "'FILL' 1" }}>push_pin</span>
+                      <span className="pin-number">{idx + 1}</span>
+                    </span>
+                    <span className="cat-name">{cat}</span>
+                    <button
+                      type="button"
+                      className="cat-unpin-btn"
+                      onClick={() => toggleCategory(cat)}
+                      title="Unpin category"
+                      aria-label={`Unpin ${cat}`}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Search within Categories */}
+            <div className="category-picker-search">
+              <span className="material-symbols-outlined search-icon">search</span>
+              <input
+                type="text"
+                placeholder="Search niches (e.g. Cricket, Tech, Skincare)..."
+                value={categorySearch}
+                onChange={(e) => setCategorySearch(e.target.value)}
+                className="category-search-input"
+              />
+              {categorySearch && (
+                <button type="button" className="clear-search" onClick={() => setCategorySearch('')}>×</button>
+              )}
+            </div>
+
+            {/* If searching, show matching subcategories */}
+            {categorySearch.trim() ? (
+              <div className="subcategories-grid">
+                {ALL_SUBCATEGORIES.filter(sub => sub.toLowerCase().includes(categorySearch.toLowerCase())).map(sub => {
+                  const isSelected = selectedCategories.includes(sub);
+                  const pinIndex = selectedCategories.indexOf(sub) + 1;
+                  return (
+                    <button
+                      key={sub}
+                      type="button"
+                      className={`niche-chip ${isSelected ? 'selected' : ''}`}
+                      onClick={() => toggleCategory(sub)}
+                    >
+                      <span className={`niche-pin-icon ${isSelected ? 'active' : ''}`}>
+                        <span className="material-symbols-outlined" style={{ fontSize: '13px', fontVariationSettings: isSelected ? "'FILL' 1" : "'FILL' 0" }}>push_pin</span>
+                        {isSelected && <span className="niche-pin-num">{pinIndex}</span>}
+                      </span>
+                      <span>{sub}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <>
+                {/* Category Group Tabs */}
+                <div className="category-group-tabs hide-scrollbar">
+                  {CATEGORIES_DATA.map(group => (
+                    <button
+                      key={group.id}
+                      type="button"
+                      className={`group-tab-btn ${activeGroupTab === group.name ? 'active' : ''}`}
+                      onClick={() => setActiveGroupTab(group.name)}
+                    >
+                      {group.name}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Subcategories for active group */}
+                <div className="subcategories-grid">
+                  {(() => {
+                    const group = CATEGORIES_DATA.find(g => g.name === activeGroupTab) || CATEGORIES_DATA[0];
+                    return group.subcategories.map(sub => {
+                      const isSelected = selectedCategories.includes(sub);
+                      const pinIndex = selectedCategories.indexOf(sub) + 1;
+                      return (
+                        <button
+                          key={sub}
+                          type="button"
+                          className={`niche-chip ${isSelected ? 'selected' : ''}`}
+                          onClick={() => toggleCategory(sub)}
+                        >
+                          <span className={`niche-pin-icon ${isSelected ? 'active' : ''}`}>
+                            <span className="material-symbols-outlined" style={{ fontSize: '13px', fontVariationSettings: isSelected ? "'FILL' 1" : "'FILL' 0" }}>push_pin</span>
+                            {isSelected && <span className="niche-pin-num">{pinIndex}</span>}
+                          </span>
+                          <span>{sub}</span>
+                        </button>
+                      );
+                    });
+                  })()}
+                </div>
+              </>
+            )}
           </div>
         </section>
       </main>
