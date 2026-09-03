@@ -33,6 +33,13 @@ const PLATFORM_OPTIONS = [
   { id: 'youtube', label: 'YouTube' },
   { id: 'tiktok', label: 'TikTok' },
   { id: 'telegram', label: 'Telegram' },
+  { id: 'facebook', label: 'Facebook' },
+  { id: 'whatsapp', label: 'WhatsApp' },
+  { id: 'reddit', label: 'Reddit' },
+  { id: 'pinterest', label: 'Pinterest' },
+  { id: 'quora', label: 'Quora' },
+  { id: 'linkedin', label: 'LinkedIn' },
+  { id: 'github', label: 'GitHub' },
 ];
 
 const DiscoverFilterModal: React.FC<DiscoverFilterModalProps> = ({ 

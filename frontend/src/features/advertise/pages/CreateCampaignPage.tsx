@@ -18,6 +18,7 @@ import ImageUpload from '../../../components/ui/ImageUpload';
 import { useAuthStore } from '../../../store/authStore';
 import { useCampaignStore } from '../../../store/campaignStore';
 import { CAMPAIGN_TYPES, VERIFICATION_PERIODS, SOCIAL_PLATFORMS } from '../../../lib/constants';
+import { getSocialIcon } from '../../../utils/socialHelpers';
 import CampaignCheckoutModal from '../components/CampaignCheckoutModal';
 import './CreateCampaignPage.css';
 
@@ -465,8 +466,9 @@ const CreateCampaignPage: React.FC = () => {
                 <div className="form-group">
                   <label className="form-label">Required Platforms</label>
                   <div className="platform-grid">
-                    {SOCIAL_PLATFORMS.slice(0, 4).map((p) => {
+                    {SOCIAL_PLATFORMS.map((p) => {
                       const isActive = formData.platforms.includes(p.id);
+                      const iconSrc = getSocialIcon(p.id);
                       return (
                         <button
                           type="button"
@@ -475,7 +477,17 @@ const CreateCampaignPage: React.FC = () => {
                           onClick={() => togglePlatform(p.id)}
                         >
                           <span className={`platform-chip-indicator ${isActive ? 'active' : ''}`} />
-                          {p.name}
+                          {iconSrc && (
+                            <img
+                              src={iconSrc}
+                              alt={p.name}
+                              className="platform-chip-icon"
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                              }}
+                            />
+                          )}
+                          <span>{p.name}</span>
                         </button>
                       );
                     })}
@@ -925,7 +937,9 @@ const CreateCampaignPage: React.FC = () => {
                     </div>
                     <div className="review-row">
                       <span className="review-label">Platforms</span>
-                      <span className="review-value">{formData.platforms.join(', ') || 'All Platforms'}</span>
+                      <span className="review-value">
+                        {formData.platforms.map((pid) => SOCIAL_PLATFORMS.find((sp) => sp.id === pid)?.name || pid).join(', ') || 'All Platforms'}
+                      </span>
                     </div>
                   </div>
                 </Card>

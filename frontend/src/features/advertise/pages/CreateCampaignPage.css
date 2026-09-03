@@ -342,6 +342,13 @@
   transition: all var(--duration-fast, 150ms) ease;
 }
 
+.platform-chip-icon {
+  width: 15px;
+  height: 15px;
+  object-fit: contain;
+  border-radius: 3px;
+}
+
 .platform-chip:hover {
   border-color: rgba(255, 255, 255, 0.2);
   color: var(--text-primary, #ffffff);

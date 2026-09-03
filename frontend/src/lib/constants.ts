@@ -11,8 +11,14 @@ export const SOCIAL_PLATFORMS = [
   { id: 'instagram', name: 'Instagram', color: '#E4405F', icon: 'FaInstagram' },
   { id: 'tiktok', name: 'TikTok', color: '#000000', icon: 'FaTiktok' },
   { id: 'facebook', name: 'Facebook', color: '#1877F2', icon: 'FaFacebook' },
-  { id: 'twitter', name: 'X (Twitter)', color: '#1DA1F2', icon: 'FaXTwitter' },
+  { id: 'telegram', name: 'Telegram', color: '#229ED9', icon: 'FaTelegram' },
+  { id: 'reddit', name: 'Reddit', color: '#FF4500', icon: 'FaReddit' },
+  { id: 'pinterest', name: 'Pinterest', color: '#BD081C', icon: 'FaPinterest' },
+  { id: 'quora', name: 'Quora', color: '#B92B27', icon: 'FaQuora' },
   { id: 'linkedin', name: 'LinkedIn', color: '#0A66C2', icon: 'FaLinkedin' },
+  { id: 'github', name: 'GitHub', color: '#181717', icon: 'FaGithub' },
+  { id: 'whatsapp', name: 'WhatsApp', color: '#25D366', icon: 'FaWhatsapp' },
+  { id: 'twitter', name: 'X (Twitter)', color: '#1DA1F2', icon: 'FaXTwitter' },
   { id: 'snapchat', name: 'Snapchat', color: '#FFFC00', icon: 'FaSnapchat' },
 ] as const;
 

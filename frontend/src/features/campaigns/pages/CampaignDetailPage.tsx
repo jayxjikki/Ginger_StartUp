@@ -68,6 +68,14 @@ const CampaignDetailPage: React.FC = () => {
       else if (lowerUrl.includes('instagram.com')) platform = 'instagram';
       else if (lowerUrl.includes('tiktok.com')) platform = 'tiktok';
       else if (lowerUrl.includes('twitter.com') || lowerUrl.includes('x.com')) platform = 'twitter';
+      else if (lowerUrl.includes('facebook.com') || lowerUrl.includes('fb.watch') || lowerUrl.includes('fb.com')) platform = 'facebook';
+      else if (lowerUrl.includes('telegram.org') || lowerUrl.includes('t.me') || lowerUrl.includes('telegram.me')) platform = 'telegram';
+      else if (lowerUrl.includes('reddit.com') || lowerUrl.includes('redd.it')) platform = 'reddit';
+      else if (lowerUrl.includes('pinterest.com') || lowerUrl.includes('pin.it')) platform = 'pinterest';
+      else if (lowerUrl.includes('quora.com')) platform = 'quora';
+      else if (lowerUrl.includes('linkedin.com')) platform = 'linkedin';
+      else if (lowerUrl.includes('github.com')) platform = 'github';
+      else if (lowerUrl.includes('whatsapp.com') || lowerUrl.includes('wa.me')) platform = 'whatsapp';
 
       if (campaign?.required_platforms && campaign.required_platforms.length > 0) {
         const requiredLower = campaign.required_platforms.map((p: string) => p.toLowerCase());
