@@ -38,11 +38,13 @@ export const SORT_OPTIONS = [
 ] as const;
 
 export const VERIFICATION_PERIODS = [
-  { days: 1, label: '1 Day' },
-  { days: 3, label: '3 Days' },
-  { days: 5, label: '5 Days' },
-  { days: 7, label: '7 Days' },
-  { days: 14, label: '14 Days' },
+  { days: 20, label: '20 Days' },
+  { days: 30, label: '30 Days' },
+  { days: 35, label: '35 Days' },
+  { days: 45, label: '45 Days' },
+  { days: 50, label: '50 Days' },
+  { days: 55, label: '55 Days' },
+  { days: 60, label: '60 Days' },
 ] as const;
 
 export const CURRENCY_SYMBOL = '₹';

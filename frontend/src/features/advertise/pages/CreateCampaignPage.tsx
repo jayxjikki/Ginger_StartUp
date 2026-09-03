@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
   FiArrowLeft, FiArrowRight, FiPlus, FiTrash2,
-  FiDollarSign, FiTarget, FiFileText, FiCheck
+  FiDollarSign, FiTarget, FiFileText, FiCheck, FiEye
 } from 'react-icons/fi';
 import Button from '../../../components/ui/Button';
 import Card from '../../../components/ui/Card';
@@ -22,10 +22,10 @@ import CampaignCheckoutModal from '../components/CampaignCheckoutModal';
 import './CreateCampaignPage.css';
 
 const steps = [
-  { id: 1, label: 'Type', icon: <FiTarget /> },
-  { id: 2, label: 'Details', icon: <FiFileText /> },
-  { id: 3, label: 'Rewards', icon: <FiDollarSign /> },
-  { id: 4, label: 'Review', icon: <FiCheck /> },
+  { id: 1, label: 'Type', icon: <FiTarget size={16} /> },
+  { id: 2, label: 'Details', icon: <FiFileText size={16} /> },
+  { id: 3, label: 'Rewards', icon: <FiDollarSign size={16} /> },
+  { id: 4, label: 'Review', icon: <FiEye size={16} /> },
 ];
 
 const CreateCampaignPage: React.FC = () => {
@@ -49,7 +49,7 @@ const CreateCampaignPage: React.FC = () => {
     platforms: ['youtube', 'instagram'] as string[],
     prizePool: '',
     discountPercent: '',
-    verificationDays: 3,
+    verificationDays: 30,
     tiers: [
       { minViews: '1000', amount: '1000' },
       { minViews: '10000', amount: '10000' },
@@ -185,7 +185,31 @@ const CreateCampaignPage: React.FC = () => {
                 className={`step-item ${isCompleted ? 'completed' : ''} ${isCurrent ? 'current' : ''}`}
               >
                 <div className="step-dot">
-                  {isCompleted ? <FiCheck size={16} /> : step.icon}
+                  <AnimatePresence mode="wait" initial={false}>
+                    {isCompleted ? (
+                      <motion.div
+                        key="check"
+                        initial={{ scale: 0.4, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{ scale: 0.4, opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="step-icon-center"
+                      >
+                        <FiCheck size={18} strokeWidth={2.5} />
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        key="icon"
+                        initial={{ scale: 0.8, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{ scale: 0.8, opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="step-icon-center"
+                      >
+                        {step.icon}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
                 <span className="step-label">{step.label}</span>
               </div>

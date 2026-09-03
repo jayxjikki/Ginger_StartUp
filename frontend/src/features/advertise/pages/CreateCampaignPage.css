@@ -4,7 +4,6 @@
 
 .page-container {
   width: 100%;
-  min-height: 100vh;
   padding: 0 var(--space-4);
   display: flex;
   justify-content: center;
@@ -13,9 +12,9 @@
 .create-campaign {
   display: flex;
   flex-direction: column;
-  gap: var(--space-6);
-  padding-top: calc(var(--safe-top, 0px) + var(--space-4));
-  padding-bottom: calc(var(--nav-height, 72px) + 5.5rem);
+  gap: var(--space-4, 16px);
+  padding-top: calc(var(--safe-top, 0px) + var(--space-3, 12px));
+  padding-bottom: calc(var(--nav-height, 72px) + 16px);
   max-width: 640px;
   width: 100%;
   margin: 0 auto;
@@ -64,7 +63,7 @@
   justify-content: space-between;
   position: relative;
   padding: 0 16px;
-  margin: 4px 0 12px 0;
+  margin: 4px 0 14px 0;
 }
 
 .step-line {
@@ -100,16 +99,28 @@
   justify-content: center;
   border-radius: 50%;
   background: #141416;
-  border: 2px solid rgba(255, 255, 255, 0.14);
+  border: 2px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 0 0 4px #0c0c0e;
   color: var(--text-tertiary, #71717a);
   font-size: 15px;
   font-weight: 600;
+  position: relative;
+  z-index: 2;
   transition: all var(--duration-normal, 200ms) ease;
+}
+
+.step-icon-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
 }
 
 .step-item.completed .step-dot {
   border-color: var(--ginger-500, #F7931E);
-  background: rgba(247, 147, 30, 0.15);
+  background: #181410;
+  box-shadow: 0 0 0 4px #0c0c0e, 0 0 12px rgba(247, 147, 30, 0.25);
   color: var(--ginger-400, #ff8433);
 }
 
@@ -117,7 +128,7 @@
   background: linear-gradient(135deg, #FF6B35 0%, #F7931E 100%);
   border-color: #F7931E;
   color: #ffffff;
-  box-shadow: 0 0 16px rgba(247, 147, 30, 0.45);
+  box-shadow: 0 0 0 4px #0c0c0e, 0 0 16px rgba(247, 147, 30, 0.45);
 }
 
 .step-label {
@@ -160,7 +171,7 @@
 
 /* ── Step Content ──────────────────────────────────────── */
 .step-content {
-  min-height: 320px;
+  width: 100%;
 }
 
 /* ── Campaign Type Grid (Step 1) ───────────────────────── */
@@ -557,7 +568,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-3);
-  padding-top: var(--space-4);
-  margin-top: auto;
+  gap: var(--space-3, 12px);
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
 }
