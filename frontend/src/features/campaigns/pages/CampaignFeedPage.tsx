@@ -8,11 +8,13 @@ import { useCampaignStore } from '../../../store/campaignStore';
 import { useUgcStore } from '../../../store/ugcStore';
 import { useChatStore } from '../../../store/chatStore';
 import { formatCurrency, formatCount, formatTimeLeft } from '../../../utils/formatters';
+import LocationCampaignMapModal from '../components/LocationCampaignMapModal';
 import './CampaignFeedPage.css';
 
 const HomeMenuPage: React.FC = () => {
   const slideshowRef = useRef<HTMLDivElement>(null);
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [isMapModalOpen, setIsMapModalOpen] = useState(false);
   const navigate = useNavigate();
 
   const {
@@ -205,8 +207,14 @@ const HomeMenuPage: React.FC = () => {
               onChange={(e) => setFilters({ search: e.target.value })}
             />
           </div>
-          <button className="filter-btn">
-            <span className="material-symbols-outlined">tune</span>
+          <button 
+            className="map-radar-btn"
+            onClick={() => setIsMapModalOpen(true)}
+            title="Explore Local Sponsorships on Radar Map"
+            aria-label="Open Local Radar Map"
+          >
+            <span className="map-radar-pulse" />
+            <span className="material-symbols-outlined map-btn-icon">near_me</span>
           </button>
         </div>
 
@@ -390,6 +398,13 @@ const HomeMenuPage: React.FC = () => {
           })()}
         </div>
       </main>
+
+      {/* Location-Based Campaign Discovery Radar Map Modal */}
+      <LocationCampaignMapModal
+        isOpen={isMapModalOpen}
+        onClose={() => setIsMapModalOpen(false)}
+        campaigns={filteredCampaigns}
+      />
     </div>
   );
 };
