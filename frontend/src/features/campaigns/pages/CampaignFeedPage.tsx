@@ -373,7 +373,11 @@ const HomeMenuPage: React.FC = () => {
                         <div className="campaign-payout-tiers">
                           {campaign.payout_tiers.slice(0, 2).map((tier) => (
                             <span className="payout-tier" key={tier.id}>
-                              {formatCount(tier.min_views)} -&gt; {tier.reward_type === 'discount' || campaign.type === 'discount' ? `${tier.payout_amount}% Off` : formatCurrency(tier.payout_amount, true)}
+                              {tier.reward_type === 'gift'
+                                ? `${formatCount(tier.min_views)} -> 🎁 ${tier.reward_description || 'Gift'}`
+                                : tier.reward_type === 'discount' || campaign.type === 'discount'
+                                ? `${formatCount(tier.min_views)} -> ${tier.payout_amount}% Off`
+                                : `${formatCount(tier.min_views)} -> ${formatCurrency(tier.payout_amount, true)}`}
                             </span>
                           ))}
                         </div>

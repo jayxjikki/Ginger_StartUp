@@ -320,11 +320,13 @@ const CampaignDetailPage: React.FC = () => {
                 <div className="tier-arrow">→</div>
                 <div className="tier-reward">
                   <span className="tier-amount">
-                    {tier.reward_type === 'discount' || campaign.type === 'discount'
+                    {tier.reward_type === 'gift'
+                      ? `🎁 ${tier.reward_description || 'Bonus Gift'}`
+                      : tier.reward_type === 'discount' || campaign.type === 'discount'
                       ? `${tier.payout_amount}% Off`
                       : formatCurrency(tier.payout_amount, true)}
                   </span>
-                  {tier.reward_description && (
+                  {tier.reward_description && tier.reward_type !== 'gift' && (
                     <span className="tier-bonus">{tier.reward_description}</span>
                   )}
                 </div>

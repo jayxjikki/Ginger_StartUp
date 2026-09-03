@@ -50,9 +50,16 @@ const CreateCampaignPage: React.FC = () => {
     prizePool: '',
     discountPercent: '',
     verificationDays: 30,
-    tiers: [
+    cashTiers: [
       { minViews: '1000', amount: '1000' },
       { minViews: '10000', amount: '10000' },
+    ],
+    discountTiers: [
+      { minViews: '1000', amount: '15' },
+      { minViews: '5000', amount: '30' },
+    ],
+    giftTiers: [
+      { minViews: '10000', gift: 'Smart Watch / Brand Merch' },
     ],
     image_url: '',
   });
@@ -88,61 +95,76 @@ const CreateCampaignPage: React.FC = () => {
   };
 
   const handleTypeSelect = (typeId: string) => {
-    if (typeId === 'discount' && formData.type !== 'discount') {
-      const isDefaultPoolTiers = 
-        formData.tiers.length === 2 && 
-        formData.tiers[0].amount === '1000' && 
-        formData.tiers[1].amount === '10000';
-      
-      setFormData(prev => ({
-        ...prev,
-        type: typeId,
-        tiers: isDefaultPoolTiers ? [
-          { minViews: '1000', amount: '15' },
-          { minViews: '5000', amount: '30' }
-        ] : prev.tiers
-      }));
-    } else if (typeId === 'pool' && formData.type === 'discount') {
-      const isDefaultDiscountTiers = 
-        formData.tiers.length === 2 && 
-        formData.tiers[0].amount === '15' && 
-        formData.tiers[1].amount === '30';
-
-      setFormData(prev => ({
-        ...prev,
-        type: typeId,
-        tiers: isDefaultDiscountTiers ? [
-          { minViews: '1000', amount: '1000' },
-          { minViews: '10000', amount: '10000' }
-        ] : prev.tiers
-      }));
-    } else {
-      updateField('type', typeId);
-    }
+    updateField('type', typeId);
   };
 
-  const addTier = () => {
+  // Cash Tiers Handlers
+  const addCashTier = () => {
     setFormData((prev) => ({
       ...prev,
-      tiers: [...prev.tiers, { minViews: '', amount: '' }],
+      cashTiers: [...prev.cashTiers, { minViews: '', amount: '' }],
     }));
   };
 
-  const updateTier = (index: number, field: 'minViews' | 'amount', value: string) => {
+  const updateCashTier = (index: number, field: 'minViews' | 'amount', value: string) => {
     setFormData((prev) => {
-      const nextTiers = [...prev.tiers];
+      const nextTiers = [...prev.cashTiers];
       nextTiers[index][field] = value;
-      return { ...prev, tiers: nextTiers };
+      return { ...prev, cashTiers: nextTiers };
     });
   };
 
-  const removeTier = (index: number) => {
-    if (formData.tiers.length > 1) {
-      setFormData((prev) => ({
-        ...prev,
-        tiers: prev.tiers.filter((_, i) => i !== index),
-      }));
-    }
+  const removeCashTier = (index: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      cashTiers: prev.cashTiers.filter((_, i) => i !== index),
+    }));
+  };
+
+  // Discount Tiers Handlers
+  const addDiscountTier = () => {
+    setFormData((prev) => ({
+      ...prev,
+      discountTiers: [...prev.discountTiers, { minViews: '', amount: '' }],
+    }));
+  };
+
+  const updateDiscountTier = (index: number, field: 'minViews' | 'amount', value: string) => {
+    setFormData((prev) => {
+      const nextTiers = [...prev.discountTiers];
+      nextTiers[index][field] = value;
+      return { ...prev, discountTiers: nextTiers };
+    });
+  };
+
+  const removeDiscountTier = (index: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      discountTiers: prev.discountTiers.filter((_, i) => i !== index),
+    }));
+  };
+
+  // Gift Tiers Handlers
+  const addGiftTier = () => {
+    setFormData((prev) => ({
+      ...prev,
+      giftTiers: [...prev.giftTiers, { minViews: '', gift: '' }],
+    }));
+  };
+
+  const updateGiftTier = (index: number, field: 'minViews' | 'gift', value: string) => {
+    setFormData((prev) => {
+      const nextTiers = [...prev.giftTiers];
+      nextTiers[index][field] = value;
+      return { ...prev, giftTiers: nextTiers };
+    });
+  };
+
+  const removeGiftTier = (index: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      giftTiers: prev.giftTiers.filter((_, i) => i !== index),
+    }));
   };
 
   const handleLaunch = () => {
@@ -158,6 +180,66 @@ const CreateCampaignPage: React.FC = () => {
     setIsSubmitting(true);
     setShowCheckoutModal(false);
     try {
+      const allTiers: any[] = [];
+
+      if (formData.type === 'pool') {
+        formData.cashTiers.forEach((t) => {
+          if (t.minViews || t.amount) {
+            allTiers.push({
+              min_views: Number(t.minViews) || 0,
+              payout_amount: Number(t.amount) || 0,
+              reward_type: 'cash' as const,
+              reward_description: null,
+            });
+          }
+        });
+      } else if (formData.type === 'discount') {
+        formData.discountTiers.forEach((t) => {
+          if (t.minViews || t.amount) {
+            allTiers.push({
+              min_views: Number(t.minViews) || 0,
+              payout_amount: Number(t.amount) || 0,
+              reward_type: 'discount' as const,
+              reward_description: `${t.amount}% Discount`,
+            });
+          }
+        });
+      } else if (formData.type === 'hybrid') {
+        // 1st: Cash tiers (views : pay)
+        formData.cashTiers.forEach((t) => {
+          if (t.minViews || t.amount) {
+            allTiers.push({
+              min_views: Number(t.minViews) || 0,
+              payout_amount: Number(t.amount) || 0,
+              reward_type: 'cash' as const,
+              reward_description: null,
+            });
+          }
+        });
+        // 2nd: Discount tiers (discount : views)
+        formData.discountTiers.forEach((t) => {
+          if (t.minViews || t.amount) {
+            allTiers.push({
+              min_views: Number(t.minViews) || 0,
+              payout_amount: Number(t.amount) || 0,
+              reward_type: 'discount' as const,
+              reward_description: `${t.amount}% Discount`,
+            });
+          }
+        });
+        // 3rd: Gift tiers (views : gifts)
+        formData.giftTiers.forEach((t) => {
+          if (t.minViews || t.gift) {
+            allTiers.push({
+              min_views: Number(t.minViews) || 0,
+              payout_amount: 0,
+              reward_type: 'gift' as const,
+              reward_description: t.gift || 'Bonus Gift',
+            });
+          }
+        });
+      }
+
       await createCampaign({
         advertiser_id: user?.id || '',
         title: formData.title,
@@ -171,16 +253,11 @@ const CreateCampaignPage: React.FC = () => {
         slogan: formData.slogan,
         keywords: formData.keywords,
         location: formData.location,
-        discount_percent: Number(formData.discountPercent) || (formData.type === 'discount' && formData.tiers.length > 0 ? Number(formData.tiers[0].amount) : 0),
+        discount_percent: (formData.type === 'discount' || formData.type === 'hybrid') && formData.discountTiers.length > 0 ? Number(formData.discountTiers[0].amount) || 0 : 0,
         verification_days: formData.verificationDays,
         image_url: formData.image_url,
         end_date: formData.endDate ? new Date(formData.endDate).toISOString() : undefined,
-        payout_tiers: formData.tiers.map((t) => ({
-          min_views: Number(t.minViews) || 0,
-          payout_amount: Number(t.amount) || 0,
-          reward_type: (formData.type === 'discount' ? 'discount' : 'cash') as any,
-          reward_description: formData.type === 'discount' ? `${t.amount}% Discount` : null,
-        })) as any,
+        payout_tiers: allTiers as any,
       });
       navigate('/campaigns');
     } catch (err) {
@@ -419,21 +496,26 @@ const CreateCampaignPage: React.FC = () => {
             >
               <div className="step-heading-group">
                 <h3 className="step-title">Set Rewards</h3>
-                <p className="step-subtitle">Define prize pools, verification rules, and payout tiers</p>
+                <p className="step-subtitle">
+                  {formData.type === 'hybrid'
+                    ? 'Configure any combination of Cash, Discount, and Bonus/Gift tiers'
+                    : formData.type === 'discount'
+                    ? 'Define progressive discounts unlocked by creator video views'
+                    : 'Define prize pools, verification rules, and payout tiers'}
+                </p>
               </div>
 
               <div className="form-fields">
                 {(formData.type === 'pool' || formData.type === 'hybrid') && (
                   <Input
-                    label="Prize Pool Amount (₹)"
+                    label={formData.type === 'hybrid' ? 'Prize Pool Amount (₹) (Optional)' : 'Prize Pool Amount (₹)'}
                     type="number"
                     min="0"
                     value={formData.prizePool}
                     onChange={(e) => updateField('prizePool', e.target.value)}
-                    placeholder="e.g., 100000"
+                    placeholder={formData.type === 'hybrid' ? 'e.g., 50000 (Optional for hybrid)' : 'e.g., 100000'}
                   />
                 )}
-
 
                 {/* Verification Period */}
                 <div className="form-group">
@@ -456,8 +538,8 @@ const CreateCampaignPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Payout Tiers (Prize Pool / Hybrid) */}
-                {(formData.type === 'pool' || formData.type === 'hybrid') && (
+                {/* ── PRIZE POOL ONLY: Payout Tiers ── */}
+                {formData.type === 'pool' && (
                   <div className="form-group">
                     <div className="tiers-section-header">
                       <label className="form-label">Payout Tiers</label>
@@ -465,15 +547,15 @@ const CreateCampaignPage: React.FC = () => {
                     </div>
 
                     <div className="tiers-builder">
-                      {formData.tiers.map((tier, idx) => (
+                      {formData.cashTiers.map((tier, idx) => (
                         <div key={idx} className="tier-card">
                           <div className="tier-card-header">
                             <span className="tier-badge">Tier {idx + 1}</span>
-                            {formData.tiers.length > 1 && (
+                            {formData.cashTiers.length > 1 && (
                               <button
                                 type="button"
                                 className="tier-delete-btn"
-                                onClick={() => removeTier(idx)}
+                                onClick={() => removeCashTier(idx)}
                                 title="Remove tier"
                                 aria-label={`Remove tier ${idx + 1}`}
                               >
@@ -487,7 +569,7 @@ const CreateCampaignPage: React.FC = () => {
                               type="number"
                               min="0"
                               value={tier.minViews}
-                              onChange={(e) => updateTier(idx, 'minViews', e.target.value)}
+                              onChange={(e) => updateCashTier(idx, 'minViews', e.target.value)}
                               placeholder="1000"
                             />
                             <div className="tier-arrow-indicator">
@@ -498,14 +580,14 @@ const CreateCampaignPage: React.FC = () => {
                               type="number"
                               min="0"
                               value={tier.amount}
-                              onChange={(e) => updateTier(idx, 'amount', e.target.value)}
+                              onChange={(e) => updateCashTier(idx, 'amount', e.target.value)}
                               placeholder="1000"
                             />
                           </div>
                         </div>
                       ))}
 
-                      <button type="button" className="tier-add-btn" onClick={addTier}>
+                      <button type="button" className="tier-add-btn" onClick={addCashTier}>
                         <FiPlus size={16} />
                         <span>Add Another Tier</span>
                       </button>
@@ -513,7 +595,7 @@ const CreateCampaignPage: React.FC = () => {
                   </div>
                 )}
 
-                {/* Discount Tiers (Discount Offer) */}
+                {/* ── DISCOUNT OFFER ONLY: Discount Tiers ── */}
                 {formData.type === 'discount' && (
                   <div className="form-group">
                     <div className="tiers-section-header">
@@ -522,15 +604,15 @@ const CreateCampaignPage: React.FC = () => {
                     </div>
 
                     <div className="tiers-builder">
-                      {formData.tiers.map((tier, idx) => (
+                      {formData.discountTiers.map((tier, idx) => (
                         <div key={idx} className="tier-card">
                           <div className="tier-card-header">
                             <span className="tier-badge">Tier {idx + 1}</span>
-                            {formData.tiers.length > 1 && (
+                            {formData.discountTiers.length > 1 && (
                               <button
                                 type="button"
                                 className="tier-delete-btn"
-                                onClick={() => removeTier(idx)}
+                                onClick={() => removeDiscountTier(idx)}
                                 title="Remove tier"
                                 aria-label={`Remove tier ${idx + 1}`}
                               >
@@ -545,7 +627,7 @@ const CreateCampaignPage: React.FC = () => {
                               min="1"
                               max="100"
                               value={tier.amount}
-                              onChange={(e) => updateTier(idx, 'amount', e.target.value)}
+                              onChange={(e) => updateDiscountTier(idx, 'amount', e.target.value)}
                               placeholder="e.g., 15"
                             />
                             <div className="tier-arrow-indicator">
@@ -556,17 +638,181 @@ const CreateCampaignPage: React.FC = () => {
                               type="number"
                               min="0"
                               value={tier.minViews}
-                              onChange={(e) => updateTier(idx, 'minViews', e.target.value)}
+                              onChange={(e) => updateDiscountTier(idx, 'minViews', e.target.value)}
                               placeholder="e.g., 1000"
                             />
                           </div>
                         </div>
                       ))}
 
-                      <button type="button" className="tier-add-btn" onClick={addTier}>
+                      <button type="button" className="tier-add-btn" onClick={addDiscountTier}>
                         <FiPlus size={16} />
                         <span>Add Another Tier</span>
                       </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* ── HYBRID ONLY: 3 TIER TYPES (Views:Pay, Discount:Views, Views:Gifts) ── */}
+                {formData.type === 'hybrid' && (
+                  <div className="hybrid-tiers-container">
+                    {/* 1st: Views : Pay */}
+                    <div className="form-group hybrid-tier-section">
+                      <div className="tiers-section-header">
+                        <label className="form-label">1. Cash Payout Tiers (Views → Pay)</label>
+                        <p className="field-hint">Pay creators cash when their videos reach view milestones.</p>
+                      </div>
+
+                      <div className="tiers-builder">
+                        {formData.cashTiers.map((tier, idx) => (
+                          <div key={idx} className="tier-card">
+                            <div className="tier-card-header">
+                              <span className="tier-badge">Cash Tier {idx + 1}</span>
+                              <button
+                                type="button"
+                                className="tier-delete-btn"
+                                onClick={() => removeCashTier(idx)}
+                                title="Remove tier"
+                                aria-label={`Remove cash tier ${idx + 1}`}
+                              >
+                                <FiTrash2 size={15} />
+                              </button>
+                            </div>
+                            <div className="tier-inputs-grid">
+                              <Input
+                                label="Min. Views"
+                                type="number"
+                                min="0"
+                                value={tier.minViews}
+                                onChange={(e) => updateCashTier(idx, 'minViews', e.target.value)}
+                                placeholder="1000"
+                              />
+                              <div className="tier-arrow-indicator">
+                                <FiArrowRight size={18} />
+                              </div>
+                              <Input
+                                label="Payout (₹)"
+                                type="number"
+                                min="0"
+                                value={tier.amount}
+                                onChange={(e) => updateCashTier(idx, 'amount', e.target.value)}
+                                placeholder="1000"
+                              />
+                            </div>
+                          </div>
+                        ))}
+
+                        <button type="button" className="tier-add-btn" onClick={addCashTier}>
+                          <FiPlus size={16} />
+                          <span>{formData.cashTiers.length > 0 ? 'Add Another Cash Tier' : '+ Add Cash Payout Tier'}</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* 2nd: Discount : Views */}
+                    <div className="form-group hybrid-tier-section">
+                      <div className="tiers-section-header">
+                        <label className="form-label">2. Discount Tiers (Discount → Views)</label>
+                        <p className="field-hint">Progressive discounts unlocked as creator videos reach view milestones.</p>
+                      </div>
+
+                      <div className="tiers-builder">
+                        {formData.discountTiers.map((tier, idx) => (
+                          <div key={idx} className="tier-card">
+                            <div className="tier-card-header">
+                              <span className="tier-badge">Discount Tier {idx + 1}</span>
+                              <button
+                                type="button"
+                                className="tier-delete-btn"
+                                onClick={() => removeDiscountTier(idx)}
+                                title="Remove tier"
+                                aria-label={`Remove discount tier ${idx + 1}`}
+                              >
+                                <FiTrash2 size={15} />
+                              </button>
+                            </div>
+                            <div className="tier-inputs-grid">
+                              <Input
+                                label="Discount (%)"
+                                type="number"
+                                min="1"
+                                max="100"
+                                value={tier.amount}
+                                onChange={(e) => updateDiscountTier(idx, 'amount', e.target.value)}
+                                placeholder="e.g., 15"
+                              />
+                              <div className="tier-arrow-indicator">
+                                <FiArrowRight size={18} />
+                              </div>
+                              <Input
+                                label="Min. Views"
+                                type="number"
+                                min="0"
+                                value={tier.minViews}
+                                onChange={(e) => updateDiscountTier(idx, 'minViews', e.target.value)}
+                                placeholder="e.g., 1000"
+                              />
+                            </div>
+                          </div>
+                        ))}
+
+                        <button type="button" className="tier-add-btn" onClick={addDiscountTier}>
+                          <FiPlus size={16} />
+                          <span>{formData.discountTiers.length > 0 ? 'Add Another Discount Tier' : '+ Add Discount Tier'}</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* 3rd: Views : Gifts */}
+                    <div className="form-group hybrid-tier-section">
+                      <div className="tiers-section-header">
+                        <label className="form-label">3. Bonus & Gift Tiers (Views → Gifts)</label>
+                        <p className="field-hint">Give physical gifts, gadgets, watch, merch, or bonuses when views reach milestone.</p>
+                      </div>
+
+                      <div className="tiers-builder">
+                        {formData.giftTiers.map((tier, idx) => (
+                          <div key={idx} className="tier-card">
+                            <div className="tier-card-header">
+                              <span className="tier-badge">Gift Tier {idx + 1}</span>
+                              <button
+                                type="button"
+                                className="tier-delete-btn"
+                                onClick={() => removeGiftTier(idx)}
+                                title="Remove tier"
+                                aria-label={`Remove gift tier ${idx + 1}`}
+                              >
+                                <FiTrash2 size={15} />
+                              </button>
+                            </div>
+                            <div className="tier-inputs-grid">
+                              <Input
+                                label="Min. Views"
+                                type="number"
+                                min="0"
+                                value={tier.minViews}
+                                onChange={(e) => updateGiftTier(idx, 'minViews', e.target.value)}
+                                placeholder="e.g., 10000"
+                              />
+                              <div className="tier-arrow-indicator">
+                                <FiArrowRight size={18} />
+                              </div>
+                              <Input
+                                label="Gift / Reward Description"
+                                type="text"
+                                value={tier.gift}
+                                onChange={(e) => updateGiftTier(idx, 'gift', e.target.value)}
+                                placeholder="e.g., Smart Watch, Hoodie, Merch, Gadgets"
+                              />
+                            </div>
+                          </div>
+                        ))}
+
+                        <button type="button" className="tier-add-btn" onClick={addGiftTier}>
+                          <FiPlus size={16} />
+                          <span>{formData.giftTiers.length > 0 ? 'Add Another Gift Tier' : '+ Add Bonus / Gift Tier'}</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -605,37 +851,77 @@ const CreateCampaignPage: React.FC = () => {
                       <span className="review-label">Location</span>
                       <span className="review-value">{formData.location || 'Online / Anywhere'}</span>
                     </div>
-                    {formData.type !== 'discount' ? (
-                      <div className="review-row">
-                        <span className="review-label">Prize Pool</span>
-                        <span className="review-value prize-highlight">₹{Number(formData.prizePool || 0).toLocaleString()}</span>
-                      </div>
-                    ) : (
-                      <div className="review-row">
-                        <span className="review-label">Campaign Type</span>
-                        <span className="review-value prize-highlight">Discount Offer</span>
-                      </div>
+
+                    {formData.type === 'pool' && (
+                      <>
+                        <div className="review-row">
+                          <span className="review-label">Prize Pool</span>
+                          <span className="review-value prize-highlight">₹{Number(formData.prizePool || 0).toLocaleString()}</span>
+                        </div>
+                        <div className="review-row">
+                          <span className="review-label">Cash Tiers</span>
+                          <span className="review-value">{formData.cashTiers.length} Tiers configured</span>
+                        </div>
+                      </>
                     )}
-                    {formData.type === 'discount' && formData.tiers.length > 0 ? (
-                      <div className="review-row">
-                        <span className="review-label">Discount Tiers</span>
-                        <span className="review-value text-ginger font-semibold">
-                          {formData.tiers.map((t) => `${t.amount || '0'}% (${Number(t.minViews || 0).toLocaleString()} views)`).join(', ')}
-                        </span>
-                      </div>
-                    ) : formData.discountPercent ? (
-                      <div className="review-row">
-                        <span className="review-label">Discount</span>
-                        <span className="review-value">{formData.discountPercent}% Off</span>
-                      </div>
-                    ) : null}
+
+                    {formData.type === 'discount' && (
+                      <>
+                        <div className="review-row">
+                          <span className="review-label">Campaign Type</span>
+                          <span className="review-value prize-highlight">Discount Offer</span>
+                        </div>
+                        <div className="review-row">
+                          <span className="review-label">Discount Tiers</span>
+                          <span className="review-value text-ginger font-semibold">
+                            {formData.discountTiers.map((t) => `${t.amount || '0'}% (${Number(t.minViews || 0).toLocaleString()} views)`).join(', ')}
+                          </span>
+                        </div>
+                      </>
+                    )}
+
+                    {formData.type === 'hybrid' && (
+                      <>
+                        <div className="review-row">
+                          <span className="review-label">Campaign Type</span>
+                          <span className="review-value prize-highlight">Hybrid Rewards</span>
+                        </div>
+                        {Number(formData.prizePool) > 0 && (
+                          <div className="review-row">
+                            <span className="review-label">Prize Pool</span>
+                            <span className="review-value font-semibold">₹{Number(formData.prizePool).toLocaleString()}</span>
+                          </div>
+                        )}
+                        {formData.cashTiers.length > 0 && (
+                          <div className="review-row">
+                            <span className="review-label">Cash Tiers (Views:Pay)</span>
+                            <span className="review-value font-semibold">
+                              {formData.cashTiers.map((t) => `₹${Number(t.amount || 0).toLocaleString()} (${Number(t.minViews || 0).toLocaleString()} views)`).join(', ')}
+                            </span>
+                          </div>
+                        )}
+                        {formData.discountTiers.length > 0 && (
+                          <div className="review-row">
+                            <span className="review-label">Discount Tiers (Discount:Views)</span>
+                            <span className="review-value text-ginger font-semibold">
+                              {formData.discountTiers.map((t) => `${t.amount || '0'}% (${Number(t.minViews || 0).toLocaleString()} views)`).join(', ')}
+                            </span>
+                          </div>
+                        )}
+                        {formData.giftTiers.length > 0 && (
+                          <div className="review-row">
+                            <span className="review-label">Bonus / Gift Tiers (Views:Gifts)</span>
+                            <span className="review-value font-semibold">
+                              {formData.giftTiers.map((t) => `🎁 ${t.gift} (${Number(t.minViews || 0).toLocaleString()} views)`).join(', ')}
+                            </span>
+                          </div>
+                        )}
+                      </>
+                    )}
+
                     <div className="review-row">
                       <span className="review-label">Verification Window</span>
                       <span className="review-value">{formData.verificationDays} days</span>
-                    </div>
-                    <div className="review-row">
-                      <span className="review-label">Configured Tiers</span>
-                      <span className="review-value">{formData.tiers.length} Tiers</span>
                     </div>
                     <div className="review-row">
                       <span className="review-label">Platforms</span>

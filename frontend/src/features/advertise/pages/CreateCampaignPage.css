@@ -493,6 +493,23 @@
   border-color: var(--ginger-500, #F7931E);
 }
 
+/* ── Hybrid Tiers Container ────────────────────────────── */
+.hybrid-tiers-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.hybrid-tier-section {
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-xl, 16px);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
 /* ── Review Summary (Step 4) ───────────────────────────── */
 .review-summary {
   display: flex;
