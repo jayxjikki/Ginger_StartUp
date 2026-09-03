@@ -434,17 +434,6 @@ const CreateCampaignPage: React.FC = () => {
                   />
                 )}
 
-                {(formData.type === 'discount' || formData.type === 'hybrid') && (
-                  <Input
-                    label="Discount Percentage (%)"
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={formData.discountPercent}
-                    onChange={(e) => updateField('discountPercent', e.target.value)}
-                    placeholder="e.g., 15"
-                  />
-                )}
 
                 {/* Verification Period */}
                 <div className="form-group">
