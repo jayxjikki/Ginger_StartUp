@@ -335,50 +335,63 @@ const DiscoverFeedPage: React.FC = () => {
               }} style={{ marginTop: '16px' }}>Clear Filters</button>
             </div>
           ) : (
-            filteredCreators.map(creator => (
-              <div 
-                key={creator.id} 
-                className="discover-glass-card" 
-                onClick={() => navigate(`/profile/${creator.id}`)}
-                style={{ cursor: 'pointer' }}
-              >
-                <div className="creator-header">
-                  <div className="creator-main-left">
-                    <div className="creator-identity-row">
+            filteredCreators.map(creator => {
+              const categories = (creator.category || '')
+                .split(',')
+                .map((s: string) => s.trim())
+                .filter(Boolean);
+              
+              const formattedHandle = creator.handle
+                ? (creator.handle.startsWith('@') ? creator.handle : `@${creator.handle}`)
+                : '';
+
+              const displayLocation = creator.location && creator.location.trim() !== ''
+                ? creator.location
+                : 'India';
+
+              return (
+                <div 
+                  key={creator.id} 
+                  className="discover-glass-card" 
+                  onClick={() => navigate(`/profile/${creator.id}`)}
+                  style={{ cursor: 'pointer' }}
+                >
+                  {/* 1. Header: Avatar + Name/Handle on Left, Chat + 3-dots on Right */}
+                  <div className="creator-card-header">
+                    <div className="creator-card-profile">
                       {creator.avatarUrl.includes('placeholder.com') ? (
                         <div className="creator-avatar-placeholder">
-                          {creator.fullName.split(' ').map((n: string) => n[0]).join('').substring(0, 2)}
+                          {creator.fullName.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase()}
                         </div>
                       ) : (
                         <img alt={creator.fullName} className="creator-avatar" src={creator.avatarUrl} />
                       )}
                       
-                      <div className="creator-info">
+                      <div className="creator-card-name-group">
                         <div className="creator-name-row">
                           <h3 className="creator-name">{creator.fullName}</h3>
                           {creator.isVerified && (
                             <span className="material-symbols-outlined creator-verified" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
                           )}
                         </div>
-                        <p className="creator-handle">{creator.handle}</p>
+                        {formattedHandle && <p className="creator-handle">{formattedHandle}</p>}
                       </div>
                     </div>
 
-                    {/* Pinned Category Filters in Left Space Above The Line */}
-                    {creator.category && creator.category.trim() !== '' && (
-                      <div className="creator-category-badge-list">
-                        {creator.category.split(',').map((s: string) => s.trim()).filter(Boolean).map((cat: string) => (
-                          <div key={cat} className="creator-category-badge">
-                            <span className="category-bullet">•</span>
-                            <span className="category-text">{cat}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div className="creator-card-actions-col">
-                    <div className="creator-top-buttons-row">
+                    <div className="creator-card-actions">
+                      {/* Message Button */}
+                      <button 
+                        className="creator-msg-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openChat(creator.id, creator.fullName, creator.avatarUrl);
+                        }}
+                        title="Send Message"
+                        aria-label="Message"
+                      >
+                        <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>chat</span>
+                      </button>
+
                       {/* 3-Dot Options Button */}
                       <div className="creator-options-menu-wrap">
                         <button 
@@ -448,22 +461,27 @@ const DiscoverFeedPage: React.FC = () => {
                           </div>
                         )}
                       </div>
+                    </div>
+                  </div>
 
-                      {/* Message Button */}
-                      <button 
-                        className="creator-msg-btn"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openChat(creator.id, creator.fullName, creator.avatarUrl);
-                        }}
-                        title="Send Message"
-                        aria-label="Message"
-                      >
-                        <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>chat</span>
-                      </button>
+                  {/* 2. Middle Row: Category Pills on Left, Pinned Socials on Right */}
+                  <div className="creator-card-mid-row">
+                    <div className="creator-category-badge-list">
+                      {categories.length > 0 ? (
+                        categories.map((cat: string) => (
+                          <span key={cat} className="creator-category-pill">
+                            <span className="pill-dot"></span>
+                            {cat}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="creator-category-pill creator-default-pill">
+                          <span className="pill-dot default"></span>
+                          Creator
+                        </span>
+                      )}
                     </div>
 
-                    {/* Pinned Socials with Count below Logo */}
                     {creator.pinnedSocials && creator.pinnedSocials.length > 0 && (
                       <div className="creator-pinned-socials-row">
                         {creator.pinnedSocials.slice(0, 3).map((platform: string) => {
@@ -519,33 +537,34 @@ const DiscoverFeedPage: React.FC = () => {
                       </div>
                     )}
                   </div>
-                </div>
-                
-                {/* Bottom Row: Media Kit + Location */}
-                <div className="creator-card-bottom-row">
-                  <button
-                    className={`creator-media-kit-btn ${creator.hasMediaKit ? 'active-shine' : 'empty-inactive'}`}
-                    title={creator.hasMediaKit ? "View Media Kit" : "Media Kit not uploaded"}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (creator.hasMediaKit) {
-                        setActiveMediaKitCreator(creator);
-                      }
-                    }}
-                  >
-                    <span className="material-symbols-outlined" style={{ fontSize: '13px' }}>auto_awesome</span>
-                    <span>Media Kit</span>
-                  </button>
 
-                  {creator.location && (
-                    <div className="creator-location-badge">
+                  {/* 3. Divider Line Above Media Kit */}
+                  <div className="creator-card-divider" />
+
+                  {/* 4. Bottom Row: Media Kit + Location */}
+                  <div className="creator-card-bottom-row">
+                    <button
+                      className={`creator-media-kit-btn ${creator.hasMediaKit ? 'active-shine' : 'empty-inactive'}`}
+                      title={creator.hasMediaKit ? "View Media Kit" : "Media Kit not uploaded"}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (creator.hasMediaKit) {
+                          setActiveMediaKitCreator(creator);
+                        }
+                      }}
+                    >
+                      <span className="material-symbols-outlined" style={{ fontSize: '13px' }}>auto_awesome</span>
+                      <span>Media Kit</span>
+                    </button>
+
+                    <div className={`creator-location-badge ${!creator.location ? 'empty-loc' : ''}`}>
                       <span className="material-symbols-outlined" style={{ fontSize: '13px' }}>location_on</span>
-                      <span>{creator.location}</span>
+                      <span>{displayLocation}</span>
                     </div>
-                  )}
+                  </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </main>
