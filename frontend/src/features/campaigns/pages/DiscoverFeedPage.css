@@ -249,6 +249,21 @@
 
 .creator-header {
   display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.creator-main-left {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+
+.creator-identity-row {
+  display: flex;
   align-items: center;
   gap: 12px;
 }

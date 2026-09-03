@@ -343,22 +343,38 @@ const DiscoverFeedPage: React.FC = () => {
                 style={{ cursor: 'pointer' }}
               >
                 <div className="creator-header">
-                  {creator.avatarUrl.includes('placeholder.com') ? (
-                    <div className="creator-avatar-placeholder">
-                      {creator.fullName.split(' ').map((n: string) => n[0]).join('').substring(0, 2)}
-                    </div>
-                  ) : (
-                    <img alt={creator.fullName} className="creator-avatar" src={creator.avatarUrl} />
-                  )}
-                  
-                  <div className="creator-info">
-                    <div className="creator-name-row">
-                      <h3 className="creator-name">{creator.fullName}</h3>
-                      {creator.isVerified && (
-                        <span className="material-symbols-outlined creator-verified" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                  <div className="creator-main-left">
+                    <div className="creator-identity-row">
+                      {creator.avatarUrl.includes('placeholder.com') ? (
+                        <div className="creator-avatar-placeholder">
+                          {creator.fullName.split(' ').map((n: string) => n[0]).join('').substring(0, 2)}
+                        </div>
+                      ) : (
+                        <img alt={creator.fullName} className="creator-avatar" src={creator.avatarUrl} />
                       )}
+                      
+                      <div className="creator-info">
+                        <div className="creator-name-row">
+                          <h3 className="creator-name">{creator.fullName}</h3>
+                          {creator.isVerified && (
+                            <span className="material-symbols-outlined creator-verified" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                          )}
+                        </div>
+                        <p className="creator-handle">{creator.handle}</p>
+                      </div>
                     </div>
-                    <p className="creator-handle">{creator.handle}</p>
+
+                    {/* Pinned Category Filters in Left Space Above The Line */}
+                    {creator.category && creator.category.trim() !== '' && (
+                      <div className="creator-category-badge-list">
+                        {creator.category.split(',').map((s: string) => s.trim()).filter(Boolean).map((cat: string) => (
+                          <div key={cat} className="creator-category-badge">
+                            <span className="category-bullet">•</span>
+                            <span className="category-text">{cat}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   
                   <div className="creator-card-actions-col">
@@ -505,34 +521,21 @@ const DiscoverFeedPage: React.FC = () => {
                   </div>
                 </div>
                 
-                {/* Bottom Row: Media Kit + Category Bullet Point + Location */}
+                {/* Bottom Row: Media Kit + Location */}
                 <div className="creator-card-bottom-row">
-                  <div className="creator-bottom-left-group">
-                    <button
-                      className={`creator-media-kit-btn ${creator.hasMediaKit ? 'active-shine' : 'empty-inactive'}`}
-                      title={creator.hasMediaKit ? "View Media Kit" : "Media Kit not uploaded"}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (creator.hasMediaKit) {
-                          setActiveMediaKitCreator(creator);
-                        }
-                      }}
-                    >
-                      <span className="material-symbols-outlined" style={{ fontSize: '13px' }}>auto_awesome</span>
-                      <span>Media Kit</span>
-                    </button>
-
-                    {creator.category && creator.category.trim() !== '' && (
-                      <div className="creator-category-badge-list">
-                        {creator.category.split(',').map((s: string) => s.trim()).filter(Boolean).map((cat: string) => (
-                          <div key={cat} className="creator-category-badge">
-                            <span className="category-bullet">•</span>
-                            <span className="category-text">{cat}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                  <button
+                    className={`creator-media-kit-btn ${creator.hasMediaKit ? 'active-shine' : 'empty-inactive'}`}
+                    title={creator.hasMediaKit ? "View Media Kit" : "Media Kit not uploaded"}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (creator.hasMediaKit) {
+                        setActiveMediaKitCreator(creator);
+                      }
+                    }}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: '13px' }}>auto_awesome</span>
+                    <span>Media Kit</span>
+                  </button>
 
                   {creator.location && (
                     <div className="creator-location-badge">
