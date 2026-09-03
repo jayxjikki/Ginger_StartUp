@@ -15,7 +15,6 @@ export default function ConnectInstagram() {
   const [usernameInput, setUsernameInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
-  const [isUnlinking, setIsUnlinking] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -129,49 +128,6 @@ export default function ConnectInstagram() {
     }
   };
 
-  // 4. Unlink Instagram account
-  const handleUnlink = async () => {
-    if (!userId) return;
-    const confirmed = window.confirm(
-      'Are you sure you want to unlink your Instagram account? All verification data will be cleared.'
-    );
-    if (!confirmed) return;
-
-    setIsUnlinking(true);
-    try {
-      const edgeUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/verify-instagram`;
-      const res = await fetch(edgeUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'unlink',
-          userId,
-        }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Failed to unlink account');
-      }
-
-      // Reset states
-      setViewState('initial');
-      setToken('');
-      setExpiresAt(null);
-      setUsernameInput('');
-
-      await useAuthStore.getState().fetchProfile();
-      useProfileStore.getState().fetchProfileData(userId);
-
-      toast.success('Instagram unlinked successfully.');
-    } catch (err: any) {
-      console.error('Unlink error:', err);
-      toast.error(err.message || 'Failed to unlink account');
-    } finally {
-      setIsUnlinking(false);
-    }
-  };
-
   // ═════════════════════════════════════════════════════════════
   // STATE 3: SUCCESS STATE (Linked)
   // ═════════════════════════════════════════════════════════════
@@ -220,34 +176,6 @@ export default function ConnectInstagram() {
               </div>
             </div>
           </div>
-
-          <button
-            onClick={handleUnlink}
-            disabled={isUnlinking}
-            style={{
-              background: 'rgba(255, 59, 48, 0.12)',
-              border: '1px solid rgba(255, 59, 48, 0.25)',
-              color: '#ff4d4f',
-              padding: '6px 14px',
-              borderRadius: '10px',
-              fontSize: '12px',
-              fontWeight: 500,
-              cursor: isUnlinking ? 'not-allowed' : 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              transition: 'all 0.2s',
-            }}
-          >
-            {isUnlinking ? (
-              <span>Unlinking...</span>
-            ) : (
-              <>
-                <span className="material-symbols-outlined" style={{ fontSize: '15px' }}>link_off</span>
-                <span>Unlink</span>
-              </>
-            )}
-          </button>
         </div>
 
         <p style={{ fontSize: '12px', color: '#7e838b', textAlign: 'center', margin: '4px 0 0' }}>

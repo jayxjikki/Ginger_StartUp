@@ -677,6 +677,26 @@ const ProfilePage: React.FC = () => {
               </span>
             </div>
           )}
+          {(profile?.ig_username || isLinked('Instagram')) && (
+            <div 
+              className="liquid-card stat-box"
+              onClick={() => {
+                const igUser = profile?.ig_username || socialLinks.find(l => l.platform.toLowerCase() === 'instagram')?.username;
+                const url = getPlatformUrl('Instagram') || (igUser ? `https://www.instagram.com/${igUser.replace('@', '')}` : '');
+                if (url) window.open(url, '_blank', 'noopener,noreferrer');
+              }}
+              style={{ cursor: 'pointer' }}
+              title={profile?.ig_username ? `Open @${profile.ig_username} on Instagram` : "Instagram Followers"}
+            >
+              <span className="stat-value text-primary">
+                {formatCount(profile?.ig_followers_count || socialLinks.find(l => l.platform.toLowerCase() === 'instagram')?.followers || 0)}
+              </span>
+              <span className="stat-label" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <img src={instagramIcon} alt="Instagram" style={{ width: '12px', height: '12px', objectFit: 'contain' }} />
+                Followers
+              </span>
+            </div>
+          )}
         </section>
 
         {/* Content Tabs */}
