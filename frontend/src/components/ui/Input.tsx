@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════════════
 // GINGER — Input Component
-// Sleek dark-theme input with floating labels
+// Sleek dark-theme input with clean top labels
 // ═══════════════════════════════════════════════════════════
 
 import React, { useState } from 'react';
@@ -23,10 +23,15 @@ const Input: React.FC<InputProps> = ({
   ...props
 }) => {
   const [focused, setFocused] = useState(false);
-  const inputId = id || `input-${label?.toLowerCase().replace(/\s+/g, '-')}`;
+  const inputId = id || (label ? `input-${label.toLowerCase().replace(/[^a-z0-9]/g, '-')}` : undefined);
 
   return (
     <div className={`input-wrapper ${error ? 'input-error' : ''} ${className}`}>
+      {label && (
+        <label htmlFor={inputId} className="input-label">
+          {label}
+        </label>
+      )}
       <div className={`input-container input-${variant} ${focused ? 'input-focused' : ''}`}>
         {icon && <span className="input-icon">{icon}</span>}
         <input
@@ -36,14 +41,6 @@ const Input: React.FC<InputProps> = ({
           onBlur={(e) => { setFocused(false); props.onBlur?.(e); }}
           {...props}
         />
-        {label && (
-          <label
-            htmlFor={inputId}
-            className={`input-label ${focused || props.value ? 'input-label-float' : ''}`}
-          >
-            {label}
-          </label>
-        )}
       </div>
       {error && <span className="input-error-text">{error}</span>}
     </div>
@@ -66,10 +63,15 @@ export const Textarea: React.FC<TextareaProps> = ({
   ...props
 }) => {
   const [focused, setFocused] = useState(false);
-  const textareaId = id || `textarea-${label?.toLowerCase().replace(/\s+/g, '-')}`;
+  const textareaId = id || (label ? `textarea-${label.toLowerCase().replace(/[^a-z0-9]/g, '-')}` : undefined);
 
   return (
     <div className={`input-wrapper ${error ? 'input-error' : ''} ${className}`}>
+      {label && (
+        <label htmlFor={textareaId} className="input-label">
+          {label}
+        </label>
+      )}
       <div className={`input-container input-default ${focused ? 'input-focused' : ''}`}>
         <textarea
           id={textareaId}
@@ -78,14 +80,6 @@ export const Textarea: React.FC<TextareaProps> = ({
           onBlur={(e) => { setFocused(false); props.onBlur?.(e); }}
           {...props}
         />
-        {label && (
-          <label
-            htmlFor={textareaId}
-            className={`input-label ${focused || props.value ? 'input-label-float' : ''}`}
-          >
-            {label}
-          </label>
-        )}
       </div>
       {error && <span className="input-error-text">{error}</span>}
     </div>

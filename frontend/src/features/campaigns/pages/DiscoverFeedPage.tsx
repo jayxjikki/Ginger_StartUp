@@ -216,7 +216,9 @@ const DiscoverFeedPage: React.FC = () => {
       {/* TopAppBar */}
       <header className="discover-top-bar">
         <div className="discover-title-wrap">
-          <span className="material-symbols-outlined discover-search-icon" style={{ fontVariationSettings: "'FILL' 0" }}>search</span>
+          <span className="material-symbols-outlined text-primary discover-brand-logo" style={{ fontVariationSettings: "'FILL' 1" }}>
+            blur_on
+          </span>
           <h1 className="discover-brand">Discover</h1>
         </div>
       </header>

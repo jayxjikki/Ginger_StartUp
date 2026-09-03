@@ -41,20 +41,20 @@ const CreateCampaignPage: React.FC = () => {
     title: '',
     description: '',
     slogan: '',
+    location: '',
+    endDate: '',
+    videoRequirements: '',
     keywords: [] as string[],
     keywordInput: '',
-    location: '',
-    platforms: [] as string[],
-    videoRequirements: '',
+    platforms: ['youtube', 'instagram'] as string[],
     prizePool: '',
     discountPercent: '',
-    verificationDays: 7,
-    image_url: '',
-    endDate: '',
+    verificationDays: 3,
     tiers: [
-      { minViews: '1000', amount: '1000', rewardType: 'cash' },
-      { minViews: '10000', amount: '10000', rewardType: 'cash' },
-    ] as { minViews: string; amount: string; rewardType: string }[],
+      { minViews: '1000', amount: '1000' },
+      { minViews: '10000', amount: '10000' },
+    ],
+    image_url: '',
   });
 
   const updateField = (field: string, value: any) => {
@@ -63,47 +63,59 @@ const CreateCampaignPage: React.FC = () => {
 
   const addKeyword = () => {
     if (formData.keywordInput.trim() && !formData.keywords.includes(formData.keywordInput.trim())) {
-      updateField('keywords', [...formData.keywords, formData.keywordInput.trim()]);
-      updateField('keywordInput', '');
+      setFormData((prev) => ({
+        ...prev,
+        keywords: [...prev.keywords, prev.keywordInput.trim()],
+        keywordInput: '',
+      }));
     }
   };
 
   const removeKeyword = (kw: string) => {
-    updateField('keywords', formData.keywords.filter((k) => k !== kw));
+    setFormData((prev) => ({
+      ...prev,
+      keywords: prev.keywords.filter((k) => k !== kw),
+    }));
   };
 
-  const togglePlatform = (platform: string) => {
-    if (formData.platforms.includes(platform)) {
-      updateField('platforms', formData.platforms.filter((p) => p !== platform));
-    } else {
-      updateField('platforms', [...formData.platforms, platform]);
-    }
+  const togglePlatform = (pId: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      platforms: prev.platforms.includes(pId)
+        ? prev.platforms.filter((p) => p !== pId)
+        : [...prev.platforms, pId],
+    }));
   };
 
   const addTier = () => {
-    updateField('tiers', [...formData.tiers, { minViews: '', amount: '', rewardType: 'cash' }]);
+    setFormData((prev) => ({
+      ...prev,
+      tiers: [...prev.tiers, { minViews: '', amount: '' }],
+    }));
+  };
+
+  const updateTier = (index: number, field: 'minViews' | 'amount', value: string) => {
+    setFormData((prev) => {
+      const nextTiers = [...prev.tiers];
+      nextTiers[index][field] = value;
+      return { ...prev, tiers: nextTiers };
+    });
   };
 
   const removeTier = (index: number) => {
-    updateField('tiers', formData.tiers.filter((_, i) => i !== index));
-  };
-
-  const updateTier = (index: number, field: string, value: string) => {
-    const newTiers = [...formData.tiers];
-    (newTiers[index] as any)[field] = value;
-    updateField('tiers', newTiers);
+    if (formData.tiers.length > 1) {
+      setFormData((prev) => ({
+        ...prev,
+        tiers: prev.tiers.filter((_, i) => i !== index),
+      }));
+    }
   };
 
   const handleLaunch = () => {
-    if (!user) return;
-    
-    // Calculate total cost. Using prizePool as the primary cost for now.
-    const campaignCost = Number(formData.prizePool) || 0;
-    
-    if (campaignCost > 0) {
+    const cost = Number(formData.prizePool) || 0;
+    if (cost > 0) {
       setShowCheckoutModal(true);
     } else {
-      // If free, just execute immediately
       executeLaunch();
     }
   };
@@ -113,7 +125,7 @@ const CreateCampaignPage: React.FC = () => {
     setShowCheckoutModal(false);
     try {
       await createCampaign({
-        advertiser_id: user!.id,
+        advertiser_id: user?.id || '',
         title: formData.title,
         description: formData.description,
         type: formData.type as any,
@@ -129,52 +141,56 @@ const CreateCampaignPage: React.FC = () => {
         verification_days: formData.verificationDays,
         image_url: formData.image_url,
         end_date: formData.endDate ? new Date(formData.endDate).toISOString() : undefined,
-        payout_tiers: formData.tiers.map(t => ({
+        payout_tiers: formData.tiers.map((t) => ({
           min_views: Number(t.minViews) || 0,
           payout_amount: Number(t.amount) || 0,
-          reward_type: t.rewardType as any
+          reward_type: 'cash' as any,
         })) as any,
       });
       navigate('/campaigns');
     } catch (err) {
-      console.error('Failed to create campaign', err);
+      console.error('Failed to create campaign:', err);
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="page-content">
-      <div className="container create-campaign">
+    <div className="page-container">
+      <div className="create-campaign">
         {/* Top Bar */}
         <div className="create-topbar">
-          <button className="icon-btn" onClick={() => navigate(-1)} aria-label="Go back">
-            <FiArrowLeft />
+          <button className="topbar-back-btn" onClick={() => navigate(-1)} aria-label="Go back">
+            <FiArrowLeft size={20} />
           </button>
-          <h4>Create Campaign</h4>
+          <h2 className="create-topbar-title">Create Campaign</h2>
           <div style={{ width: 40 }} />
         </div>
 
-        {/* Progress Steps */}
+        {/* Progress Stepper */}
         <div className="step-progress">
-          {steps.map((step) => (
-            <div
-              key={step.id}
-              className={`step-item ${currentStep >= step.id ? 'active' : ''} ${currentStep === step.id ? 'current' : ''}`}
-            >
-              <div className="step-dot">
-                {currentStep > step.id ? <FiCheck size={12} /> : step.icon}
-              </div>
-              <span className="step-label">{step.label}</span>
-            </div>
-          ))}
           <div className="step-line">
             <motion.div
               className="step-line-fill"
               animate={{ width: `${((currentStep - 1) / (steps.length - 1)) * 100}%` }}
-              transition={{ duration: 0.4, ease: 'easeOut' }}
+              transition={{ duration: 0.35, ease: 'easeOut' }}
             />
           </div>
+          {steps.map((step) => {
+            const isCompleted = currentStep > step.id;
+            const isCurrent = currentStep === step.id;
+            return (
+              <div
+                key={step.id}
+                className={`step-item ${isCompleted ? 'completed' : ''} ${isCurrent ? 'current' : ''}`}
+              >
+                <div className="step-dot">
+                  {isCompleted ? <FiCheck size={16} /> : step.icon}
+                </div>
+                <span className="step-label">{step.label}</span>
+              </div>
+            );
+          })}
         </div>
 
         {/* Step Content */}
@@ -182,28 +198,36 @@ const CreateCampaignPage: React.FC = () => {
           {currentStep === 1 && (
             <motion.div
               key="step1"
-              initial={{ opacity: 0, x: 30 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -30 }}
-              transition={{ type: 'spring' as const, stiffness: 300, damping: 30 }}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ duration: 0.25 }}
               className="step-content"
             >
-              <h3>Choose Campaign Type</h3>
-              <p className="text-secondary text-sm mb-6">How do you want creators to be rewarded?</p>
+              <div className="step-heading-group">
+                <h3 className="step-title">Choose Campaign Type</h3>
+                <p className="step-subtitle">How do you want creators to be rewarded for their videos?</p>
+              </div>
 
               <div className="campaign-type-grid">
-                {CAMPAIGN_TYPES.map((type) => (
-                  <Card
-                    key={type.id}
-                    variant={formData.type === type.id ? 'ginger' : 'default'}
-                    padding="md"
-                    onClick={() => updateField('type', type.id)}
-                    className="campaign-type-card"
-                  >
-                    <h5>{type.label}</h5>
-                    <p className="text-xs text-secondary mt-2">{type.description}</p>
-                  </Card>
-                ))}
+                {CAMPAIGN_TYPES.map((type) => {
+                  const isSelected = formData.type === type.id;
+                  return (
+                    <div
+                      key={type.id}
+                      className={`campaign-type-card ${isSelected ? 'selected' : ''}`}
+                      onClick={() => updateField('type', type.id)}
+                    >
+                      <div className="campaign-type-info">
+                        <h4 className="campaign-type-title">{type.label}</h4>
+                        <p className="campaign-type-desc">{type.description}</p>
+                      </div>
+                      <div className={`campaign-type-radio ${isSelected ? 'checked' : ''}`}>
+                        {isSelected && <div className="campaign-type-radio-dot" />}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </motion.div>
           )}
@@ -211,14 +235,16 @@ const CreateCampaignPage: React.FC = () => {
           {currentStep === 2 && (
             <motion.div
               key="step2"
-              initial={{ opacity: 0, x: 30 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -30 }}
-              transition={{ type: 'spring' as const, stiffness: 300, damping: 30 }}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ duration: 0.25 }}
               className="step-content"
             >
-              <h3>Campaign Details</h3>
-              <p className="text-secondary text-sm mb-6">Tell creators what you need</p>
+              <div className="step-heading-group">
+                <h3 className="step-title">Campaign Details</h3>
+                <p className="step-subtitle">Provide details to guide creators on what to produce</p>
+              </div>
 
               <div className="form-fields">
                 <Input
@@ -232,14 +258,16 @@ const CreateCampaignPage: React.FC = () => {
                   label="Description"
                   value={formData.description}
                   onChange={(e) => updateField('description', e.target.value)}
-                  placeholder="Describe what kind of videos you want..."
+                  placeholder="Describe your brand and the theme of the campaign..."
                 />
 
-                <ImageUpload 
-                  label="Campaign Cover Image (Cloudinary)" 
-                  onUploadSuccess={(url) => updateField('image_url', url)}
-                  onUploadError={(err) => console.error(err)}
-                />
+                <div className="image-upload-wrapper">
+                  <ImageUpload 
+                    label="Campaign Cover Image (Cloudinary)" 
+                    onUploadSuccess={(url) => updateField('image_url', url)}
+                    onUploadError={(err) => console.error(err)}
+                  />
+                </div>
 
                 <Input
                   label="Slogan / Tagline"
@@ -248,63 +276,73 @@ const CreateCampaignPage: React.FC = () => {
                   placeholder="e.g., Where Luxury Meets the Clouds"
                 />
 
-                <Input
-                  label="Location"
-                  value={formData.location}
-                  onChange={(e) => updateField('location', e.target.value)}
-                  placeholder="City, State or 'Online'"
-                />
+                <div className="form-grid-2">
+                  <Input
+                    label="Location"
+                    value={formData.location}
+                    onChange={(e) => updateField('location', e.target.value)}
+                    placeholder="City, State or 'Online'"
+                  />
 
-                <Input
-                  label="Deadline (End Date)"
-                  type="date"
-                  value={formData.endDate}
-                  onChange={(e) => updateField('endDate', e.target.value)}
-                  placeholder="Select deadline"
-                />
+                  <Input
+                    label="Deadline (End Date)"
+                    type="date"
+                    value={formData.endDate}
+                    onChange={(e) => updateField('endDate', e.target.value)}
+                  />
+                </div>
 
                 <Textarea
                   label="Video Requirements"
                   value={formData.videoRequirements}
                   onChange={(e) => updateField('videoRequirements', e.target.value)}
-                  placeholder="What must the video include?"
+                  placeholder="Detail must-include guidelines, hashtags, or required talking points..."
                 />
 
                 {/* Keywords */}
-                <div>
-                  <label className="form-label">Keywords</label>
+                <div className="form-group">
+                  <label className="form-label">Keywords & Tags</label>
                   <div className="keyword-input-row">
                     <Input
                       value={formData.keywordInput}
                       onChange={(e) => updateField('keywordInput', e.target.value)}
-                      placeholder="Add a keyword"
+                      placeholder="Add a tag..."
                       onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addKeyword())}
                     />
-                    <Button variant="secondary" size="sm" onClick={addKeyword}>Add</Button>
+                    <Button variant="secondary" size="md" onClick={addKeyword} type="button">
+                      Add
+                    </Button>
                   </div>
-                  <div className="keywords-list mt-2">
-                    {formData.keywords.map((kw) => (
-                      <Badge key={kw} variant="ginger" size="sm">
-                        #{kw}
-                        <button className="keyword-remove" onClick={() => removeKeyword(kw)}>×</button>
-                      </Badge>
-                    ))}
-                  </div>
+                  {formData.keywords.length > 0 && (
+                    <div className="keywords-list">
+                      {formData.keywords.map((kw) => (
+                        <Badge key={kw} variant="ginger" size="sm">
+                          #{kw}
+                          <button type="button" className="keyword-remove" onClick={() => removeKeyword(kw)}>×</button>
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Platforms */}
-                <div>
+                <div className="form-group">
                   <label className="form-label">Required Platforms</label>
                   <div className="platform-grid">
-                    {SOCIAL_PLATFORMS.slice(0, 4).map((p) => (
-                      <button
-                        key={p.id}
-                        className={`platform-chip ${formData.platforms.includes(p.id) ? 'active' : ''}`}
-                        onClick={() => togglePlatform(p.id)}
-                      >
-                        {p.name}
-                      </button>
-                    ))}
+                    {SOCIAL_PLATFORMS.slice(0, 4).map((p) => {
+                      const isActive = formData.platforms.includes(p.id);
+                      return (
+                        <button
+                          type="button"
+                          key={p.id}
+                          className={`platform-chip ${isActive ? 'active' : ''}`}
+                          onClick={() => togglePlatform(p.id)}
+                        >
+                          <span className={`platform-chip-indicator ${isActive ? 'active' : ''}`} />
+                          {p.name}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
@@ -314,20 +352,23 @@ const CreateCampaignPage: React.FC = () => {
           {currentStep === 3 && (
             <motion.div
               key="step3"
-              initial={{ opacity: 0, x: 30 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -30 }}
-              transition={{ type: 'spring' as const, stiffness: 300, damping: 30 }}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ duration: 0.25 }}
               className="step-content"
             >
-              <h3>Set Rewards</h3>
-              <p className="text-secondary text-sm mb-6">Define how creators will earn</p>
+              <div className="step-heading-group">
+                <h3 className="step-title">Set Rewards</h3>
+                <p className="step-subtitle">Define prize pools, verification rules, and payout tiers</p>
+              </div>
 
               <div className="form-fields">
                 {(formData.type === 'pool' || formData.type === 'hybrid') && (
                   <Input
                     label="Prize Pool Amount (₹)"
                     type="number"
+                    min="0"
                     value={formData.prizePool}
                     onChange={(e) => updateField('prizePool', e.target.value)}
                     placeholder="e.g., 100000"
@@ -338,6 +379,8 @@ const CreateCampaignPage: React.FC = () => {
                   <Input
                     label="Discount Percentage (%)"
                     type="number"
+                    min="0"
+                    max="100"
                     value={formData.discountPercent}
                     onChange={(e) => updateField('discountPercent', e.target.value)}
                     placeholder="e.g., 15"
@@ -345,51 +388,79 @@ const CreateCampaignPage: React.FC = () => {
                 )}
 
                 {/* Verification Period */}
-                <div>
+                <div className="form-group">
                   <label className="form-label">Verification Period</label>
+                  <p className="field-hint">Time allowed to review views and verify engagement before payouts release.</p>
                   <div className="verify-period-grid">
-                    {VERIFICATION_PERIODS.map((vp) => (
-                      <button
-                        key={vp.days}
-                        className={`period-chip ${formData.verificationDays === vp.days ? 'active' : ''}`}
-                        onClick={() => updateField('verificationDays', vp.days)}
-                      >
-                        {vp.label}
-                      </button>
-                    ))}
+                    {VERIFICATION_PERIODS.map((vp) => {
+                      const isActive = formData.verificationDays === vp.days;
+                      return (
+                        <button
+                          type="button"
+                          key={vp.days}
+                          className={`period-chip ${isActive ? 'active' : ''}`}
+                          onClick={() => updateField('verificationDays', vp.days)}
+                        >
+                          {vp.label}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
                 {/* Payout Tiers */}
                 {(formData.type === 'pool' || formData.type === 'hybrid') && (
-                  <div>
-                    <label className="form-label">Payout Tiers</label>
+                  <div className="form-group">
+                    <div className="tiers-section-header">
+                      <label className="form-label">Payout Tiers</label>
+                      <p className="field-hint">Creators receive higher payouts as their videos achieve more verified views.</p>
+                    </div>
+
                     <div className="tiers-builder">
                       {formData.tiers.map((tier, idx) => (
-                        <div key={idx} className="tier-row">
-                          <Input
-                            label="Min. Views"
-                            type="number"
-                            value={tier.minViews}
-                            onChange={(e) => updateTier(idx, 'minViews', e.target.value)}
-                          />
-                          <span className="tier-arrow-small">→</span>
-                          <Input
-                            label="Payout (₹)"
-                            type="number"
-                            value={tier.amount}
-                            onChange={(e) => updateTier(idx, 'amount', e.target.value)}
-                          />
-                          {formData.tiers.length > 1 && (
-                            <button className="tier-delete" onClick={() => removeTier(idx)}>
-                              <FiTrash2 size={14} />
-                            </button>
-                          )}
+                        <div key={idx} className="tier-card">
+                          <div className="tier-card-header">
+                            <span className="tier-badge">Tier {idx + 1}</span>
+                            {formData.tiers.length > 1 && (
+                              <button
+                                type="button"
+                                className="tier-delete-btn"
+                                onClick={() => removeTier(idx)}
+                                title="Remove tier"
+                                aria-label={`Remove tier ${idx + 1}`}
+                              >
+                                <FiTrash2 size={15} />
+                              </button>
+                            )}
+                          </div>
+                          <div className="tier-inputs-grid">
+                            <Input
+                              label="Min. Views"
+                              type="number"
+                              min="0"
+                              value={tier.minViews}
+                              onChange={(e) => updateTier(idx, 'minViews', e.target.value)}
+                              placeholder="1000"
+                            />
+                            <div className="tier-arrow-indicator">
+                              <FiArrowRight size={18} />
+                            </div>
+                            <Input
+                              label="Payout (₹)"
+                              type="number"
+                              min="0"
+                              value={tier.amount}
+                              onChange={(e) => updateTier(idx, 'amount', e.target.value)}
+                              placeholder="1000"
+                            />
+                          </div>
                         </div>
                       ))}
-                      <Button variant="ghost" size="sm" icon={<FiPlus />} onClick={addTier}>
-                        Add Tier
-                      </Button>
+
+                      <button type="button" className="tier-add-btn" onClick={addTier}>
+                        <FiPlus size={16} />
+                        <span>Add Another Tier</span>
+                      </button>
                     </div>
                   </div>
                 )}
@@ -400,53 +471,88 @@ const CreateCampaignPage: React.FC = () => {
           {currentStep === 4 && (
             <motion.div
               key="step4"
-              initial={{ opacity: 0, x: 30 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -30 }}
-              transition={{ type: 'spring' as const, stiffness: 300, damping: 30 }}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ duration: 0.25 }}
               className="step-content"
             >
-              <h3>Review & Launch</h3>
-              <p className="text-secondary text-sm mb-6">Make sure everything looks good</p>
+              <div className="step-heading-group">
+                <h3 className="step-title">Review & Launch</h3>
+                <p className="step-subtitle">Make sure all your campaign details look great before publishing</p>
+              </div>
 
               <div className="review-summary">
-                <Card variant="glass" padding="md">
-                  <div className="review-row"><span className="review-label">Type</span><span className="font-semibold">{formData.type}</span></div>
-                  <div className="review-row"><span className="review-label">Title</span><span className="font-semibold">{formData.title || '—'}</span></div>
-                  <div className="review-row"><span className="review-label">Location</span><span>{formData.location || 'Anywhere'}</span></div>
-                  <div className="review-row"><span className="review-label">Prize Pool</span><span className="gradient-text font-bold">₹{formData.prizePool || '0'}</span></div>
-                  {formData.discountPercent && (
-                    <div className="review-row"><span className="review-label">Discount</span><span>{formData.discountPercent}%</span></div>
-                  )}
-                  <div className="review-row"><span className="review-label">Verification</span><span>{formData.verificationDays} days</span></div>
-                  <div className="review-row"><span className="review-label">Tiers</span><span>{formData.tiers.length} tiers</span></div>
-                  <div className="review-row"><span className="review-label">Platforms</span><span>{formData.platforms.join(', ') || 'Any'}</span></div>
+                <Card variant="glass" padding="lg">
+                  <div className="review-header">
+                    <div>
+                      <span className="review-type-badge">{formData.type.toUpperCase()}</span>
+                      <h3 className="review-campaign-title">{formData.title || 'Untitled Campaign'}</h3>
+                      {formData.slogan && <p className="review-slogan">"{formData.slogan}"</p>}
+                    </div>
+                  </div>
+
+                  <div className="review-divider" />
+
+                  <div className="review-grid">
+                    <div className="review-row">
+                      <span className="review-label">Location</span>
+                      <span className="review-value">{formData.location || 'Online / Anywhere'}</span>
+                    </div>
+                    <div className="review-row">
+                      <span className="review-label">Prize Pool</span>
+                      <span className="review-value prize-highlight">₹{Number(formData.prizePool || 0).toLocaleString()}</span>
+                    </div>
+                    {formData.discountPercent && (
+                      <div className="review-row">
+                        <span className="review-label">Discount</span>
+                        <span className="review-value">{formData.discountPercent}% Off</span>
+                      </div>
+                    )}
+                    <div className="review-row">
+                      <span className="review-label">Verification Window</span>
+                      <span className="review-value">{formData.verificationDays} days</span>
+                    </div>
+                    <div className="review-row">
+                      <span className="review-label">Configured Tiers</span>
+                      <span className="review-value">{formData.tiers.length} Tiers</span>
+                    </div>
+                    <div className="review-row">
+                      <span className="review-label">Platforms</span>
+                      <span className="review-value">{formData.platforms.join(', ') || 'All Platforms'}</span>
+                    </div>
+                  </div>
                 </Card>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Navigation Buttons */}
+        {/* Bottom Navigation Buttons */}
         <div className="step-nav">
-          {currentStep > 1 && (
+          {currentStep > 1 ? (
             <Button
               variant="secondary"
+              size="md"
               onClick={() => setCurrentStep((s) => s - 1)}
               icon={<FiArrowLeft />}
+              type="button"
             >
               Back
             </Button>
+          ) : (
+            <div />
           )}
-          <div className="flex-1" />
           {currentStep < 4 ? (
             <Button
               variant="primary"
+              size="md"
               onClick={() => setCurrentStep((s) => s + 1)}
               icon={<FiArrowRight />}
               iconPosition="right"
+              type="button"
             >
-              Next
+              Next Step
             </Button>
           ) : (
             <Button 
@@ -455,6 +561,7 @@ const CreateCampaignPage: React.FC = () => {
               id="btn-launch-campaign" 
               onClick={handleLaunch}
               disabled={isSubmitting}
+              type="button"
             >
               {isSubmitting ? 'Processing...' : 'Submit & Pay 🚀'}
             </Button>

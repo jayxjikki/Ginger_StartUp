@@ -38,18 +38,20 @@
 .discover-title-wrap {
   display: flex;
   align-items: center;
+  gap: 0.75rem;
 }
 
-.discover-search-icon {
-  color: #ffffff;
-  margin-right: 16px;
+.discover-brand-logo {
+  font-size: 28px;
+  color: var(--text-primary, #ffffff);
 }
 
 .discover-brand {
-  font-family: 'Hanken Grotesk', sans-serif;
+  font-family: var(--font-display, 'Hanken Grotesk', sans-serif);
   font-size: 32px;
   font-weight: 700;
-  color: #ffffff;
+  letter-spacing: -0.02em;
+  color: var(--text-primary, #ffffff);
   margin: 0;
 }
 
