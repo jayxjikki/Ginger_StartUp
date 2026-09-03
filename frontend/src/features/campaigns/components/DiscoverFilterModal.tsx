@@ -1,14 +1,23 @@
+// ═══════════════════════════════════════════════════════════
+// GINGER — Discover Filter Modal
+// Advanced filters with dual-range sliders and India states & cities
+// ═══════════════════════════════════════════════════════════
+
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import DualRangeSlider from '../../../components/ui/DualRangeSlider';
+import { INDIAN_STATES_AND_CITIES, ALL_INDIAN_STATES } from '../../../lib/indianLocations';
 import './DiscoverFilterModal.css';
 
 export interface FilterState {
-  platforms: string[]; // 'youtube', 'instagram', 'tiktok'
-  minFollowers: number; // in thousands
-  maxFollowers: number; // in thousands
-  minRate: number; // in thousands
-  maxRate: number; // in thousands
+  platforms: string[]; // 'youtube', 'instagram', 'tiktok', 'telegram'
+  minFollowers: number; // in thousands (0 to 10000)
+  maxFollowers: number; // in thousands (0 to 10000)
+  minRate: number; // in thousands (0 to 500)
+  maxRate: number; // in thousands (0 to 500)
+  state?: string;
+  city?: string;
   location: string;
 }
 
@@ -19,6 +28,13 @@ interface DiscoverFilterModalProps {
   currentFilters: FilterState;
 }
 
+const PLATFORM_OPTIONS = [
+  { id: 'instagram', label: 'Instagram' },
+  { id: 'youtube', label: 'YouTube' },
+  { id: 'tiktok', label: 'TikTok' },
+  { id: 'telegram', label: 'Telegram' },
+];
+
 const DiscoverFilterModal: React.FC<DiscoverFilterModalProps> = ({ 
   isOpen, 
   onClose, 
@@ -27,6 +43,8 @@ const DiscoverFilterModal: React.FC<DiscoverFilterModalProps> = ({
 }) => {
   const [mounted, setMounted] = useState(false);
   const [filters, setFilters] = useState<FilterState>(currentFilters);
+  const [selectedState, setSelectedState] = useState<string>(currentFilters.state || '');
+  const [selectedCity, setSelectedCity] = useState<string>(currentFilters.city || '');
 
   useEffect(() => {
     setMounted(true);
@@ -35,10 +53,10 @@ const DiscoverFilterModal: React.FC<DiscoverFilterModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       setFilters(currentFilters);
-      // Prevent background scrolling
+      setSelectedState(currentFilters.state || '');
+      setSelectedCity(currentFilters.city || '');
       document.body.style.overflow = 'hidden';
     } else {
-      // Restore background scrolling
       document.body.style.overflow = '';
     }
     
@@ -49,13 +67,66 @@ const DiscoverFilterModal: React.FC<DiscoverFilterModalProps> = ({
 
   if (!mounted) return null;
 
-  const togglePlatform = (platform: string) => {
+  const togglePlatform = (platformId: string) => {
     setFilters(prev => ({
       ...prev,
-      platforms: prev.platforms.includes(platform)
-        ? prev.platforms.filter(p => p !== platform)
-        : [...prev.platforms, platform]
+      platforms: prev.platforms.includes(platformId)
+        ? prev.platforms.filter(p => p !== platformId)
+        : [...prev.platforms, platformId]
     }));
+  };
+
+  const handleStateChange = (stateName: string) => {
+    setSelectedState(stateName);
+    setSelectedCity('');
+    setFilters(prev => ({
+      ...prev,
+      state: stateName,
+      city: '',
+      location: stateName
+    }));
+  };
+
+  const handleCityChange = (cityName: string) => {
+    setSelectedCity(cityName);
+    setFilters(prev => ({
+      ...prev,
+      city: cityName,
+      location: cityName || selectedState
+    }));
+  };
+
+  const handleFollowersChange = (vals: [number, number]) => {
+    setFilters(prev => ({
+      ...prev,
+      minFollowers: vals[0],
+      maxFollowers: vals[1]
+    }));
+  };
+
+  const handleRateChange = (vals: [number, number]) => {
+    setFilters(prev => ({
+      ...prev,
+      minRate: vals[0],
+      maxRate: vals[1]
+    }));
+  };
+
+  const formatFollowers = (valInThousands: number, isMax?: boolean) => {
+    if (valInThousands === 0) return '0';
+    if (valInThousands >= 10000 && isMax) return '10M+';
+    if (valInThousands >= 1000) {
+      const millions = (valInThousands / 1000).toFixed(1).replace(/\.0$/, '');
+      return `${millions}M`;
+    }
+    return `${valInThousands.toLocaleString()}K`;
+  };
+
+  const formatRate = (valInThousands: number, isMax?: boolean) => {
+    const rupees = valInThousands * 1000;
+    if (rupees === 0) return '₹0';
+    if (valInThousands >= 500 && isMax) return '₹500,000+';
+    return `₹${rupees.toLocaleString('en-IN')}`;
   };
 
   const handleClear = () => {
@@ -65,15 +136,33 @@ const DiscoverFilterModal: React.FC<DiscoverFilterModalProps> = ({
       maxFollowers: 10000,
       minRate: 0,
       maxRate: 500,
+      state: '',
+      city: '',
       location: ''
     };
     setFilters(cleared);
+    setSelectedState('');
+    setSelectedCity('');
   };
 
   const handleApply = () => {
-    onApply(filters);
+    onApply({
+      ...filters,
+      state: selectedState,
+      city: selectedCity,
+      location: selectedCity || selectedState
+    });
     onClose();
   };
+
+  // Cities available for current state or major top cities
+  const availableCities = selectedState && INDIAN_STATES_AND_CITIES[selectedState]
+    ? INDIAN_STATES_AND_CITIES[selectedState]
+    : [
+        'Mumbai', 'Delhi', 'Bengaluru', 'Hyderabad', 'Chennai', 'Kolkata',
+        'Pune', 'Ahmedabad', 'Jaipur', 'Lucknow', 'Chandigarh', 'Indore',
+        'Kochi', 'Surat', 'Bhopal', 'Nagpur', 'Patna', 'Ranchi', 'Jamshedpur'
+      ];
 
   return ReactDOM.createPortal(
     <AnimatePresence>
@@ -86,7 +175,7 @@ const DiscoverFilterModal: React.FC<DiscoverFilterModalProps> = ({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
+            transition={{ duration: 0.25 }}
             onClick={onClose}
           />
           
@@ -97,131 +186,130 @@ const DiscoverFilterModal: React.FC<DiscoverFilterModalProps> = ({
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
-            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            transition={{ type: 'spring', damping: 28, stiffness: 220 }}
           >
             <div className="filter-drag-handle">
-              <div className="filter-drag-indicator"></div>
+              <div className="filter-drag-indicator" />
             </div>
 
             <div className="filter-header">
               <h2 className="filter-title">Filters</h2>
-              <button className="filter-clear-btn" onClick={handleClear}>Clear All</button>
+              <button className="filter-clear-btn" onClick={handleClear} type="button">
+                Clear All
+              </button>
             </div>
 
             <div className="filter-body hide-scrollbar">
               
-              {/* Platforms */}
+              {/* 1. Social Platforms */}
               <div className="filter-section">
-                <h3 className="filter-section-title">Social Platforms</h3>
+                <div className="filter-section-header">
+                  <h3 className="filter-section-title">Social Platforms</h3>
+                  <span className="filter-section-hint">Filter creators by active accounts</span>
+                </div>
                 <div className="filter-chips">
-                  {['instagram', 'youtube', 'tiktok'].map(platform => (
-                    <button
-                      key={platform}
-                      className={`filter-chip ${filters.platforms.includes(platform) ? 'active' : ''}`}
-                      onClick={() => togglePlatform(platform)}
-                    >
-                      {platform.charAt(0).toUpperCase() + platform.slice(1)}
-                    </button>
-                  ))}
+                  {PLATFORM_OPTIONS.map(p => {
+                    const isActive = filters.platforms.includes(p.id);
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        className={`filter-chip ${isActive ? 'active' : ''}`}
+                        onClick={() => togglePlatform(p.id)}
+                      >
+                        <span className={`chip-dot ${isActive ? 'active' : ''}`} />
+                        {p.label}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
-              {/* Followers */}
+              {/* 2. Followers Range Slider */}
               <div className="filter-section">
-                <h3 className="filter-section-title">Followers</h3>
-                <div className="filter-range-inputs">
-                  <div className="filter-input-group">
-                    <label>Min</label>
+                <div className="filter-section-header">
+                  <h3 className="filter-section-title">Followers Count</h3>
+                  <span className="filter-section-hint">Drag sliders to adjust follower range</span>
+                </div>
+                <DualRangeSlider
+                  min={0}
+                  max={10000}
+                  step={10}
+                  value={[filters.minFollowers, filters.maxFollowers]}
+                  onChange={handleFollowersChange}
+                  formatValue={formatFollowers}
+                  unitSuffix=" Followers"
+                />
+              </div>
+
+              {/* 3. Rate Per Post Range Slider */}
+              <div className="filter-section">
+                <div className="filter-section-header">
+                  <h3 className="filter-section-title">Rate Per Post (₹)</h3>
+                  <span className="filter-section-hint">Slide to match your budget per sponsored post</span>
+                </div>
+                <DualRangeSlider
+                  min={0}
+                  max={500}
+                  step={5}
+                  value={[filters.minRate, filters.maxRate]}
+                  onChange={handleRateChange}
+                  formatValue={formatRate}
+                />
+              </div>
+
+              {/* 4. Location: Indian States & Cities */}
+              <div className="filter-section">
+                <div className="filter-section-header">
+                  <h3 className="filter-section-title">Location (India)</h3>
+                  <span className="filter-section-hint">Select by State and City</span>
+                </div>
+
+                <div className="filter-location-grid">
+                  {/* State Select */}
+                  <div className="filter-select-group">
+                    <label className="filter-field-label">State / Union Territory</label>
                     <select 
                       className="filter-select"
-                      value={filters.minFollowers}
-                      onChange={(e) => setFilters(prev => ({ ...prev, minFollowers: Number(e.target.value) }))}
+                      value={selectedState}
+                      onChange={(e) => handleStateChange(e.target.value)}
                     >
-                      <option value={0}>Any</option>
-                      <option value={10}>10K</option>
-                      <option value={50}>50K</option>
-                      <option value={100}>100K</option>
-                      <option value={500}>500K</option>
-                      <option value={1000}>1M</option>
+                      <option value="">All States (All India)</option>
+                      {ALL_INDIAN_STATES.map(st => (
+                        <option key={st} value={st}>{st}</option>
+                      ))}
                     </select>
                   </div>
-                  <div className="filter-input-group">
-                    <label>Max</label>
+
+                  {/* City Select */}
+                  <div className="filter-select-group">
+                    <label className="filter-field-label">
+                      {selectedState ? `City in ${selectedState}` : 'City'}
+                    </label>
                     <select 
                       className="filter-select"
-                      value={filters.maxFollowers}
-                      onChange={(e) => setFilters(prev => ({ ...prev, maxFollowers: Number(e.target.value) }))}
+                      value={selectedCity}
+                      onChange={(e) => handleCityChange(e.target.value)}
                     >
-                      <option value={10000}>Any</option>
-                      <option value={50}>50K</option>
-                      <option value={100}>100K</option>
-                      <option value={500}>500K</option>
-                      <option value={1000}>1M</option>
-                      <option value={5000}>5M</option>
+                      <option value="">
+                        {selectedState ? `All Cities in ${selectedState}` : 'All Cities'}
+                      </option>
+                      {availableCities.map(ct => (
+                        <option key={ct} value={ct}>{ct}</option>
+                      ))}
                     </select>
                   </div>
                 </div>
-              </div>
-
-              {/* Post Rate */}
-              <div className="filter-section">
-                <h3 className="filter-section-title">Rate Per Post (₹)</h3>
-                <div className="filter-range-inputs">
-                  <div className="filter-input-group">
-                    <label>Min (₹)</label>
-                    <select 
-                      className="filter-select"
-                      value={filters.minRate}
-                      onChange={(e) => setFilters(prev => ({ ...prev, minRate: Number(e.target.value) }))}
-                    >
-                      <option value={0}>Any</option>
-                      <option value={5}>5K</option>
-                      <option value={10}>10K</option>
-                      <option value={20}>20K</option>
-                      <option value={50}>50K</option>
-                    </select>
-                  </div>
-                  <div className="filter-input-group">
-                    <label>Max (₹)</label>
-                    <select 
-                      className="filter-select"
-                      value={filters.maxRate}
-                      onChange={(e) => setFilters(prev => ({ ...prev, maxRate: Number(e.target.value) }))}
-                    >
-                      <option value={500}>Any</option>
-                      <option value={10}>10K</option>
-                      <option value={20}>20K</option>
-                      <option value={50}>50K</option>
-                      <option value={100}>100K</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              {/* Location */}
-              <div className="filter-section">
-                <h3 className="filter-section-title">Location</h3>
-                <select 
-                  className="filter-select full-width"
-                  value={filters.location}
-                  onChange={(e) => setFilters(prev => ({ ...prev, location: e.target.value }))}
-                >
-                  <option value="">Any Location</option>
-                  <option value="Mumbai">Mumbai</option>
-                  <option value="New Delhi">New Delhi</option>
-                  <option value="Delhi">Delhi</option>
-                  <option value="Bangalore">Bangalore</option>
-                  <option value="Pune">Pune</option>
-                  <option value="Chennai">Chennai</option>
-                  <option value="Hyderabad">Hyderabad</option>
-                  <option value="Kolkata">Kolkata</option>
-                </select>
               </div>
 
             </div>
 
             <div className="filter-footer">
-              <button className="liquid-btn apply-filters-btn" onClick={handleApply}>
+              <button 
+                className="liquid-btn apply-filters-btn" 
+                onClick={handleApply}
+                type="button"
+              >
                 Apply Filters
               </button>
             </div>

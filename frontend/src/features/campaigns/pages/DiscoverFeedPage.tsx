@@ -11,6 +11,7 @@ import { useUgcStore } from '../../../store/ugcStore';
 import { useGlobalModalStore } from '../../../store/globalModalStore';
 import { formatCount } from '../../../utils/formatters';
 import { getPdfViewerUrl, triggerFileDownload } from '../../../lib/cloudinary';
+import { INDIAN_STATES_AND_CITIES } from '../../../lib/indianLocations';
 import './DiscoverFeedPage.css';
 
 const DiscoverFeedPage: React.FC = () => {
@@ -42,6 +43,8 @@ const DiscoverFeedPage: React.FC = () => {
     maxFollowers: 10000, // 10M
     minRate: 0,
     maxRate: 500, // 500K
+    state: '',
+    city: '',
     location: ''
   });
 
@@ -96,6 +99,11 @@ const DiscoverFeedPage: React.FC = () => {
           const userChannels = (channels || []).filter((c: any) => c.profile_id === p.id);
           const telegramSum = userChannels.reduce((sum: number, ch: any) => sum + (ch.member_count || 0), 0);
 
+          const mappedPlatforms = userLinks.map((l: any) => l.platform.toLowerCase());
+          if ((p.telegram_username || userChannels.length > 0) && !mappedPlatforms.includes('telegram')) {
+            mappedPlatforms.push('telegram');
+          }
+
           return {
             id: p.id,
             fullName: p.full_name || 'Unknown',
@@ -105,7 +113,7 @@ const DiscoverFeedPage: React.FC = () => {
             perPost: p.rates?.per_post || 0,
             location: p.location || '',
             avatarUrl: p.avatar_url || 'https://via.placeholder.com/150/333/fff?text=?',
-            platforms: userLinks.map((l: any) => l.platform.toLowerCase()),
+            platforms: mappedPlatforms,
             socialLinks: userLinks,
             pinnedSocials: p.pinned_socials || [],
             telegramUsername: p.telegram_username,
@@ -157,8 +165,16 @@ const DiscoverFeedPage: React.FC = () => {
       if (creator.perPost < activeFilters.minRate * 1000) return false;
       if (creator.perPost > activeFilters.maxRate * 1000) return false;
 
-      // Location
-      if (activeFilters.location && !creator.location.toLowerCase().includes(activeFilters.location.toLowerCase())) {
+      // Location (Smart matching on City and State)
+      if (activeFilters.city) {
+        if (!creator.location.toLowerCase().includes(activeFilters.city.toLowerCase())) return false;
+      } else if (activeFilters.state) {
+        const stateLower = activeFilters.state.toLowerCase();
+        const matchesState = creator.location.toLowerCase().includes(stateLower);
+        const stateCities = INDIAN_STATES_AND_CITIES[activeFilters.state] || [];
+        const matchesCity = stateCities.some((c: string) => creator.location.toLowerCase().includes(c.toLowerCase()));
+        if (!matchesState && !matchesCity) return false;
+      } else if (activeFilters.location && !creator.location.toLowerCase().includes(activeFilters.location.toLowerCase())) {
         return false;
       }
 
@@ -176,6 +192,8 @@ const DiscoverFeedPage: React.FC = () => {
         maxFollowers: 10000, // 10M
         minRate: 0,
         maxRate: 500, // 500K
+        state: '',
+        city: '',
         location: ''
       });
     };
@@ -205,6 +223,8 @@ const DiscoverFeedPage: React.FC = () => {
       maxFollowers: 10000,
       minRate: 0,
       maxRate: 500,
+      state: '',
+      city: '',
       location: ''
     });
   };
