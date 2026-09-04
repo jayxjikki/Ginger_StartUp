@@ -238,14 +238,14 @@ const ManageCampaignDetailPage: React.FC = () => {
     }
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string, isDirectDiscount: boolean = false) => {
     switch (status) {
       case 'pending':
         return <Badge variant="warning" size="sm">Pending</Badge>;
       case 'verified':
-        return <Badge variant="success" size="sm">Approved (Pending Admin)</Badge>;
+        return <Badge variant="success" size="sm">{isDirectDiscount ? 'Approved' : 'Approved (Pending Admin)'}</Badge>;
       case 'paid':
-        return <Badge variant="accent" size="sm">Admin Approved & Paid</Badge>;
+        return <Badge variant="accent" size="sm">{isDirectDiscount ? 'Approved' : 'Admin Approved & Paid'}</Badge>;
       case 'rejected':
         return <Badge variant="error" size="sm">Rejected</Badge>;
       case 'flagged':
@@ -607,7 +607,7 @@ const ManageCampaignDetailPage: React.FC = () => {
                         </div>
 
                         <div className="submission-status-wrapper">
-                          {getStatusBadge(sub.status)}
+                          {getStatusBadge(sub.status, isDirectDiscountSubmission(sub))}
                         </div>
                       </div>
 

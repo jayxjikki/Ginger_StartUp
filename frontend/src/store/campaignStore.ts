@@ -350,6 +350,28 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
       
       if (error) throw error;
 
+      // Send approval notification to creator
+      try {
+        const { data: sub } = await supabase
+          .from('submissions')
+          .select('id, campaign_id, creator_id, voucher_code, campaign:campaigns(id, title, advertiser_id)')
+          .eq('id', submissionId)
+          .single();
+
+        if (sub?.creator_id) {
+          const vCode = sub.voucher_code || 'VCH-ACTIVE';
+          await supabase.from('notifications').insert({
+            user_id: sub.creator_id,
+            actor_id: (sub.campaign as any)?.advertiser_id || null,
+            type: 'system',
+            entity_id: sub.campaign_id,
+            content: `Your video was approved and voucher code ${vCode} was generated.`,
+          });
+        }
+      } catch (nErr) {
+        console.warn('Could not send approval notification:', nErr);
+      }
+
       // Update local state for myCreatedCampaigns
       set((state) => ({
         myCreatedCampaigns: state.myCreatedCampaigns.map(campaign => ({
@@ -424,7 +446,7 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
           actor_id: sub.campaign?.advertiser_id || null,
           type: 'system',
           entity_id: sub.campaign_id,
-          content: `🎟️ Direct Discount Voucher Approved! Code: ${voucherCode} for campaign "${sub.campaign?.title || 'Campaign'}" (${discountPercent}% OFF). Check your Joined Campaigns or use the calculator to check your savings!`
+          content: `Your video was approved and voucher code ${voucherCode} was generated.`
         });
       }
 

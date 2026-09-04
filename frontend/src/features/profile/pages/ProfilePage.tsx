@@ -19,9 +19,6 @@ import SettingsModal from '../components/SettingsModal';
 import VerifiedChannelsModal from '../components/VerifiedChannelsModal';
 import ChatModal from '../../../components/ui/ChatModal';
 import TransitionLoader from '../../../components/ui/TransitionLoader';
-import DiscountCalculator from '../../../components/ui/DiscountCalculator';
-import VoucherVerifierModal from '../../../components/ui/VoucherVerifierModal';
-import { FiCopy, FiSearch } from 'react-icons/fi';
 import youtubeIcon from '../../../assets/youtube.png';
 import instagramIcon from '../../../assets/instagram.png';
 import tiktokIcon from '../../../assets/tiktok.png';
@@ -129,8 +126,6 @@ const ProfilePage: React.FC = () => {
   const [showMediaKitModal, setShowMediaKitModal] = useState(false);
   const [messageSearch, setMessageSearch] = useState('');
   const [isEntering, setIsEntering] = useState((location.state as any)?.fromTransition || false);
-  const [verifierModalOpen, setVerifierModalOpen] = useState(false);
-  const [verifierModalCode, setVerifierModalCode] = useState('');
 
   useEffect(() => {
     if (isEntering) {
@@ -1035,13 +1030,10 @@ const ProfilePage: React.FC = () => {
                 </div>
               ) : (
                 notifications.map(notification => {
-                  const isVoucherNotif = notification.content.includes('🎟️') || notification.content.includes('VCH-');
+                  const isVoucherNotif = notification.content.includes('🎟️') || notification.content.includes('VCH-') || notification.content.toLowerCase().includes('voucher');
                   const isBillNotif = notification.content.includes('🧾') || notification.content.includes('Bill Receipt');
                   const voucherMatch = notification.content.match(/(VCH-[A-Z0-9-]+)/i);
                   const extractedVoucherCode = voucherMatch ? voucherMatch[1].toUpperCase() : '';
-                  const pctMatch = notification.content.match(/(\d+)%\s*(?:OFF|Discount)/i);
-                  const extractedDiscountPct = pctMatch ? parseInt(pctMatch[1], 10) : 15;
-                  const isOwnerNotif = notification.content.includes('Voucher Issued:');
 
                   return (
                     <div 
@@ -1056,9 +1048,15 @@ const ProfilePage: React.FC = () => {
                       }
                       onClick={() => {
                         if (!notification.is_read) markAsRead(notification.id);
+                        setShowNotifications(false);
+                        if (notification.entity_id) {
+                          navigate(`/campaigns/${notification.entity_id}`);
+                        } else if (isVoucherNotif) {
+                          navigate(`/campaigns/joined`);
+                        }
                       }}
                     >
-                      {notification.actor ? (
+                      {notification.actor && !isVoucherNotif ? (
                         <div className="notification-avatar">
                           <img src={notification.actor.avatar_url || 'https://via.placeholder.com/150'} alt={notification.actor.full_name} />
                         </div>
@@ -1080,68 +1078,31 @@ const ProfilePage: React.FC = () => {
                       )}
                       
                       <div className="notification-text" style={{ width: '100%' }}>
-                        {notification.actor ? (
+                        {isVoucherNotif ? (
+                          <>Your video was approved and voucher code <strong>{extractedVoucherCode || 'VCH-ACTIVE'}</strong> was generated.</>
+                        ) : notification.actor ? (
                           <><strong>{notification.actor.full_name}</strong> {notification.content}</>
                         ) : (
                           <>{notification.content}</>
                         )}
 
-                        {/* Special Voucher / Bill Card inside notification */}
-                        {(isVoucherNotif || isBillNotif) && extractedVoucherCode && (
-                          <div 
-                            className="mt-2.5 p-2.5 rounded-xl border border-emerald-500/30 bg-black/50 flex flex-col gap-2"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-1.5">
-                                <span>{isBillNotif ? '🧾' : '🎟️'}</span>
-                                <span className="font-mono text-sm font-bold text-emerald-300">
-                                  {extractedVoucherCode}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-1.5">
-                                <button
-                                  type="button"
-                                  className="icon-btn"
-                                  onClick={() => {
-                                    navigator.clipboard.writeText(extractedVoucherCode);
-                                    toast.success('Voucher code copied!');
-                                  }}
-                                  title="Copy voucher code"
-                                >
-                                  <FiCopy size={13} />
-                                </button>
-                                {isOwnerNotif && (
-                                  <button
-                                    type="button"
-                                    className="btn btn-outline text-xs py-1 px-2 flex items-center gap-1"
-                                    style={{ borderColor: 'rgba(52, 211, 153, 0.35)', color: '#34d399' }}
-                                    onClick={() => {
-                                      setVerifierModalCode(extractedVoucherCode);
-                                      setVerifierModalOpen(true);
-                                    }}
-                                    title="Verify whether voucher is valid or redeemed"
-                                  >
-                                    <FiSearch size={11} />
-                                    <span>Verify Voucher</span>
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-
-                            {/* Quick Discount Calculator pre-locked to approved discount! */}
-                            <div className="mt-1 pt-1 border-t border-white/5">
-                              <DiscountCalculator 
-                                voucherCode={extractedVoucherCode}
-                                initialDiscountPercent={extractedDiscountPct}
-                                lockedDiscountPercent={extractedDiscountPct}
-                                isLockedPercent={true}
-                              />
-                            </div>
+                        {/* Clean voucher code tag and campaign navigation hint */}
+                        {(isVoucherNotif || isBillNotif) && (
+                          <div className="mt-1.5 flex items-center justify-between flex-wrap gap-1">
+                            {extractedVoucherCode && (
+                              <span className="inline-flex items-center gap-1 font-mono text-xs font-bold text-emerald-300 bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded">
+                                {isBillNotif ? '🧾' : '🎟️'} {extractedVoucherCode}
+                              </span>
+                            )}
+                            {notification.entity_id && (
+                              <span className="text-[11px] text-emerald-400 font-medium">
+                                View Campaign Page →
+                              </span>
+                            )}
                           </div>
                         )}
 
-                        <div className="notification-time">
+                        <div className="notification-time mt-1">
                           {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
                         </div>
                       </div>
@@ -1301,13 +1262,6 @@ const ProfilePage: React.FC = () => {
           </div>
         </div>
       )}
-
-      {/* Dedicated Voucher Verifier Modal for Owner */}
-      <VoucherVerifierModal
-        isOpen={verifierModalOpen}
-        onClose={() => setVerifierModalOpen(false)}
-        initialCode={verifierModalCode}
-      />
     </div>
     </>
   );

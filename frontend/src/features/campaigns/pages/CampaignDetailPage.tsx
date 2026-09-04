@@ -681,10 +681,12 @@ const CampaignDetailPage: React.FC = () => {
                         {isDirectDiscountSubmission(userSubmission) ? '🏷️ Direct Discount' : '🏆 All Rewards'}
                       </Badge>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-secondary">Views Tracked</span>
-                      <span className="font-bold">{formatCount(userSubmission.current_views || 0)}</span>
-                    </div>
+                    {!isDirectDiscountSubmission(userSubmission) && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-secondary">Views Tracked</span>
+                        <span className="font-bold">{formatCount(userSubmission.current_views || 0)}</span>
+                      </div>
+                    )}
                     {/* Direct Discount Voucher Details */}
                     {isDirectDiscountSubmission(userSubmission) && (userSubmission.status === 'verified' || userSubmission.status === 'paid') && (
                       <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex flex-col gap-2 mt-1">
@@ -751,15 +753,17 @@ const CampaignDetailPage: React.FC = () => {
                         </div>
                       </>
                     )}
-                    <a 
-                      href={userSubmission.video_url} 
-                      target="_blank" 
-                      rel="noopener noreferrer" 
-                      className="text-center text-xs mt-3 pt-3 border-t border-white/5"
-                      style={{ color: 'var(--text-tertiary)', textDecoration: 'none' }}
-                    >
-                      <span style={{ borderBottom: '1px solid rgba(255,255,255,0.2)', paddingBottom: '1px' }}>View Submitted Video</span>
-                    </a>
+                    {!isDirectDiscountSubmission(userSubmission) && (
+                      <a 
+                        href={userSubmission.video_url} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        className="text-center text-xs mt-3 pt-3 border-t border-white/5"
+                        style={{ color: 'var(--text-tertiary)', textDecoration: 'none' }}
+                      >
+                        <span style={{ borderBottom: '1px solid rgba(255,255,255,0.2)', paddingBottom: '1px' }}>View Submitted Video</span>
+                      </a>
+                    )}
 
                     {/* Remove submission if submitted by mistake — only allowed before approval and before voucher is issued */}
                     {!(userSubmission.status === 'verified' || userSubmission.status === 'paid' || Boolean(userSubmission.voucher_code)) && (

@@ -93,7 +93,63 @@ export const useNotificationStore = create<NotificationState>((set) => ({
 
       if (error) throw error;
 
-      const notifications = await resolveNotificationActors(data || []);
+      let rawNotifs = data || [];
+
+      // Auto-sync any approved submissions for this user into notifications
+      try {
+        const { data: approvedSubs } = await supabase
+          .from('submissions')
+          .select('id, campaign_id, voucher_code, status, verified_at, submitted_at, campaign:campaigns(id, title, advertiser_id)')
+          .eq('creator_id', userId)
+          .in('status', ['verified', 'paid']);
+
+        if (approvedSubs && approvedSubs.length > 0) {
+          for (const sub of approvedSubs) {
+            const vCode = sub.voucher_code || 'VCH-ACTIVE';
+            const contentText = `Your video was approved and voucher code ${vCode} was generated.`;
+            const existingIdx = rawNotifs.findIndex(
+              (n: any) => n.content && (n.content.includes(vCode) || (n.entity_id === sub.campaign_id && n.content.toLowerCase().includes('approved')))
+            );
+            if (existingIdx === -1) {
+              // Persist into database in background
+              (async () => {
+                try {
+                  await supabase.from('notifications').insert({
+                    user_id: userId,
+                    actor_id: (sub.campaign as any)?.advertiser_id || null,
+                    type: 'system',
+                    entity_id: sub.campaign_id,
+                    content: contentText,
+                  });
+                } catch (e) {
+                  console.warn('Silent insert error:', e);
+                }
+              })();
+
+              rawNotifs.unshift({
+                id: `sub-approved-${sub.id}`,
+                user_id: userId,
+                actor_id: (sub.campaign as any)?.advertiser_id || null,
+                type: 'system',
+                entity_id: sub.campaign_id,
+                content: contentText,
+                is_read: false,
+                created_at: sub.verified_at || sub.submitted_at || new Date().toISOString()
+              });
+            } else {
+              // Normalize existing notification content to the clean text and ensure entity_id is set
+              rawNotifs[existingIdx].content = contentText;
+              if (!rawNotifs[existingIdx].entity_id) {
+                rawNotifs[existingIdx].entity_id = sub.campaign_id;
+              }
+            }
+          }
+        }
+      } catch (syncErr) {
+        console.warn('Could not sync approved submission notifications:', syncErr);
+      }
+
+      const notifications = await resolveNotificationActors(rawNotifs);
       const unreadCount = notifications.filter(n => !n.is_read).length;
 
       set({ notifications, unreadCount, isLoading: false });

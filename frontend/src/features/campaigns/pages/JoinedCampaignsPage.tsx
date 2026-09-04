@@ -44,11 +44,11 @@ const JoinedCampaignsPage: React.FC = () => {
     }
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string, isDirectDiscount: boolean = false) => {
     switch (status) {
-      case 'pending': return <Badge variant="warning" size="sm">Pending Verification</Badge>;
-      case 'verified': return <Badge variant="success" size="sm">Approved (Pending Admin)</Badge>;
-      case 'paid': return <Badge variant="accent" size="sm">Admin Approved & Paid</Badge>;
+      case 'pending': return <Badge variant="warning" size="sm">Pending</Badge>;
+      case 'verified': return <Badge variant="success" size="sm">{isDirectDiscount ? 'Approved' : 'Approved (Pending Admin)'}</Badge>;
+      case 'paid': return <Badge variant="accent" size="sm">{isDirectDiscount ? 'Approved' : 'Admin Approved & Paid'}</Badge>;
       case 'rejected': return <Badge variant="error" size="sm">Rejected</Badge>;
       case 'disputed': return <Badge variant="warning" size="sm">Disputed</Badge>;
       default: return <Badge variant="default" size="sm">{status}</Badge>;
@@ -103,37 +103,49 @@ const JoinedCampaignsPage: React.FC = () => {
                 onClick={() => navigate(`/campaigns/${sub.campaign_id}`)}
               >
                 <div className="submission-card-header">
-                  <div className="campaign-info">
-                    <h3 className="campaign-title truncate">{sub.campaign?.title || 'Unknown Campaign'}</h3>
-                    <p className="campaign-advertiser text-tertiary text-xs">
-                      by {sub.campaign?.advertiser?.full_name || 'Advertiser'}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                  <div className="submission-badges-row">
                     <Badge variant={isDirectDiscountSubmission(sub) ? 'warning' : 'accent'} size="sm">
                       {isDirectDiscountSubmission(sub) ? '🏷️ Direct Discount' : '🏆 All Rewards'}
                     </Badge>
-                    {getStatusBadge(sub.status)}
+                    {getStatusBadge(sub.status, isDirectDiscountSubmission(sub))}
+                  </div>
+                  <div className="campaign-info">
+                    <h3 className="campaign-title">{sub.campaign?.title || 'Unknown Campaign'}</h3>
+                    <p className="campaign-advertiser text-tertiary text-xs">
+                      by {sub.campaign?.advertiser?.full_name || sub.campaign?.advertiser?.username || 'Advertiser'}
+                    </p>
                   </div>
                 </div>
 
-                <div className="submission-card-body">
-                  <div className="stat-col">
-                    <span className="stat-label">Platform</span>
-                    <span className="stat-value platform">
-                      <img src={getSocialIcon(sub.platform)} alt={sub.platform} className="platform-icon-sm" onError={(e) => e.currentTarget.style.display = 'none'} />
-                      {sub.platform}
-                    </span>
+                {isDirectDiscountSubmission(sub) ? (
+                  <div className="submission-card-body direct-discount-body">
+                    <div className="stat-col">
+                      <span className="stat-label">Platform</span>
+                      <span className="stat-value platform">
+                        <img src={getSocialIcon(sub.platform)} alt={sub.platform} className="platform-icon-sm" onError={(e) => e.currentTarget.style.display = 'none'} />
+                        {sub.platform}
+                      </span>
+                    </div>
                   </div>
-                  <div className="stat-col">
-                    <span className="stat-label">Current Views</span>
-                    <span className="stat-value">{sub.current_views?.toLocaleString() || 0}</span>
+                ) : (
+                  <div className="submission-card-body">
+                    <div className="stat-col">
+                      <span className="stat-label">Platform</span>
+                      <span className="stat-value platform">
+                        <img src={getSocialIcon(sub.platform)} alt={sub.platform} className="platform-icon-sm" onError={(e) => e.currentTarget.style.display = 'none'} />
+                        {sub.platform}
+                      </span>
+                    </div>
+                    <div className="stat-col">
+                      <span className="stat-label">Current Views</span>
+                      <span className="stat-value">{sub.current_views?.toLocaleString() || 0}</span>
+                    </div>
+                    <div className="stat-col">
+                      <span className="stat-label">Earned</span>
+                      <span className="stat-value text-accent font-bold">{formatCurrency(sub.earned_amount || 0)}</span>
+                    </div>
                   </div>
-                  <div className="stat-col">
-                    <span className="stat-label">Earned</span>
-                    <span className="stat-value text-accent font-bold">{formatCurrency(sub.earned_amount || 0)}</span>
-                  </div>
-                </div>
+                )}
 
                 {/* Direct Discount Voucher Card with Calculator */}
                 {isDirectDiscountSubmission(sub) && ((sub as any).voucher_code || sub.status === 'verified' || sub.status === 'paid') && (
@@ -205,15 +217,17 @@ const JoinedCampaignsPage: React.FC = () => {
                         Raise Dispute
                       </button>
                     )}
-                    <a 
-                      href={sub.video_url} 
-                      target="_blank" 
-                      rel="noopener noreferrer" 
-                      className="view-video-link"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <FiVideo size={14} /> View Video
-                    </a>
+                    {!isDirectDiscountSubmission(sub) && (
+                      <a 
+                        href={sub.video_url} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        className="view-video-link"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <FiVideo size={14} /> View Video
+                      </a>
+                    )}
                   </div>
                 </div>
               </div>

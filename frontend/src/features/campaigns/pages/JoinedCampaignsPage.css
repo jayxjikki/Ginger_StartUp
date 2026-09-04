@@ -97,25 +97,35 @@
 
 .submission-card-header {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
-  margin-bottom: 16px;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.submission-badges-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .campaign-info {
-  flex: 1;
-  min-width: 0; /* allows truncation */
+  width: 100%;
 }
 
 .campaign-title {
-  font-size: 16px;
-  font-weight: 600;
+  font-size: 17px;
+  font-weight: 700;
+  color: #ffffff;
   margin: 0 0 4px;
+  line-height: 1.35;
+  word-break: break-word;
 }
 
 .campaign-advertiser {
   margin: 0;
+  color: var(--text-tertiary);
+  font-size: 12.5px;
 }
 
 .submission-card-body {
@@ -123,10 +133,18 @@
   grid-template-columns: repeat(3, 1fr);
   gap: 12px;
   background: rgba(0, 0, 0, 0.2);
-  padding: 16px;
+  padding: 14px 16px;
   border-radius: 12px;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
 }
+
+.submission-card-body.direct-discount-body {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px;
+}
+
 
 .stat-col {
   display: flex;
