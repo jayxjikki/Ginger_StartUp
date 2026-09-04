@@ -496,3 +496,40 @@
   border: 1px solid var(--border-subtle);
   white-space: nowrap;
 }
+
+/* Glowing notification indicators for Joined Campaigns header button */
+@keyframes red-glow-pulse-border {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 69, 58, 0.7);
+    border-color: rgba(255, 69, 58, 0.8);
+  }
+  50% {
+    box-shadow: 0 0 12px 3px rgba(255, 69, 58, 0.85);
+    border-color: #ff453a;
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 69, 58, 0.7);
+    border-color: rgba(255, 69, 58, 0.8);
+  }
+}
+
+.joined-campaigns-btn-glowing {
+  border: 1.5px solid #ff453a !important;
+  color: #ff453a !important;
+  animation: red-glow-pulse-border 1.8s infinite ease-in-out !important;
+  background: rgba(255, 69, 58, 0.12) !important;
+}
+
+.joined-notif-dot-glow {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  width: 9px;
+  height: 9px;
+  background: #ff453a;
+  border-radius: 50%;
+  border: 2px solid #0C0C0C;
+  box-shadow: 0 0 8px #ff453a;
+  animation: red-glow-pulse-border 1.8s infinite ease-in-out;
+}
+

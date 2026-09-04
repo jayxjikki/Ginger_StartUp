@@ -478,13 +478,18 @@ const ProfilePage: React.FC = () => {
                 <span className="global-chat-badge">{unreadChatCount > 9 ? '9+' : unreadChatCount}</span>
               )}
             </button>
-            <button className="top-action-btn" style={{ position: 'relative' }} onClick={() => {
-              setShowNotifications(true);
-              if (unreadNotifCount > 0 && user) markAllAsRead(user.id);
-            }}>
+            <button 
+              className={`top-action-btn ${unreadNotifCount > 0 ? 'notif-bell-glowing' : ''}`} 
+              style={{ position: 'relative' }} 
+              onClick={() => {
+                setShowNotifications(true);
+                if (unreadNotifCount > 0 && user) markAllAsRead(user.id);
+              }}
+              title="Notifications"
+            >
               <span className="material-symbols-outlined">notifications</span>
               {unreadNotifCount > 0 && (
-                <span className="global-chat-badge">{unreadNotifCount > 9 ? '9+' : unreadNotifCount}</span>
+                <span className="global-chat-badge notif-badge-red-glow">{unreadNotifCount > 9 ? '9+' : unreadNotifCount}</span>
               )}
             </button>
             <button className="top-action-btn" onClick={() => navigate('/profile/edit')}>
@@ -1031,15 +1036,24 @@ const ProfilePage: React.FC = () => {
               ) : (
                 notifications.map(notification => {
                   const isVoucherNotif = notification.content.includes('🎟️') || notification.content.includes('VCH-');
+                  const isBillNotif = notification.content.includes('🧾') || notification.content.includes('Bill Receipt');
                   const voucherMatch = notification.content.match(/(VCH-[A-Z0-9-]+)/i);
                   const extractedVoucherCode = voucherMatch ? voucherMatch[1].toUpperCase() : '';
+                  const pctMatch = notification.content.match(/(\d+)%\s*(?:OFF|Discount)/i);
+                  const extractedDiscountPct = pctMatch ? parseInt(pctMatch[1], 10) : 15;
                   const isOwnerNotif = notification.content.includes('Voucher Issued:');
 
                   return (
                     <div 
                       key={notification.id} 
                       className={`notification-item ${!notification.is_read ? 'unread' : ''}`}
-                      style={isVoucherNotif ? { borderLeft: '3px solid #34d399', background: 'rgba(52, 211, 153, 0.04)' } : undefined}
+                      style={
+                        isBillNotif
+                          ? { borderLeft: '3px solid #10b981', background: 'rgba(16, 185, 129, 0.05)' }
+                          : isVoucherNotif 
+                          ? { borderLeft: '3px solid #34d399', background: 'rgba(52, 211, 153, 0.04)' } 
+                          : undefined
+                      }
                       onClick={() => {
                         if (!notification.is_read) markAsRead(notification.id);
                       }}
@@ -1049,9 +1063,18 @@ const ProfilePage: React.FC = () => {
                           <img src={notification.actor.avatar_url || 'https://via.placeholder.com/150'} alt={notification.actor.full_name} />
                         </div>
                       ) : (
-                        <div className="notification-icon-wrap" style={isVoucherNotif ? { background: '#10b981' } : undefined}>
+                        <div 
+                          className="notification-icon-wrap" 
+                          style={
+                            isBillNotif 
+                              ? { background: '#059669' } 
+                              : isVoucherNotif 
+                              ? { background: '#10b981' } 
+                              : undefined
+                          }
+                        >
                           <span className="material-symbols-outlined">
-                            {isVoucherNotif ? 'confirmation_number' : 'campaign'}
+                            {isBillNotif ? 'receipt_long' : isVoucherNotif ? 'confirmation_number' : 'campaign'}
                           </span>
                         </div>
                       )}
@@ -1063,16 +1086,19 @@ const ProfilePage: React.FC = () => {
                           <>{notification.content}</>
                         )}
 
-                        {/* Special Voucher Card inside notification */}
-                        {isVoucherNotif && extractedVoucherCode && (
+                        {/* Special Voucher / Bill Card inside notification */}
+                        {(isVoucherNotif || isBillNotif) && extractedVoucherCode && (
                           <div 
                             className="mt-2.5 p-2.5 rounded-xl border border-emerald-500/30 bg-black/50 flex flex-col gap-2"
                             onClick={(e) => e.stopPropagation()}
                           >
                             <div className="flex items-center justify-between">
-                              <span className="font-mono text-sm font-bold text-emerald-300">
-                                {extractedVoucherCode}
-                              </span>
+                              <div className="flex items-center gap-1.5">
+                                <span>{isBillNotif ? '🧾' : '🎟️'}</span>
+                                <span className="font-mono text-sm font-bold text-emerald-300">
+                                  {extractedVoucherCode}
+                                </span>
+                              </div>
                               <div className="flex items-center gap-1.5">
                                 <button
                                   type="button"
@@ -1103,9 +1129,14 @@ const ProfilePage: React.FC = () => {
                               </div>
                             </div>
 
-                            {/* Quick Discount Calculator right beside voucher! */}
+                            {/* Quick Discount Calculator pre-locked to approved discount! */}
                             <div className="mt-1 pt-1 border-t border-white/5">
-                              <DiscountCalculator voucherCode={extractedVoucherCode} />
+                              <DiscountCalculator 
+                                voucherCode={extractedVoucherCode}
+                                initialDiscountPercent={extractedDiscountPct}
+                                lockedDiscountPercent={extractedDiscountPct}
+                                isLockedPercent={true}
+                              />
                             </div>
                           </div>
                         )}

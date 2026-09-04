@@ -368,14 +368,24 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
   approveDirectDiscountSubmission: async (submissionId: string, customDiscount?: number) => {
     try {
       // 1. Fetch submission details
-      const { data: sub, error: fetchErr } = await supabase
+      let sub: any = null;
+      const { data: subData, error: fetchErr } = await supabase
         .from('submissions')
         .select('*, campaign:campaigns(*), creator:profiles(*)')
         .eq('id', submissionId)
         .single();
 
-      if (fetchErr) throw fetchErr;
-      if (!sub) throw new Error('Submission not found');
+      if (fetchErr || !subData) {
+        const { data: fallbackSub, error: fallbackErr } = await supabase
+          .from('submissions')
+          .select('*')
+          .eq('id', submissionId)
+          .single();
+        if (fallbackErr || !fallbackSub) throw fetchErr || fallbackErr || new Error('Submission not found');
+        sub = fallbackSub;
+      } else {
+        sub = subData;
+      }
 
       // 2. Generate unique voucher code
       const voucherCode = generateVoucherCode();
@@ -414,19 +424,20 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
           actor_id: sub.campaign?.advertiser_id || null,
           type: 'system',
           entity_id: sub.campaign_id,
-          content: `🎟️ Direct Discount Voucher Approved! Code: ${voucherCode} for campaign "${sub.campaign?.title || 'Campaign'}" (${discountPercent}% OFF). Use the discount calculator to check your savings!`
+          content: `🎟️ Direct Discount Voucher Approved! Code: ${voucherCode} for campaign "${sub.campaign?.title || 'Campaign'}" (${discountPercent}% OFF). Check your Joined Campaigns or use the calculator to check your savings!`
         });
       }
 
       // 5. Send notification to Owner
       const ownerId = sub.campaign?.advertiser_id;
       if (ownerId) {
+        const creatorHandle = sub.creator?.username ? `@${sub.creator.username}` : 'the creator';
         await supabase.from('notifications').insert({
           user_id: ownerId,
           actor_id: sub.creator_id || null,
           type: 'system',
           entity_id: sub.campaign_id,
-          content: `🎟️ Voucher Issued: ${voucherCode} for creator @${sub.creator?.username || 'creator'} on "${sub.campaign?.title || 'Campaign'}" (${discountPercent}% OFF). You can verify or redeem this voucher code anytime.`
+          content: `🎟️ Voucher Issued: ${voucherCode} for ${creatorHandle} on "${sub.campaign?.title || 'Campaign'}" (${discountPercent}% OFF). You can verify or redeem this voucher code anytime.`
         });
       }
 

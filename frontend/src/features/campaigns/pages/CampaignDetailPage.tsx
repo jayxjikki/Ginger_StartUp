@@ -718,10 +718,12 @@ const CampaignDetailPage: React.FC = () => {
                           Present this code at the store / checkout to receive your discount or perk!
                         </p>
 
-                        {/* Quick Discount Calculator right beside voucher! */}
+                        {/* Quick Discount Calculator with locked discount pre-set by owner! */}
                         <div className="mt-1 pt-1 border-t border-white/5">
                           <DiscountCalculator
                             initialDiscountPercent={userSubmission.discount_percent || 15}
+                            lockedDiscountPercent={userSubmission.discount_percent || 15}
+                            isLockedPercent={true}
                             voucherCode={userSubmission.voucher_code}
                           />
                         </div>
@@ -759,8 +761,8 @@ const CampaignDetailPage: React.FC = () => {
                       <span style={{ borderBottom: '1px solid rgba(255,255,255,0.2)', paddingBottom: '1px' }}>View Submitted Video</span>
                     </a>
 
-                    {/* Remove submission if submitted by mistake */}
-                    {userSubmission.status !== 'paid' && (
+                    {/* Remove submission if submitted by mistake — only allowed before approval and before voucher is issued */}
+                    {!(userSubmission.status === 'verified' || userSubmission.status === 'paid' || Boolean(userSubmission.voucher_code)) && (
                       <div className="pt-2 border-t border-white/5">
                         <button
                           type="button"

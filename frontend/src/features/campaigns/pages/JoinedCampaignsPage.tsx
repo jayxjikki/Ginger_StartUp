@@ -167,10 +167,12 @@ const JoinedCampaignsPage: React.FC = () => {
                       </button>
                     </div>
 
-                    {/* Quick Calculator beside voucher! */}
+                    {/* Quick Calculator beside voucher with locked percentage! */}
                     <div className="mt-1">
                       <DiscountCalculator
                         initialDiscountPercent={(sub as any).discount_percent || 15}
+                        lockedDiscountPercent={(sub as any).discount_percent || 15}
+                        isLockedPercent={true}
                         voucherCode={(sub as any).voucher_code}
                       />
                     </div>
@@ -183,7 +185,8 @@ const JoinedCampaignsPage: React.FC = () => {
                     <span>Submitted {new Date(sub.submitted_at).toLocaleDateString()}</span>
                   </div>
                   <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                    {sub.status !== 'paid' && (
+                    {/* Only allow removing if not approved and no voucher code issued */}
+                    {!(sub.status === 'verified' || sub.status === 'paid' || Boolean((sub as any).voucher_code)) && (
                       <button 
                         className="btn btn-outline" 
                         style={{ padding: '4px 8px', fontSize: '12px', color: '#ff453a', borderColor: 'rgba(255, 69, 58, 0.35)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}

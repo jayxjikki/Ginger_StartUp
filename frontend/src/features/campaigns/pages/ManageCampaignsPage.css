@@ -1444,35 +1444,107 @@
 
 /* Voucher Card Box in Submissions */
 .submission-voucher-box {
-  background: rgba(52, 211, 153, 0.07);
-  border: 1px solid rgba(52, 211, 153, 0.25);
-  border-radius: 12px;
-  padding: 10px 14px;
-  margin-top: 8px;
+  background: rgba(16, 185, 129, 0.06);
+  border: 1px solid rgba(52, 211, 153, 0.28);
+  border-radius: 14px;
+  padding: 12px 14px;
+  margin-top: 10px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
-.voucher-row-top {
+.voucher-card-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
+}
+
+.voucher-code-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
 }
 
 .voucher-code-pill {
   font-family: monospace;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 800;
   color: #34d399;
-  background: rgba(0, 0, 0, 0.4);
-  padding: 3px 8px;
-  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(52, 211, 153, 0.2);
+  padding: 4px 10px;
+  border-radius: 8px;
   letter-spacing: 0.5px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  white-space: nowrap;
 }
+
+.voucher-copy-icon-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.voucher-copy-icon-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+.voucher-status-wrapper {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.voucher-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.voucher-redeem-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 7px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #34d399;
+  background: rgba(52, 211, 153, 0.1);
+  border: 1px solid rgba(52, 211, 153, 0.35);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.voucher-redeem-action-btn:hover {
+  background: rgba(52, 211, 153, 0.22);
+  border-color: rgba(52, 211, 153, 0.55);
+  transform: translateY(-1px);
+}
+
+.voucher-card-calc {
+  width: 100%;
+}
+
 
 
 

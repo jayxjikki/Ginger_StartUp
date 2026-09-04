@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { useCampaignStore } from '../../../store/campaignStore';
 import { useUgcStore } from '../../../store/ugcStore';
 import { useChatStore } from '../../../store/chatStore';
+import { useNotificationStore } from '../../../store/notificationStore';
 import { formatCurrency, formatCount, formatTimeLeft } from '../../../utils/formatters';
 import { getCampaignImages, parseTierReward } from '../../../types/campaign.types';
 import { CampaignImageSlideshow } from '../../../components/ui/CampaignImageSlideshow';
@@ -30,6 +31,17 @@ const HomeMenuPage: React.FC = () => {
 
   const { inboxChats } = useChatStore();
   const unreadCount = inboxChats.filter(chat => chat.unread).length;
+
+  const { notifications } = useNotificationStore();
+  const hasUnreadVoucherNotif = notifications.some(
+    n => !n.is_read && (
+      n.content.includes('🎟️') || 
+      n.content.includes('VCH-') || 
+      n.content.includes('Voucher') || 
+      n.content.includes('🧾') || 
+      n.content.includes('Bill')
+    )
+  );
 
   useEffect(() => {
     // Reset filters on mount to ensure clean slate when switching tabs
@@ -164,12 +176,13 @@ const HomeMenuPage: React.FC = () => {
         </div>
         <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
           <button 
-            className="icon-btn" 
-            style={{ width: '40px', height: '40px', background: 'rgba(255,255,255,0.05)', borderRadius: '50%', color: '#e5e2e1' }}
+            className={`icon-btn ${hasUnreadVoucherNotif ? 'joined-campaigns-btn-glowing' : ''}`} 
+            style={{ position: 'relative', width: '40px', height: '40px', background: 'rgba(255,255,255,0.05)', borderRadius: '50%', color: '#e5e2e1' }}
             onClick={() => navigate('/campaigns/joined')} 
             title="Recent Joined Campaigns"
           >
             <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>assignment_turned_in</span>
+            {hasUnreadVoucherNotif && <span className="joined-notif-dot-glow" />}
           </button>
           <button 
             className="icon-btn" 
