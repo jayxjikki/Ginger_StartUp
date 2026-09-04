@@ -3,22 +3,26 @@
 // Campaign creation wizard for business owners
 // ═══════════════════════════════════════════════════════════
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
   FiArrowLeft, FiArrowRight, FiPlus, FiTrash2,
-  FiDollarSign, FiTarget, FiFileText, FiCheck, FiEye
+  FiDollarSign, FiTarget, FiFileText, FiCheck, FiEye,
+  FiUploadCloud, FiMapPin, FiGlobe
 } from 'react-icons/fi';
+import toast from 'react-hot-toast';
 import Button from '../../../components/ui/Button';
 import Card from '../../../components/ui/Card';
 import Input, { Textarea } from '../../../components/ui/Input';
 import Badge from '../../../components/ui/Badge';
-import ImageUpload from '../../../components/ui/ImageUpload';
 import { useAuthStore } from '../../../store/authStore';
 import { useCampaignStore } from '../../../store/campaignStore';
 import { CAMPAIGN_TYPES, VERIFICATION_PERIODS, SOCIAL_PLATFORMS } from '../../../lib/constants';
 import { getSocialIcon } from '../../../utils/socialHelpers';
+import { uploadToCloudinary } from '../../../lib/cloudinary';
+import { CampaignImageSlideshow } from '../../../components/ui/CampaignImageSlideshow';
+import { INDIAN_STATES_AND_CITIES } from '../../../lib/indianLocations';
 import CampaignCheckoutModal from '../components/CampaignCheckoutModal';
 import './CreateCampaignPage.css';
 
@@ -37,13 +41,23 @@ const CreateCampaignPage: React.FC = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
+
+  // Multi-image upload state
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+
   const [formData, setFormData] = useState({
     type: 'pool' as string,
     title: '',
     description: '',
     slogan: '',
-    location: '',
-    endDate: '',
+    // Location: Physical vs Online / None
+    isOnlineVenue: false,
+    locationState: 'Karnataka',
+    locationCity: 'Bengaluru',
+    locationCustomCity: '',
+    locationExact: '',
+    location: 'Bengaluru, Karnataka',
     videoRequirements: '',
     keywords: [] as string[],
     keywordInput: '',
@@ -62,6 +76,7 @@ const CreateCampaignPage: React.FC = () => {
     giftTiers: [
       { minViews: '10000', gift: 'Smart Watch / Brand Merch' },
     ],
+    images: [] as string[],
     image_url: '',
   });
 
@@ -69,13 +84,185 @@ const CreateCampaignPage: React.FC = () => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const addKeyword = () => {
-    if (formData.keywordInput.trim() && !formData.keywords.includes(formData.keywordInput.trim())) {
-      setFormData((prev) => ({
+  // ── Multi-Image Handlers (Up to 3 images with Automatic Slideshow) ──
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    const fileList = Array.from(e.target.files);
+    const remainingSlots = 3 - formData.images.length;
+    if (remainingSlots <= 0) {
+      toast.error('Maximum 3 pictures allowed');
+      return;
+    }
+
+    const filesToUpload = fileList.slice(0, remainingSlots);
+    setIsUploadingImage(true);
+
+    try {
+      const uploadPromises = filesToUpload.map(async (file) => {
+        if (!file.type.startsWith('image/')) {
+          throw new Error(`"${file.name}" is not an image file`);
+        }
+        if (file.size > 10 * 1024 * 1024) {
+          throw new Error(`"${file.name}" exceeds 10MB limit`);
+        }
+        return await uploadToCloudinary(file, user?.id);
+      });
+
+      const uploadedUrls = await Promise.all(uploadPromises);
+      setFormData((prev) => {
+        const nextImages = [...prev.images, ...uploadedUrls].slice(0, 3);
+        return {
+          ...prev,
+          images: nextImages,
+          image_url: nextImages[0] || '',
+        };
+      });
+      toast.success(
+        uploadedUrls.length === 1
+          ? 'Picture added!'
+          : `${uploadedUrls.length} pictures added!`
+      );
+    } catch (err: any) {
+      console.error('Image upload failed:', err);
+      toast.error(err.message || 'Upload failed. Please try again.');
+    } finally {
+      setIsUploadingImage(false);
+      if (imageInputRef.current) {
+        imageInputRef.current.value = '';
+      }
+    }
+  };
+
+  const removeImage = (idx: number) => {
+    setFormData((prev) => {
+      const nextImages = prev.images.filter((_, i) => i !== idx);
+      return {
         ...prev,
-        keywords: [...prev.keywords, prev.keywordInput.trim()],
-        keywordInput: '',
-      }));
+        images: nextImages,
+        image_url: nextImages[0] || '',
+      };
+    });
+  };
+
+  const setCoverImage = (idx: number) => {
+    if (idx === 0) return;
+    setFormData((prev) => {
+      const selected = prev.images[idx];
+      const rest = prev.images.filter((_, i) => i !== idx);
+      const nextImages = [selected, ...rest];
+      return {
+        ...prev,
+        images: nextImages,
+        image_url: nextImages[0] || '',
+      };
+    });
+    toast.success('Cover image set!');
+  };
+
+  // ── Location Handlers ──
+  const updateLocationState = (newState: string) => {
+    const defaultCity = INDIAN_STATES_AND_CITIES[newState]?.[0] || 'Other';
+    setFormData((prev) => {
+      const cityToUse = defaultCity === 'Other' ? prev.locationCustomCity.trim() : defaultCity;
+      const parts = [prev.locationExact.trim(), cityToUse, newState].filter(Boolean);
+      return {
+        ...prev,
+        locationState: newState,
+        locationCity: defaultCity,
+        location: prev.isOnlineVenue ? 'None' : parts.join(', '),
+      };
+    });
+  };
+
+  const updateLocationCity = (newCity: string) => {
+    setFormData((prev) => {
+      const cityToUse = newCity === 'Other' ? prev.locationCustomCity.trim() : newCity;
+      const parts = [prev.locationExact.trim(), cityToUse, prev.locationState].filter(Boolean);
+      return {
+        ...prev,
+        locationCity: newCity,
+        location: prev.isOnlineVenue ? 'None' : parts.join(', '),
+      };
+    });
+  };
+
+  const updateLocationCustomCity = (val: string) => {
+    setFormData((prev) => {
+      const parts = [prev.locationExact.trim(), val.trim(), prev.locationState].filter(Boolean);
+      return {
+        ...prev,
+        locationCustomCity: val,
+        location: prev.isOnlineVenue ? 'None' : parts.join(', '),
+      };
+    });
+  };
+
+  const updateLocationExact = (val: string) => {
+    setFormData((prev) => {
+      const cityToUse = prev.locationCity === 'Other' ? prev.locationCustomCity.trim() : prev.locationCity;
+      const parts = [val.trim(), cityToUse, prev.locationState].filter(Boolean);
+      return {
+        ...prev,
+        locationExact: val,
+        location: prev.isOnlineVenue ? 'None' : parts.join(', '),
+      };
+    });
+  };
+
+  const toggleVenueType = (isOnline: boolean) => {
+    setFormData((prev) => {
+      if (isOnline) {
+        return {
+          ...prev,
+          isOnlineVenue: true,
+          location: 'None',
+        };
+      } else {
+        const cityToUse = prev.locationCity === 'Other' ? prev.locationCustomCity.trim() : prev.locationCity;
+        const parts = [prev.locationExact.trim(), cityToUse, prev.locationState].filter(Boolean);
+        return {
+          ...prev,
+          isOnlineVenue: false,
+          location: parts.join(', '),
+        };
+      }
+    });
+  };
+
+  // ── Smart Hashtags / Keywords Handlers ──
+  const handleKeywordChange = (val: string) => {
+    if (!val) {
+      updateField('keywordInput', '');
+      return;
+    }
+    // As soon as user starts to type, prefix with hashtag without double ##
+    let formatted = val;
+    if (!formatted.startsWith('#')) {
+      formatted = '#' + formatted.replace(/^#+/, '');
+    } else {
+      formatted = '#' + formatted.replace(/^#+/, '');
+    }
+    updateField('keywordInput', formatted);
+  };
+
+  const addKeyword = () => {
+    const raw = formData.keywordInput.trim();
+    if (!raw || raw === '#') return;
+
+    // Split by space, comma, or enter (in case user pasted or typed multiple hashtags)
+    const extracted = raw
+      .split(/[\s,]+/)
+      .map((t) => t.replace(/^#+/, '').trim())
+      .filter((t) => t.length > 0);
+
+    if (extracted.length > 0) {
+      setFormData((prev) => {
+        const next = [...prev.keywords];
+        extracted.forEach((k) => {
+          if (!next.includes(k)) next.push(k);
+        });
+        return { ...prev, keywords: next, keywordInput: '' };
+      });
     }
   };
 
@@ -253,11 +440,14 @@ const CreateCampaignPage: React.FC = () => {
         video_requirements: formData.videoRequirements,
         slogan: formData.slogan,
         keywords: formData.keywords,
-        location: formData.location,
+        location: formData.isOnlineVenue ? 'None' : (formData.location || 'None'),
         discount_percent: (formData.type === 'discount' || formData.type === 'hybrid') && formData.discountTiers.length > 0 ? Number(formData.discountTiers[0].amount) || 0 : 0,
         verification_days: formData.verificationDays,
-        image_url: formData.image_url,
-        end_date: formData.endDate ? new Date(formData.endDate).toISOString() : undefined,
+        image_url: formData.images[0] || '',
+        images: formData.images,
+        terms: {
+          images: formData.images,
+        },
         payout_tiers: allTiers as any,
       });
       navigate('/campaigns');
@@ -398,36 +588,209 @@ const CreateCampaignPage: React.FC = () => {
                   placeholder="Describe your brand and the theme of the campaign..."
                 />
 
-                <div className="image-upload-wrapper">
-                  <ImageUpload 
-                    label="Campaign Cover Image (Cloudinary)" 
-                    onUploadSuccess={(url) => updateField('image_url', url)}
-                    onUploadError={(err) => console.error(err)}
+                {/* ── 1st & 2nd: Campaign Images (Up to 3 pictures & Automatic Slideshow, no "Cloudinary") ── */}
+                <div className="form-group campaign-images-uploader-group">
+                  <div className="section-title-row">
+                    <label className="form-label">Campaign Images ({formData.images.length}/3)</label>
+                    <span className="field-hint-inline">
+                      {formData.images.length > 1
+                        ? '✨ Automatic slideshow active for multiple pictures'
+                        : 'Upload up to 3 pictures. 2+ pictures will play as an auto-slideshow.'}
+                    </span>
+                  </div>
+
+                  {/* Hidden file input */}
+                  <input
+                    type="file"
+                    ref={imageInputRef}
+                    onChange={handleImageUpload}
+                    accept="image/*"
+                    multiple
+                    style={{ display: 'none' }}
                   />
+
+                  {/* Images Grid */}
+                  <div className="campaign-images-grid">
+                    {formData.images.map((imgUrl, idx) => (
+                      <div key={idx} className="campaign-image-slot uploaded">
+                        <img src={imgUrl} alt={`Upload ${idx + 1}`} className="slot-thumb" />
+                        <div className="slot-badge">
+                          {idx === 0 ? 'Cover Photo' : `Slide ${idx + 1}`}
+                        </div>
+                        <div className="slot-actions">
+                          {idx > 0 && (
+                            <button
+                              type="button"
+                              className="slot-action-btn cover-btn"
+                              onClick={() => setCoverImage(idx)}
+                              title="Make Cover Photo"
+                            >
+                              Set Cover
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            className="slot-action-btn delete-btn"
+                            onClick={() => removeImage(idx)}
+                            title="Remove Picture"
+                            aria-label={`Remove picture ${idx + 1}`}
+                          >
+                            <FiTrash2 size={13} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+
+                    {formData.images.length < 3 && (
+                      <button
+                        type="button"
+                        className="campaign-image-add-btn"
+                        onClick={() => imageInputRef.current?.click()}
+                        disabled={isUploadingImage}
+                      >
+                        {isUploadingImage ? (
+                          <div className="upload-loading-content">
+                            <span className="material-symbols-outlined spin-icon">progress_activity</span>
+                            <span>Uploading...</span>
+                          </div>
+                        ) : (
+                          <div className="upload-empty-content">
+                            <FiUploadCloud size={24} className="upload-cloud-icon" />
+                            <span className="upload-add-title">
+                              + Add Picture ({formData.images.length + 1}/3)
+                            </span>
+                            <span className="upload-add-sub">
+                              {formData.images.length === 0 ? 'Cover Picture' : 'Slide Picture'}
+                            </span>
+                          </div>
+                        )}
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Auto Slideshow Live Preview when > 1 image */}
+                  {formData.images.length > 1 && (
+                    <div className="campaign-slideshow-preview-card">
+                      <div className="slideshow-preview-header">
+                        <span className="slideshow-preview-tag">LIVE PREVIEW</span>
+                        <span className="slideshow-preview-title">Automatic Slideshow (as seen by creators)</span>
+                      </div>
+                      <div className="slideshow-preview-frame">
+                        <CampaignImageSlideshow
+                          images={formData.images}
+                          alt={formData.title || 'Campaign preview'}
+                          showBadge={true}
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <Input
                   label="Slogan / Tagline"
                   value={formData.slogan}
                   onChange={(e) => updateField('slogan', e.target.value)}
-                  placeholder="e.g., Where Luxury Meets the Clouds"
+                  placeholder="e.g., Best fitness gym in Neotown, Gollahalli"
                 />
 
-                <div className="form-grid-2">
-                  <Input
-                    label="Location"
-                    value={formData.location}
-                    onChange={(e) => updateField('location', e.target.value)}
-                    placeholder="City, State or 'Online'"
-                  />
+                {/* ── 3rd: Location (State, City, Exact Venue Address vs Online/None) ── */}
+                <div className="form-group campaign-location-group">
+                  <label className="form-label">Location</label>
+                  <p className="field-hint">
+                    Set whether this is a physical venue (store, gym, cafe) for map discovery, or an online campaign.
+                  </p>
 
-                  <Input
-                    label="Deadline (End Date)"
-                    type="date"
-                    value={formData.endDate}
-                    onChange={(e) => updateField('endDate', e.target.value)}
-                  />
+                  <div className="venue-type-toggle">
+                    <button
+                      type="button"
+                      className={`venue-toggle-btn ${!formData.isOnlineVenue ? 'active' : ''}`}
+                      onClick={() => toggleVenueType(false)}
+                    >
+                      <FiMapPin size={16} />
+                      <span>Physical Store / Venue</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`venue-toggle-btn ${formData.isOnlineVenue ? 'active' : ''}`}
+                      onClick={() => toggleVenueType(true)}
+                    >
+                      <FiGlobe size={16} />
+                      <span>Online / Digital Campaign</span>
+                    </button>
+                  </div>
+
+                  {formData.isOnlineVenue ? (
+                    <div className="online-location-notice">
+                      <FiGlobe size={20} className="notice-icon text-ginger" />
+                      <div>
+                        <h5 className="notice-title">Online Campaign — Location set to "None"</h5>
+                        <p className="notice-desc">
+                          Creators from anywhere can submit content for this campaign. It will not be pinned to a physical radar map location.
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="physical-location-fields">
+                      <div className="location-row-selects">
+                        {/* State selector */}
+                        <div className="location-select-field">
+                          <label className="sub-label">State</label>
+                          <select
+                            className="location-select"
+                            value={formData.locationState}
+                            onChange={(e) => updateLocationState(e.target.value)}
+                          >
+                            {Object.keys(INDIAN_STATES_AND_CITIES).map((st) => (
+                              <option key={st} value={st}>
+                                {st}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* City selector */}
+                        <div className="location-select-field">
+                          <label className="sub-label">City</label>
+                          <select
+                            className="location-select"
+                            value={formData.locationCity}
+                            onChange={(e) => updateLocationCity(e.target.value)}
+                          >
+                            {(INDIAN_STATES_AND_CITIES[formData.locationState] || []).map((ct) => (
+                              <option key={ct} value={ct}>
+                                {ct}
+                              </option>
+                            ))}
+                            <option value="Other">Other / Custom City...</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Custom City input if 'Other' */}
+                      {formData.locationCity === 'Other' && (
+                        <Input
+                          label="Custom City Name"
+                          placeholder="e.g., Hosur, Whitefield, etc."
+                          value={formData.locationCustomCity}
+                          onChange={(e) => updateLocationCustomCity(e.target.value)}
+                        />
+                      )}
+
+                      {/* Exact Venue Address */}
+                      <Input
+                        label="Exact Venue Location / Street Address"
+                        placeholder="e.g., GOLLAHALLI Main Road, Opp. Wipro Gate, Electronic City"
+                        value={formData.locationExact}
+                        onChange={(e) => updateLocationExact(e.target.value)}
+                      />
+                      <p className="field-hint-small">
+                        📍 Combined map location: <strong className="text-ginger">{formData.location || 'Please specify address'}</strong>
+                      </p>
+                    </div>
+                  )}
                 </div>
+
+                {/* ── 4th: Deadline box & option REMOVED completely! ── */}
 
                 <Textarea
                   label="Video Requirements"
@@ -436,15 +799,23 @@ const CreateCampaignPage: React.FC = () => {
                   placeholder="Detail must-include guidelines, hashtags, or required talking points..."
                 />
 
-                {/* Keywords */}
+                {/* ── 5th: Keywords & Tags (Auto-starts with #, no double ##) ── */}
                 <div className="form-group">
                   <label className="form-label">Keywords & Tags</label>
+                  <p className="field-hint">
+                    Type keywords for creators to find your campaign. Automatically formatted with hashtags.
+                  </p>
                   <div className="keyword-input-row">
                     <Input
                       value={formData.keywordInput}
-                      onChange={(e) => updateField('keywordInput', e.target.value)}
-                      placeholder="Add a tag..."
-                      onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addKeyword())}
+                      onChange={(e) => handleKeywordChange(e.target.value)}
+                      placeholder="#fitness, #gym, #viral..."
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ',') {
+                          e.preventDefault();
+                          addKeyword();
+                        }
+                      }}
                     />
                     <Button variant="secondary" size="md" onClick={addKeyword} type="button">
                       Add
@@ -848,6 +1219,17 @@ const CreateCampaignPage: React.FC = () => {
 
               <div className="review-summary">
                 <Card variant="glass" padding="lg">
+                  {/* Campaign Image(s) Slideshow Banner */}
+                  {formData.images.length > 0 && (
+                    <div className="review-slideshow-banner">
+                      <CampaignImageSlideshow
+                        images={formData.images}
+                        alt={formData.title || 'Campaign preview'}
+                        showBadge={formData.images.length > 1}
+                      />
+                    </div>
+                  )}
+
                   <div className="review-header">
                     <div>
                       <span className="review-type-badge">{formData.type.toUpperCase()}</span>
@@ -861,7 +1243,22 @@ const CreateCampaignPage: React.FC = () => {
                   <div className="review-grid">
                     <div className="review-row">
                       <span className="review-label">Location</span>
-                      <span className="review-value">{formData.location || 'Online / Anywhere'}</span>
+                      <span className="review-value">
+                        {formData.isOnlineVenue || formData.location === 'None'
+                          ? '🌐 Online Campaign (None)'
+                          : `📍 ${formData.location || 'Not specified'}`}
+                      </span>
+                    </div>
+
+                    <div className="review-row">
+                      <span className="review-label">Campaign Pictures</span>
+                      <span className="review-value">
+                        {formData.images.length > 1
+                          ? `${formData.images.length} Pictures (Automatic Slideshow)`
+                          : formData.images.length === 1
+                          ? '1 Picture'
+                          : 'None'}
+                      </span>
                     </div>
 
                     {formData.type === 'pool' && (
@@ -941,6 +1338,15 @@ const CreateCampaignPage: React.FC = () => {
                         {formData.platforms.map((pid) => SOCIAL_PLATFORMS.find((sp) => sp.id === pid)?.name || pid).join(', ') || 'All Platforms'}
                       </span>
                     </div>
+
+                    {formData.keywords.length > 0 && (
+                      <div className="review-row">
+                        <span className="review-label">Keywords & Tags</span>
+                        <span className="review-value" style={{ color: 'var(--ginger-400, #ff8433)', fontWeight: 600 }}>
+                          {formData.keywords.map((kw) => `#${kw}`).join(' ')}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </Card>
               </div>

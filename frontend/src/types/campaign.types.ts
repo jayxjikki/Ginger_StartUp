@@ -25,6 +25,7 @@ export interface Campaign {
   verification_days: number;
   created_at: string;
   image_url?: string;
+  images?: string[];
   // Joined fields
   advertiser?: {
     full_name: string;
@@ -48,6 +49,40 @@ export interface CampaignTerms {
   language?: string;
   content_restrictions?: string;
   additional_notes?: string;
+  images?: string[];
+}
+
+/**
+ * Helper to safely extract an array of image URLs from a Campaign
+ * Prioritizes campaign.images, then terms.images, then parses image_url
+ */
+export function getCampaignImages(campaign: {
+  image_url?: string | null;
+  images?: string[] | null;
+  terms?: any;
+}): string[] {
+  if (Array.isArray(campaign.images) && campaign.images.length > 0) {
+    return campaign.images.filter(Boolean);
+  }
+  if (campaign.terms && Array.isArray(campaign.terms.images) && campaign.terms.images.length > 0) {
+    return campaign.terms.images.filter(Boolean);
+  }
+  if (campaign.image_url) {
+    const trimmed = campaign.image_url.trim();
+    if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.filter(Boolean);
+        }
+      } catch {}
+    }
+    if (trimmed.includes(',')) {
+      return trimmed.split(',').map((s: string) => s.trim()).filter(Boolean);
+    }
+    return [trimmed];
+  }
+  return [];
 }
 
 export interface PayoutTier {

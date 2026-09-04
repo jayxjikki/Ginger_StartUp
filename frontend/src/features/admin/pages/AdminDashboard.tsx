@@ -523,7 +523,7 @@ const AdminDashboard: React.FC = () => {
                 <input required type="text" placeholder="Subtitle" className="input-field" value={slideForm.subtitle} onChange={e => setSlideForm({...slideForm, subtitle: e.target.value})} />
                 
                 <ImageUpload 
-                  label="Slideshow Image (Cloudinary)" 
+                  label="Slideshow Image" 
                   defaultImage={slideForm.image_url} 
                   onUploadSuccess={(url) => setSlideForm({...slideForm, image_url: url})} 
                 />

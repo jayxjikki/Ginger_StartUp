@@ -8,6 +8,8 @@ import { useCampaignStore } from '../../../store/campaignStore';
 import { useUgcStore } from '../../../store/ugcStore';
 import { useChatStore } from '../../../store/chatStore';
 import { formatCurrency, formatCount, formatTimeLeft } from '../../../utils/formatters';
+import { getCampaignImages } from '../../../types/campaign.types';
+import { CampaignImageSlideshow } from '../../../components/ui/CampaignImageSlideshow';
 import LocationCampaignMapModal from '../components/LocationCampaignMapModal';
 import './CampaignFeedPage.css';
 
@@ -321,6 +323,7 @@ const HomeMenuPage: React.FC = () => {
 
             return visibleCampaigns.map((campaign) => {
               const themeColor = getCampaignTypeColor(campaign.type);
+              const images = getCampaignImages(campaign);
               
               return (
                 <article 
@@ -329,12 +332,13 @@ const HomeMenuPage: React.FC = () => {
                   onClick={() => navigate(`/campaigns/${campaign.id}`)}
                   style={{ cursor: 'pointer' }}
                 >
-                  {campaign.image_url && (
+                  {images.length > 0 && (
                     <div className="campaign-images">
-                      <img
+                      <CampaignImageSlideshow
+                        images={images}
                         alt={campaign.title}
                         className="campaign-img"
-                        src={campaign.image_url}
+                        showBadge={images.length > 1}
                       />
                     </div>
                   )}
@@ -348,7 +352,9 @@ const HomeMenuPage: React.FC = () => {
                           </span>{' '}
                           {getCampaignTypeLabel(campaign.type)}
                         </span>
-                        <span className="tag-expired">{formatTimeLeft(campaign.end_date)}</span>
+                        {campaign.end_date && (
+                          <span className="tag-expired">{formatTimeLeft(campaign.end_date)}</span>
+                        )}
                       </div>
                       {campaign.prize_pool > 0 && (
                         <div className="campaign-prize-col">

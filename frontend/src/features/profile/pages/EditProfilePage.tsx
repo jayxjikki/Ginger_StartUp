@@ -114,7 +114,7 @@ const EditProfilePage: React.FC = () => {
       setAvatarUrl(url);
     } catch (err) {
       console.error('Failed to upload avatar:', err);
-      toast.error('Failed to upload image to Cloudinary.');
+      toast.error('Failed to upload image.');
     } finally {
       setIsUploadingAvatar(false);
     }
@@ -130,7 +130,7 @@ const EditProfilePage: React.FC = () => {
       setBannerUrl(url);
     } catch (err) {
       console.error('Failed to upload banner:', err);
-      toast.error('Failed to upload image to Cloudinary.');
+      toast.error('Failed to upload image.');
     } finally {
       setIsUploadingBanner(false);
     }

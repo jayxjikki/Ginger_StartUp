@@ -110,12 +110,25 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
   createCampaign: async (campaign: Partial<Campaign>) => {
     try {
       const { payout_tiers, ...campaignData } = campaign;
-      const { data, error } = await supabase
+      let insertPayload: any = { ...campaignData };
+      let { data, error } = await supabase
         .from('campaigns')
-        .insert([campaignData])
+        .insert([insertPayload])
         .select(`*, advertiser:profiles(*)`)
         .single();
         
+      // If remote database doesn't have images column yet, fallback without it
+      if (error && (error.message?.includes('column "images"') || error.details?.includes('column "images"'))) {
+        delete insertPayload.images;
+        const retryRes = await supabase
+          .from('campaigns')
+          .insert([insertPayload])
+          .select(`*, advertiser:profiles(*)`)
+          .single();
+        data = retryRes.data;
+        error = retryRes.error;
+      }
+
       if (error) throw error;
       const newCampaign = data as unknown as Campaign;
       

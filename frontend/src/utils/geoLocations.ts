@@ -119,7 +119,14 @@ export const resolveCoordinates = (
   campaignId: string = '',
   referenceUserLocation?: Coordinates | null
 ): Coordinates | null => {
-  if (!locationString || locationString.trim() === '' || locationString.toLowerCase() === 'online') {
+  if (
+    !locationString || 
+    locationString.trim() === '' || 
+    locationString.toLowerCase() === 'online' || 
+    locationString.toLowerCase() === 'none' ||
+    locationString.toLowerCase().startsWith('none') ||
+    locationString.toLowerCase().includes('online / none')
+  ) {
     return null;
   }
 

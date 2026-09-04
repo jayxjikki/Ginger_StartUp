@@ -22,6 +22,8 @@ import Badge from '../../../components/ui/Badge';
 import Avatar from '../../../components/ui/Avatar';
 import Input from '../../../components/ui/Input';
 import { formatCurrency, formatCount, formatTimeLeft } from '../../../utils/formatters';
+import { getCampaignImages } from '../../../types/campaign.types';
+import { CampaignImageSlideshow } from '../../../components/ui/CampaignImageSlideshow';
 import './CampaignDetailPage.css';
 
 const fadeUp = {
@@ -241,9 +243,11 @@ const CampaignDetailPage: React.FC = () => {
             {campaign.type === 'pool' ? '💰 Prize Pool' :
              campaign.type === 'discount' ? '🏷️ Discount' : '⚡ Hybrid'}
           </Badge>
-          <span className="detail-time-left">
-            <FiClock size={14} /> {formatTimeLeft(campaign.end_date)}
-          </span>
+          {campaign.end_date && (
+            <span className="detail-time-left">
+              <FiClock size={14} /> {formatTimeLeft(campaign.end_date)}
+            </span>
+          )}
         </motion.div>
 
         {/* Title */}
@@ -265,13 +269,14 @@ const CampaignDetailPage: React.FC = () => {
           </div>
         </motion.div>
 
-        {/* Campaign Cover Image */}
-        {campaign.image_url && (
-          <motion.div variants={fadeUp} className="w-full h-48 bg-black/20 rounded-xl overflow-hidden mb-6">
-            <img 
-              src={campaign.image_url} 
+        {/* Campaign Images (Single or Auto Slideshow) */}
+        {getCampaignImages(campaign).length > 0 && (
+          <motion.div variants={fadeUp} className="w-full h-56 bg-black/20 rounded-xl overflow-hidden mb-6">
+            <CampaignImageSlideshow 
+              images={getCampaignImages(campaign)} 
               alt={campaign.title} 
               className="w-full h-full object-cover" 
+              showBadge={getCampaignImages(campaign).length > 1}
             />
           </motion.div>
         )}
@@ -398,7 +403,11 @@ const CampaignDetailPage: React.FC = () => {
               <FiMapPin className="info-icon" />
               <div>
                 <span className="info-label">Location</span>
-                <span className="info-value">{campaign.location || 'Anywhere'}</span>
+                <span className="info-value">
+                  {campaign.location && campaign.location.toLowerCase() !== 'none'
+                    ? campaign.location
+                    : 'Online (None)'}
+                </span>
               </div>
             </div>
             <div className="info-item">

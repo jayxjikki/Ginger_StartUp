@@ -6,6 +6,8 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { Campaign } from '../../../types/campaign.types';
+import { getCampaignImages } from '../../../types/campaign.types';
+import { CampaignImageSlideshow } from '../../../components/ui/CampaignImageSlideshow';
 import { formatCurrency } from '../../../utils/formatters';
 
 interface MapCampaignCardProps {
@@ -56,8 +58,16 @@ export const MapCampaignCard: React.FC<MapCampaignCardProps> = ({
       {/* Main Campaign Identity & Image */}
       <div className="card-body">
         <div className="card-header-left">
-          {campaign.image_url ? (
-            <img src={campaign.image_url} alt={campaign.title} className="card-thumb" />
+          {getCampaignImages(campaign).length > 0 ? (
+            <div className="card-thumb-slideshow-wrapper" style={{ width: 52, height: 52, flexShrink: 0, borderRadius: 10, overflow: 'hidden' }}>
+              <CampaignImageSlideshow
+                images={getCampaignImages(campaign)}
+                alt={campaign.title}
+                className="card-thumb"
+                showIndicators={false}
+                showBadge={false}
+              />
+            </div>
           ) : (
             <div className="card-thumb-placeholder">
               <span className="material-symbols-outlined">campaign</span>

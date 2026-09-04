@@ -141,8 +141,14 @@ export const LocationCampaignMapModal: React.FC<LocationCampaignMapModalProps> =
     const list: MappedCampaignPin[] = [];
 
     campaigns.forEach((camp) => {
-      // Must have a location that isn't empty
-      if (!camp.location || camp.location.toLowerCase() === 'online') {
+      // Must have a valid physical location that isn't empty, online, or none
+      if (
+        !camp.location || 
+        camp.location.toLowerCase() === 'online' || 
+        camp.location.toLowerCase() === 'none' ||
+        camp.location.toLowerCase().startsWith('none') ||
+        camp.location.toLowerCase().includes('online / none')
+      ) {
         return;
       }
 
