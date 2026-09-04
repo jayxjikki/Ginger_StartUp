@@ -45,7 +45,7 @@ const ManageCampaignDetailPage: React.FC = () => {
     approveDirectDiscountSubmission,
     isLoading: storeLoading,
   } = useCampaignStore();
-  const { showConfirm, showAlert } = useGlobalModalStore();
+  const { showAlert, showConfirm } = useGlobalModalStore();
 
   const [singleCampaign, setSingleCampaign] = useState<any | null>(null);
   const [isFetchingDirect, setIsFetchingDirect] = useState(false);
@@ -234,55 +234,6 @@ const ManageCampaignDetailPage: React.FC = () => {
     } catch (err: any) {
       console.error(err);
       toast.error(err.message || 'Failed to approve direct discount submission.');
-    }
-  };
-
-  const handleToggleSubmissionMode = async (sub: any) => {
-    const isCurrentlyDirect = isDirectDiscountSubmission(sub);
-    const targetType = isCurrentlyDirect ? 'all_rewards' : 'direct_discount';
-    const targetLabel = isCurrentlyDirect ? 'All Campaign Rewards' : 'Direct Discount Videos & Vouchers';
-
-    const confirmed = await showConfirm(
-      `Move this video submission to "${targetLabel}"?`,
-      'Change Submission Category'
-    );
-    if (!confirmed) return;
-
-    try {
-      const currentVideoId = sub.video_id || `auto-${Math.random().toString(36).substring(7)}`;
-      const cleanVideoId = currentVideoId.replace(/^(direct_discount::|all_rewards::)/, '');
-      const newVideoId = `${targetType}::${cleanVideoId}`;
-
-      const updatePayload: any = {
-        video_id: newVideoId,
-        submission_type: targetType,
-      };
-
-      let { error } = await supabase.from('submissions').update(updatePayload).eq('id', sub.id);
-      if (error && (error.code === '42703' || error.message?.toLowerCase().includes('submission_type'))) {
-        delete updatePayload.submission_type;
-        const retryRes = await supabase.from('submissions').update(updatePayload).eq('id', sub.id);
-        error = retryRes.error;
-      }
-      if (error) throw error;
-
-      setSingleCampaign((prev: any) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          submissions: (prev.submissions || []).map((s: any) =>
-            s.id === sub.id
-              ? { ...s, video_id: newVideoId, submission_type: targetType }
-              : s
-          ),
-        };
-      });
-
-      toast.success(`Video moved to "${targetLabel}"!`);
-      setSubmissionMode(targetType);
-    } catch (err: any) {
-      console.error('Error switching submission type:', err);
-      toast.error(err.message || 'Failed to move submission.');
     }
   };
 
@@ -766,26 +717,6 @@ const ManageCampaignDetailPage: React.FC = () => {
                             >
                               <FiCheck size={15} />
                               <span>{isDirectDiscountSubmission(sub) ? 'Approve & Issue Voucher' : 'Approve'}</span>
-                            </button>
-                          )}
-
-                          {/* Toggle Mode Button: Move to Direct Discount / All Rewards */}
-                          {campaign.status === 'active' && (
-                            <button
-                              type="button"
-                              className="category-toggle-btn"
-                              onClick={() => handleToggleSubmissionMode(sub)}
-                              title={
-                                isDirectDiscountSubmission(sub)
-                                  ? 'Move this video to All Campaign Rewards'
-                                  : 'Move this video to Direct Discount Videos & Vouchers'
-                              }
-                            >
-                              <span>
-                                {isDirectDiscountSubmission(sub)
-                                  ? '🏆 Move to All Rewards'
-                                  : '🏷️ Move to Direct Discount'}
-                              </span>
                             </button>
                           )}
 
