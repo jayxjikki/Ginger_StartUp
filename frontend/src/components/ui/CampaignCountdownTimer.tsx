@@ -101,10 +101,6 @@ export const CampaignCountdownTimer: React.FC<CampaignCountdownTimerProps> = ({
             {timeLeft.isEnded ? 'CAMPAIGN CONCLUDED' : 'CAMPAIGN ENDS IN'}
           </span>
         </div>
-
-        <div className="timer-duration-tag">
-          <span>⏳ {durationDays} Days Duration</span>
-        </div>
       </div>
 
       {/* Countdown Digits Row */}
