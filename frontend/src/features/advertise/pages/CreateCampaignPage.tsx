@@ -74,7 +74,7 @@ const CreateCampaignPage: React.FC = () => {
       { minViews: '5000', amount: '30' },
     ],
     giftTiers: [
-      { minViews: '10000', gift: 'Smart Watch / Brand Merch' },
+      { type: 'views' as 'views' | 'text', minViews: '10000', condition: '', gift: 'Smart Watch / Brand Merch' },
     ],
     images: [] as string[],
     image_url: '',
@@ -333,17 +333,29 @@ const CreateCampaignPage: React.FC = () => {
   };
 
   // Gift Tiers Handlers
-  const addGiftTier = () => {
+  const addGiftTier = (tierType: 'views' | 'text' = 'views') => {
     setFormData((prev) => ({
       ...prev,
-      giftTiers: [...prev.giftTiers, { minViews: '', gift: '' }],
+      giftTiers: [
+        ...prev.giftTiers,
+        {
+          type: tierType,
+          minViews: tierType === 'views' ? '' : '0',
+          condition: '',
+          gift: '',
+        },
+      ],
     }));
   };
 
-  const updateGiftTier = (index: number, field: 'minViews' | 'gift', value: string) => {
+  const updateGiftTier = (
+    index: number,
+    field: 'type' | 'minViews' | 'condition' | 'gift',
+    value: string
+  ) => {
     setFormData((prev) => {
       const nextTiers = [...prev.giftTiers];
-      nextTiers[index][field] = value;
+      nextTiers[index] = { ...nextTiers[index], [field]: value };
       return { ...prev, giftTiers: nextTiers };
     });
   };
@@ -415,15 +427,26 @@ const CreateCampaignPage: React.FC = () => {
             });
           }
         });
-        // 3rd: Gift tiers (views : gifts)
+        // 3rd: Gift tiers (views : gifts or condition : reward)
         formData.giftTiers.forEach((t) => {
-          if (t.minViews || t.gift) {
-            allTiers.push({
-              min_views: Number(t.minViews) || 0,
-              payout_amount: 0,
-              reward_type: 'gift' as const,
-              reward_description: t.gift || 'Bonus Gift',
-            });
+          if (t.type === 'text') {
+            if (t.condition?.trim() || t.gift?.trim()) {
+              allTiers.push({
+                min_views: 0,
+                payout_amount: 0,
+                reward_type: 'gift' as const,
+                reward_description: `${t.condition?.trim() || 'Custom Task'} : REWARD : ${t.gift?.trim() || 'Bonus Reward'}`,
+              });
+            }
+          } else {
+            if (t.minViews || t.gift) {
+              allTiers.push({
+                min_views: Number(t.minViews) || 0,
+                payout_amount: 0,
+                reward_type: 'gift' as const,
+                reward_description: t.gift?.trim() || 'Bonus Gift',
+              });
+            }
           }
         });
       }
@@ -450,9 +473,11 @@ const CreateCampaignPage: React.FC = () => {
         },
         payout_tiers: allTiers as any,
       });
+      toast.success('Campaign published successfully! 🚀');
       navigate('/campaigns');
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to create campaign:', err);
+      toast.error(err?.message || 'Failed to publish campaign. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -1146,55 +1171,100 @@ const CreateCampaignPage: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* 3rd: Views : Gifts */}
+                    {/* 3rd: Views : Gifts / Custom Tasks */}
                     <div className="form-group hybrid-tier-section">
                       <div className="tiers-section-header">
-                        <label className="form-label">3. Bonus & Gift Tiers (Views → Gifts)</label>
-                        <p className="field-hint">Give physical gifts, gadgets, watch, merch, or bonuses when views reach milestone.</p>
+                        <label className="form-label">3. Bonus & Gift Tiers (Views Milestone or Custom Tasks)</label>
+                        <p className="field-hint">Give physical gifts, perks, or custom rewards when views reach milestone or creators complete custom tasks (e.g., Come visit my gym → Get 15% off).</p>
                       </div>
 
                       <div className="tiers-builder">
-                        {formData.giftTiers.map((tier, idx) => (
-                          <div key={idx} className="tier-card">
-                            <div className="tier-card-header">
-                              <span className="tier-badge">Gift Tier {idx + 1}</span>
-                              <button
-                                type="button"
-                                className="tier-delete-btn"
-                                onClick={() => removeGiftTier(idx)}
-                                title="Remove tier"
-                                aria-label={`Remove gift tier ${idx + 1}`}
-                              >
-                                <FiTrash2 size={15} />
-                              </button>
-                            </div>
-                            <div className="tier-inputs-grid">
-                              <Input
-                                label="Min. Views"
-                                type="number"
-                                min="0"
-                                value={tier.minViews}
-                                onChange={(e) => updateGiftTier(idx, 'minViews', e.target.value)}
-                                placeholder="e.g., 10000"
-                              />
-                              <div className="tier-arrow-indicator">
-                                <FiArrowRight size={18} />
+                        {formData.giftTiers.map((tier, idx) => {
+                          const isTextTier = tier.type === 'text';
+                          return (
+                            <div key={idx} className="tier-card">
+                              <div className="tier-card-header">
+                                <div className="tier-header-left">
+                                  <span className="tier-badge">Gift Tier {idx + 1}</span>
+                                  <div className="tier-mode-toggle">
+                                    <button
+                                      type="button"
+                                      className={`tier-mode-btn ${!isTextTier ? 'active' : ''}`}
+                                      onClick={() => updateGiftTier(idx, 'type', 'views')}
+                                    >
+                                      👁️ Views Milestone
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className={`tier-mode-btn ${isTextTier ? 'active' : ''}`}
+                                      onClick={() => updateGiftTier(idx, 'type', 'text')}
+                                    >
+                                      📝 Custom Task (Text-Text)
+                                    </button>
+                                  </div>
+                                </div>
+                                <button
+                                  type="button"
+                                  className="tier-delete-btn"
+                                  onClick={() => removeGiftTier(idx)}
+                                  title="Remove tier"
+                                  aria-label={`Remove gift tier ${idx + 1}`}
+                                >
+                                  <FiTrash2 size={15} />
+                                </button>
                               </div>
-                              <Input
-                                label="Gift / Reward Description"
-                                type="text"
-                                value={tier.gift}
-                                onChange={(e) => updateGiftTier(idx, 'gift', e.target.value)}
-                                placeholder="e.g., Smart Watch, Hoodie, Merch, Gadgets"
-                              />
+                              <div className="tier-inputs-grid">
+                                {!isTextTier ? (
+                                  <Input
+                                    label="Min. Views"
+                                    type="number"
+                                    min="0"
+                                    value={tier.minViews || ''}
+                                    onChange={(e) => updateGiftTier(idx, 'minViews', e.target.value)}
+                                    placeholder="e.g., 10000"
+                                  />
+                                ) : (
+                                  <Input
+                                    label="Requirement / Task (Text)"
+                                    type="text"
+                                    value={tier.condition || ''}
+                                    onChange={(e) => updateGiftTier(idx, 'condition', e.target.value)}
+                                    placeholder="e.g., Come visit my gym"
+                                  />
+                                )}
+                                <div className="tier-arrow-indicator">
+                                  <FiArrowRight size={18} />
+                                </div>
+                                <Input
+                                  label={!isTextTier ? "Gift / Reward Description" : "Reward / Perk (Text)"}
+                                  type="text"
+                                  value={tier.gift || ''}
+                                  onChange={(e) => updateGiftTier(idx, 'gift', e.target.value)}
+                                  placeholder={!isTextTier ? "e.g., Smart Watch, Hoodie, Merch" : "e.g., Get 15 percent of something off"}
+                                />
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
 
-                        <button type="button" className="tier-add-btn" onClick={addGiftTier}>
-                          <FiPlus size={16} />
-                          <span>{formData.giftTiers.length > 0 ? 'Add Another Gift Tier' : '+ Add Bonus / Gift Tier'}</span>
-                        </button>
+                        <div className="tier-add-buttons-row">
+                          <button
+                            type="button"
+                            className="tier-add-btn tier-add-half"
+                            onClick={() => addGiftTier('views')}
+                          >
+                            <FiPlus size={16} />
+                            <span>+ Add Views Milestone</span>
+                          </button>
+                          <button
+                            type="button"
+                            className="tier-add-btn tier-add-half tier-add-task"
+                            onClick={() => addGiftTier('text')}
+                          >
+                            <FiPlus size={16} />
+                            <span>+ Add Custom Task (Text-Text)</span>
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1319,9 +1389,13 @@ const CreateCampaignPage: React.FC = () => {
                         )}
                         {formData.giftTiers.length > 0 && (
                           <div className="review-row">
-                            <span className="review-label">Bonus / Gift Tiers (Views:Gifts)</span>
+                            <span className="review-label">Bonus / Gift Tiers</span>
                             <span className="review-value font-semibold">
-                              {formData.giftTiers.map((t) => `🎁 ${t.gift} (${Number(t.minViews || 0).toLocaleString()} views)`).join(', ')}
+                              {formData.giftTiers.map((t) =>
+                                t.type === 'text'
+                                  ? `🎁 ${t.gift || 'Reward'} ("${t.condition || 'Task'}")`
+                                  : `🎁 ${t.gift} (${Number(t.minViews || 0).toLocaleString()} views)`
+                              ).join(', ')}
                             </span>
                           </div>
                         )}

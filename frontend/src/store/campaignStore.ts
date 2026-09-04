@@ -111,14 +111,28 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
     try {
       const { payout_tiers, ...campaignData } = campaign;
       let insertPayload: any = { ...campaignData };
+
+      // Ensure terms preserves the images array
+      if (insertPayload.images && Array.isArray(insertPayload.images) && insertPayload.images.length > 0) {
+        insertPayload.terms = {
+          ...(typeof insertPayload.terms === 'object' && insertPayload.terms !== null ? insertPayload.terms : {}),
+          images: insertPayload.images,
+        };
+      }
+
       let { data, error } = await supabase
         .from('campaigns')
         .insert([insertPayload])
         .select(`*, advertiser:profiles(*)`)
         .single();
         
-      // If remote database doesn't have images column yet, fallback without it
-      if (error && (error.message?.includes('column "images"') || error.details?.includes('column "images"'))) {
+      // If remote database doesn't have images column, fallback without top-level images
+      if (
+        error &&
+        (error.message?.toLowerCase().includes('images') ||
+         error.details?.toLowerCase().includes('images') ||
+         error.code === '42703')
+      ) {
         delete insertPayload.images;
         const retryRes = await supabase
           .from('campaigns')
@@ -129,8 +143,14 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
         error = retryRes.error;
       }
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error inserting campaign:', error);
+        throw error;
+      }
       const newCampaign = data as unknown as Campaign;
+      if (!newCampaign.images && campaign.images) {
+        newCampaign.images = campaign.images;
+      }
       
       // Insert payout tiers if they exist
       if (payout_tiers && payout_tiers.length > 0) {

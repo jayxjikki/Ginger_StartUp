@@ -8,7 +8,7 @@ import { useCampaignStore } from '../../../store/campaignStore';
 import { useUgcStore } from '../../../store/ugcStore';
 import { useChatStore } from '../../../store/chatStore';
 import { formatCurrency, formatCount, formatTimeLeft } from '../../../utils/formatters';
-import { getCampaignImages } from '../../../types/campaign.types';
+import { getCampaignImages, parseTierReward } from '../../../types/campaign.types';
 import { CampaignImageSlideshow } from '../../../components/ui/CampaignImageSlideshow';
 import LocationCampaignMapModal from '../components/LocationCampaignMapModal';
 import './CampaignFeedPage.css';
@@ -385,15 +385,20 @@ const HomeMenuPage: React.FC = () => {
                       </div>
                       {campaign.payout_tiers && campaign.payout_tiers.length > 0 && (
                         <div className="campaign-payout-tiers">
-                          {campaign.payout_tiers.slice(0, 2).map((tier) => (
-                            <span className="payout-tier" key={tier.id}>
-                              {tier.reward_type === 'gift'
-                                ? `${formatCount(tier.min_views)} -> 🎁 ${tier.reward_description || 'Gift'}`
-                                : tier.reward_type === 'discount' || campaign.type === 'discount'
-                                ? `${formatCount(tier.min_views)} -> ${tier.payout_amount}% Off`
-                                : `${formatCount(tier.min_views)} -> ${formatCurrency(tier.payout_amount, true)}`}
-                            </span>
-                          ))}
+                          {campaign.payout_tiers.slice(0, 2).map((tier) => {
+                            const parsed = parseTierReward(tier);
+                            return (
+                              <span className="payout-tier" key={tier.id}>
+                                {tier.reward_type === 'gift'
+                                  ? parsed.isTextTier
+                                    ? `${parsed.conditionText} -> 🎁 ${parsed.rewardText}`
+                                    : `${formatCount(tier.min_views)} -> 🎁 ${parsed.rewardText}`
+                                  : tier.reward_type === 'discount' || campaign.type === 'discount'
+                                  ? `${formatCount(tier.min_views)} -> ${tier.payout_amount}% Off`
+                                  : `${formatCount(tier.min_views)} -> ${formatCurrency(tier.payout_amount, true)}`}
+                              </span>
+                            );
+                          })}
                         </div>
                       )}
                     </div>

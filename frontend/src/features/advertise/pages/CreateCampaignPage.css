@@ -500,6 +500,74 @@
   border-color: var(--ginger-500, #F7931E);
 }
 
+.tier-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.tier-mode-toggle {
+  display: inline-flex;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.tier-mode-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-tertiary, #a1a1aa);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.tier-mode-btn.active {
+  background: rgba(247, 147, 30, 0.2);
+  color: var(--ginger-400, #ff8433);
+  border-color: rgba(247, 147, 30, 0.4);
+  box-shadow: 0 1px 4px rgba(247, 147, 30, 0.15);
+}
+
+.tier-mode-btn:hover:not(.active) {
+  color: var(--text-primary, #ffffff);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.tier-add-buttons-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.tier-add-half {
+  flex: 1;
+  margin-top: 0 !important;
+}
+
+.tier-add-task {
+  border-color: rgba(168, 85, 247, 0.4) !important;
+  color: #c084fc !important;
+}
+
+.tier-add-task:hover {
+  background: rgba(168, 85, 247, 0.08) !important;
+  border-color: #a855f7 !important;
+}
+
+@media (max-width: 600px) {
+  .tier-add-buttons-row {
+    flex-direction: column;
+  }
+}
+
 /* ── Hybrid Tiers Container ────────────────────────────── */
 .hybrid-tiers-container {
   display: flex;

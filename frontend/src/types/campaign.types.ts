@@ -94,6 +94,42 @@ export interface PayoutTier {
   reward_description: string | null;
 }
 
+export interface GiftTierItem {
+  type?: 'views' | 'text';
+  minViews?: string;
+  condition?: string;
+  gift: string;
+}
+
+/**
+ * Parses a payout tier's reward_description to check for custom text-text condition/reward
+ */
+export function parseTierReward(tier: {
+  reward_type?: string;
+  reward_description?: string | null;
+  min_views?: number;
+}): {
+  isTextTier: boolean;
+  conditionText: string;
+  rewardText: string;
+} {
+  if (tier.reward_type === 'gift' && tier.reward_description) {
+    if (tier.reward_description.includes(' : REWARD : ')) {
+      const [cond, rew] = tier.reward_description.split(' : REWARD : ');
+      return { isTextTier: true, conditionText: cond.trim(), rewardText: rew.trim() };
+    }
+    if (tier.reward_description.includes(' ::: ')) {
+      const [cond, rew] = tier.reward_description.split(' ::: ');
+      return { isTextTier: true, conditionText: cond.trim(), rewardText: rew.trim() };
+    }
+  }
+  return {
+    isTextTier: false,
+    conditionText: '',
+    rewardText: tier.reward_description || 'Bonus Gift',
+  };
+}
+
 export type RewardType = 'cash' | 'discount' | 'gift' | 'refund';
 
 export interface SlideshowItem {

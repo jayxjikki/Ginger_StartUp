@@ -11,7 +11,7 @@ import { formatCurrency } from '../../../utils/formatters';
 interface CampaignCheckoutModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: () => void | Promise<void>;
   campaignCost: number;
 }
 
@@ -60,7 +60,7 @@ const CampaignCheckoutModal: React.FC<CampaignCheckoutModalProps> = ({ isOpen, o
         if (error) throw error;
         toast.success(`Successfully deducted ${formatCurrency(campaignCost)} from wallet!`);
         fetchWalletData(user.id);
-        onSuccess();
+        await onSuccess();
         setIsLoading(false);
         return;
       }
@@ -109,9 +109,9 @@ const CampaignCheckoutModal: React.FC<CampaignCheckoutModalProps> = ({ isOpen, o
 
             if (withdrawalError) throw withdrawalError;
             
-            toast.success(`Payment successful! Campaign ready to publish.`);
+            toast.success(`Payment successful! Publishing campaign...`);
             fetchWalletData(user.id);
-            onSuccess();
+            await onSuccess();
           } catch (err: any) {
             console.error('Database error after payment:', err);
             toast.error('Payment succeeded but failed to update records. Contact support.');

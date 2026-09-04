@@ -22,7 +22,7 @@ import Badge from '../../../components/ui/Badge';
 import Avatar from '../../../components/ui/Avatar';
 import Input from '../../../components/ui/Input';
 import { formatCurrency, formatCount, formatTimeLeft } from '../../../utils/formatters';
-import { getCampaignImages } from '../../../types/campaign.types';
+import { getCampaignImages, parseTierReward } from '../../../types/campaign.types';
 import { CampaignImageSlideshow } from '../../../components/ui/CampaignImageSlideshow';
 import './CampaignDetailPage.css';
 
@@ -318,33 +318,40 @@ const CampaignDetailPage: React.FC = () => {
         <motion.div variants={fadeUp}>
           <h5 className="section-title">{campaign.type === 'discount' ? 'Discount Tiers' : 'Payout Tiers'}</h5>
           <div className="payout-tiers">
-            {campaign.payout_tiers?.map((tier, idx) => (
-              <motion.div
-                key={tier.id}
-                className="payout-tier"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.3 + idx * 0.08, type: 'spring' as const, stiffness: 300, damping: 30 }}
-              >
-                <div className="tier-views">
-                  <div className="tier-dot" />
-                  <span>{formatCount(tier.min_views)} views</span>
-                </div>
-                <div className="tier-arrow">→</div>
-                <div className="tier-reward">
-                  <span className="tier-amount">
-                    {tier.reward_type === 'gift'
-                      ? `🎁 ${tier.reward_description || 'Bonus Gift'}`
-                      : tier.reward_type === 'discount' || campaign.type === 'discount'
-                      ? `${tier.payout_amount}% Off`
-                      : formatCurrency(tier.payout_amount, true)}
-                  </span>
-                  {tier.reward_description && tier.reward_type !== 'gift' && (
-                    <span className="tier-bonus">{tier.reward_description}</span>
-                  )}
-                </div>
-              </motion.div>
-            ))}
+            {campaign.payout_tiers?.map((tier, idx) => {
+              const parsed = parseTierReward(tier);
+              return (
+                <motion.div
+                  key={tier.id || idx}
+                  className="payout-tier"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.3 + idx * 0.08, type: 'spring' as const, stiffness: 300, damping: 30 }}
+                >
+                  <div className="tier-views">
+                    <div className="tier-dot" />
+                    <span>
+                      {parsed.isTextTier
+                        ? `📌 ${parsed.conditionText}`
+                        : `${formatCount(tier.min_views)} views`}
+                    </span>
+                  </div>
+                  <div className="tier-arrow">→</div>
+                  <div className="tier-reward">
+                    <span className="tier-amount">
+                      {tier.reward_type === 'gift'
+                        ? `🎁 ${parsed.rewardText}`
+                        : tier.reward_type === 'discount' || campaign.type === 'discount'
+                        ? `${tier.payout_amount}% Off`
+                        : formatCurrency(tier.payout_amount, true)}
+                    </span>
+                    {tier.reward_description && tier.reward_type !== 'gift' && (
+                      <span className="tier-bonus">{tier.reward_description}</span>
+                    )}
+                  </div>
+                </motion.div>
+              );
+            })}
           </div>
         </motion.div>
 
@@ -475,7 +482,9 @@ const CampaignDetailPage: React.FC = () => {
               // Calculate expected earning (next tier)
               let nextTier: any = null;
               if (campaign.payout_tiers && campaign.payout_tiers.length > 0) {
-                const sortedTiers = [...campaign.payout_tiers].sort((a, b) => a.min_views - b.min_views);
+                const sortedTiers = [...campaign.payout_tiers]
+                  .filter((t) => t.reward_type !== 'gift' || t.min_views > 0)
+                  .sort((a, b) => a.min_views - b.min_views);
                 const currentViews = userSubmission.current_views || 0;
                 for (const tier of sortedTiers) {
                   if (tier.min_views > currentViews) {
