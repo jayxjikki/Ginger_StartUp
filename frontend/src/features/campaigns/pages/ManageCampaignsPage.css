@@ -1303,11 +1303,16 @@
   transform: scale(1.05);
 }
 
-.submission-video-viewport {
+.submission-video-viewport,
+.submission-modal-player-wrapper {
   position: relative;
   width: 100%;
+  aspect-ratio: 16 / 9;
   background: #000;
   overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .video-aspect-box {
@@ -1318,7 +1323,9 @@
 }
 
 .video-iframe,
-.video-element {
+.modal-iframe,
+.video-element,
+.modal-direct-video {
   position: absolute;
   top: 0;
   left: 0;
@@ -1328,7 +1335,8 @@
   background: #000;
 }
 
-.video-element {
+.video-element,
+.modal-direct-video {
   object-fit: contain;
 }
 

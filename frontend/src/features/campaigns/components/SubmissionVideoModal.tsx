@@ -1,13 +1,10 @@
 import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiX, FiExternalLink, FiCheck, FiFlag, FiEye, FiCopy } from 'react-icons/fi';
+import { FiX, FiExternalLink, FiCheck, FiFlag } from 'react-icons/fi';
 import Avatar from '../../../components/ui/Avatar';
-import Badge from '../../../components/ui/Badge';
 import { getSocialIcon } from '../../../utils/socialHelpers';
 import { getEmbedInfo, getVideoThumbnail } from '../../../utils/videoHelpers';
-import { formatCount } from '../../../utils/formatters';
 import { isDirectDiscountSubmission } from '../../../utils/submissionHelpers';
-import toast from 'react-hot-toast';
 
 interface SubmissionVideoModalProps {
   submission: any | null;
@@ -50,25 +47,6 @@ const SubmissionVideoModal: React.FC<SubmissionVideoModalProps> = ({
   const platform = submission.platform || 'video';
   const platformIcon = getSocialIcon(platform);
 
-  const handleCopyLink = () => {
-    navigator.clipboard.writeText(submission.video_url);
-    toast.success('Video link copied to clipboard!');
-  };
-
-  const isDiscount = isDirectDiscountSubmission(submission);
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'pending': return <Badge variant="warning" size="sm">Pending</Badge>;
-      case 'verified': return <Badge variant="success" size="sm">{isDiscount ? 'Approved' : isAdmin ? 'Owner Approved (Needs Admin)' : 'Approved (Pending Admin)'}</Badge>;
-      case 'paid': return <Badge variant="accent" size="sm">{isDiscount ? 'Approved' : 'Admin Approved & Paid'}</Badge>;
-      case 'rejected': return <Badge variant="error" size="sm">Rejected</Badge>;
-      case 'flagged': return <Badge variant="error" size="sm">Flagged</Badge>;
-      case 'disputed': return <Badge variant="warning" size="sm">Disputed</Badge>;
-      default: return <Badge variant="default" size="sm">{status}</Badge>;
-    }
-  };
-
   return (
     <AnimatePresence>
       {isOpen && (
@@ -106,16 +84,10 @@ const SubmissionVideoModal: React.FC<SubmissionVideoModalProps> = ({
                   <p className="modal-creator-handle">
                     @{submission.creator?.username || 'creator'} • {platform.toUpperCase()}
                   </p>
-                  <div className="flex items-center gap-1.5 mt-1">
-                    <Badge variant={isDirectDiscountSubmission(submission) ? 'warning' : 'accent'} size="sm">
-                      {isDirectDiscountSubmission(submission) ? '🏷️ Direct Discount' : '🏆 All Rewards'}
-                    </Badge>
-                  </div>
                 </div>
               </div>
 
               <div className="modal-header-actions">
-                {getStatusBadge(submission.status)}
                 <button
                   type="button"
                   className="modal-close-btn"
@@ -202,115 +174,70 @@ const SubmissionVideoModal: React.FC<SubmissionVideoModalProps> = ({
               )}
             </div>
 
-            {/* Submission Info Bar */}
-            <div className="submission-modal-meta">
-              <div className="meta-left">
-                <div className="meta-item">
-                  <span className="meta-label">VIEWS TRACKED</span>
-                  <span className="meta-value flex items-center gap-1.5 font-bold text-white">
-                    <FiEye size={15} className="text-accent" />
-                    {formatCount(submission.current_views || 0)} views
-                  </span>
-                </div>
-                <div className="meta-item">
-                  <span className="meta-label">SUBMITTED</span>
-                  <span className="meta-value text-secondary">
-                    {new Date(submission.submitted_at).toLocaleDateString(undefined, {
-                      year: 'numeric',
-                      month: 'short',
-                      day: 'numeric',
-                    })}
-                  </span>
-                </div>
-              </div>
+            {/* Modal Actions Footer - only displayed if pending review */}
+            {((isAdmin && submission.status !== 'paid') ||
+              (!isAdmin && submission.status === 'pending' && campaignStatus === 'active')) && (
+              <div className="submission-modal-actions">
+                {isAdmin ? (
+                  <>
+                    {submission.status !== 'paid' && onApprove && (
+                      <button
+                        type="button"
+                        className="btn btn-primary flex-1 flex items-center justify-center gap-2"
+                        style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: '#fff' }}
+                        onClick={() => onApprove(submission.id)}
+                      >
+                        <FiCheck size={18} />
+                        <span>Approve (Final Call)</span>
+                      </button>
+                    )}
 
-              <div className="meta-right">
-                <button
-                  type="button"
-                  className="meta-action-btn"
-                  onClick={handleCopyLink}
-                  title="Copy video link"
-                >
-                  <FiCopy size={14} />
-                  <span>Copy Link</span>
-                </button>
-                <a
-                  href={submission.video_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="meta-action-btn external"
-                  title="Open original video in new tab"
-                >
-                  <FiExternalLink size={14} />
-                  <span>Open URL</span>
-                </a>
-              </div>
-            </div>
-
-            {/* Modal Actions Footer */}
-            <div className="submission-modal-actions">
-              {isAdmin ? (
-                <>
-                  {submission.status !== 'paid' && onApprove && (
-                    <button
-                      type="button"
-                      className="btn btn-primary flex-1 flex items-center justify-center gap-2"
-                      style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: '#fff' }}
-                      onClick={() => onApprove(submission.id)}
-                    >
-                      <FiCheck size={18} />
-                      <span>Approve (Final Call)</span>
-                    </button>
-                  )}
-
-                  {submission.status !== 'rejected' && onReject && (
-                    <button
-                      type="button"
-                      className="btn btn-outline flag-btn flex-1 flex items-center justify-center gap-2"
-                      style={{ borderColor: 'rgba(239, 68, 68, 0.4)', color: '#ef4444' }}
-                      onClick={() => onReject(submission.id)}
-                    >
-                      <FiX size={16} />
-                      <span>Reject Video</span>
-                    </button>
-                  )}
-                </>
-              ) : (
-                <>
-                  {submission.status === 'pending' && campaignStatus === 'active' && onApprove && (
-                    <button
-                      type="button"
-                      className="btn btn-primary flex-1 flex items-center justify-center gap-2"
-                      onClick={() => onApprove(submission.id)}
-                    >
-                      <FiCheck size={18} />
-                      <span>Approve Submission</span>
-                    </button>
-                  )}
-
-                  {(submission.status === 'pending' || submission.status === 'verified') &&
-                    campaignStatus === 'active' &&
-                    onFlag && (
+                    {submission.status !== 'rejected' && onReject && (
                       <button
                         type="button"
                         className="btn btn-outline flag-btn flex-1 flex items-center justify-center gap-2"
-                        onClick={() => onFlag(submission.id)}
+                        style={{ borderColor: 'rgba(239, 68, 68, 0.4)', color: '#ef4444' }}
+                        onClick={() => onReject(submission.id)}
                       >
-                        <FiFlag size={16} />
-                        <span>Flag Video</span>
+                        <FiX size={16} />
+                        <span>Reject Video</span>
                       </button>
                     )}
-                </>
-              )}
+                  </>
+                ) : (
+                  <>
+                    {submission.status === 'pending' && campaignStatus === 'active' && onApprove && (
+                      <button
+                        type="button"
+                        className="btn btn-primary flex-1 flex items-center justify-center gap-2"
+                        style={
+                          isDirectDiscountSubmission(submission)
+                            ? { background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: '#fff' }
+                            : undefined
+                        }
+                        onClick={() => onApprove(submission.id)}
+                      >
+                        <FiCheck size={18} />
+                        <span>{isDirectDiscountSubmission(submission) ? 'Approve & Issue Voucher' : 'Approve Submission'}</span>
+                      </button>
+                    )}
 
-              <button
-                type="button"
-                className="btn btn-ghost modal-close-action"
-                onClick={onClose}
-              >
-                Close
-              </button>
-            </div>
+                    {submission.status === 'pending' &&
+                      campaignStatus === 'active' &&
+                      onFlag && (
+                        <button
+                          type="button"
+                          className="btn btn-outline flag-btn flex-1 flex items-center justify-center gap-2"
+                          onClick={() => onFlag(submission.id)}
+                        >
+                          <FiFlag size={16} />
+                          <span>Flag Video</span>
+                        </button>
+                      )}
+                  </>
+                )}
+              </div>
+            )}
           </motion.div>
         </div>
       )}
