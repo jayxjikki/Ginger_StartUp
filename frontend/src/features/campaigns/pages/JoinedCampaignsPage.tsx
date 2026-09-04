@@ -9,6 +9,7 @@ import { FiArrowLeft, FiClock, FiVideo, FiTrash2, FiCopy } from 'react-icons/fi'
 import { supabase } from '../../../lib/supabase';
 import Badge from '../../../components/ui/Badge';
 import DiscountCalculator from '../../../components/ui/DiscountCalculator';
+import { isDirectDiscountSubmission } from '../../../utils/submissionHelpers';
 import toast from 'react-hot-toast';
 import './JoinedCampaignsPage.css';
 
@@ -109,8 +110,8 @@ const JoinedCampaignsPage: React.FC = () => {
                     </p>
                   </div>
                   <div className="flex items-center gap-1.5 flex-wrap justify-end">
-                    <Badge variant={(sub as any).submission_type === 'direct_discount' ? 'warning' : 'accent'} size="sm">
-                      {(sub as any).submission_type === 'direct_discount' ? '🏷️ Direct Discount' : '🏆 All Rewards'}
+                    <Badge variant={isDirectDiscountSubmission(sub) ? 'warning' : 'accent'} size="sm">
+                      {isDirectDiscountSubmission(sub) ? '🏷️ Direct Discount' : '🏆 All Rewards'}
                     </Badge>
                     {getStatusBadge(sub.status)}
                   </div>
@@ -135,7 +136,7 @@ const JoinedCampaignsPage: React.FC = () => {
                 </div>
 
                 {/* Direct Discount Voucher Card with Calculator */}
-                {(sub as any).submission_type === 'direct_discount' && ((sub as any).voucher_code || sub.status === 'verified' || sub.status === 'paid') && (
+                {isDirectDiscountSubmission(sub) && ((sub as any).voucher_code || sub.status === 'verified' || sub.status === 'paid') && (
                   <div 
                     className="p-3 mx-4 mb-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex flex-col gap-2"
                     onClick={(e) => e.stopPropagation()}

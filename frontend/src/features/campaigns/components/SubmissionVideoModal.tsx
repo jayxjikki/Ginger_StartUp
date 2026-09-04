@@ -6,6 +6,7 @@ import Badge from '../../../components/ui/Badge';
 import { getSocialIcon } from '../../../utils/socialHelpers';
 import { getEmbedInfo, getVideoThumbnail } from '../../../utils/videoHelpers';
 import { formatCount } from '../../../utils/formatters';
+import { isDirectDiscountSubmission } from '../../../utils/submissionHelpers';
 import toast from 'react-hot-toast';
 
 interface SubmissionVideoModalProps {
@@ -104,8 +105,8 @@ const SubmissionVideoModal: React.FC<SubmissionVideoModalProps> = ({
                     @{submission.creator?.username || 'creator'} • {platform.toUpperCase()}
                   </p>
                   <div className="flex items-center gap-1.5 mt-1">
-                    <Badge variant={(submission as any).submission_type === 'direct_discount' ? 'warning' : 'accent'} size="sm">
-                      {(submission as any).submission_type === 'direct_discount' ? '🏷️ Direct Discount' : '🏆 All Rewards'}
+                    <Badge variant={isDirectDiscountSubmission(submission) ? 'warning' : 'accent'} size="sm">
+                      {isDirectDiscountSubmission(submission) ? '🏷️ Direct Discount' : '🏆 All Rewards'}
                     </Badge>
                   </div>
                 </div>

@@ -26,6 +26,7 @@ import Input from '../../../components/ui/Input';
 import { formatCurrency, formatCount, formatTimeLeft } from '../../../utils/formatters';
 import { getCampaignImages, parseTierReward } from '../../../types/campaign.types';
 import { CampaignImageSlideshow } from '../../../components/ui/CampaignImageSlideshow';
+import { isDirectDiscountSubmission, normalizeSubmission, encodeVideoId } from '../../../utils/submissionHelpers';
 import './CampaignDetailPage.css';
 
 const fadeUp = {
@@ -94,12 +95,13 @@ const CampaignDetailPage: React.FC = () => {
     setIsSubmitting(true);
     try {
       const cleanUrl = videoUrl.trim();
+      const persistentVideoId = encodeVideoId(submissionType);
       const insertPayload: any = {
         campaign_id: campaign!.id,
         creator_id: user.id,
         video_url: cleanUrl,
         platform: platform,
-        video_id: 'auto-' + Math.random().toString(36).substring(7),
+        video_id: persistentVideoId,
         submission_type: submissionType,
       };
 
@@ -124,7 +126,7 @@ const CampaignDetailPage: React.FC = () => {
       setVideoUrl('');
       
       // Update local state to hide button immediately
-      setUserSubmission({
+      setUserSubmission(normalizeSubmission({
         campaign_id: campaign!.id,
         creator_id: user.id,
         status: 'pending',
@@ -132,9 +134,10 @@ const CampaignDetailPage: React.FC = () => {
         earned_amount: 0,
         video_url: cleanUrl,
         platform: platform,
+        video_id: persistentVideoId,
         submission_type: submissionType,
         submitted_at: new Date().toISOString(),
-      });
+      }));
     } catch (err: any) {
       console.error('Submit error:', err);
       toast.error(err.message || 'Failed to submit video');
@@ -216,7 +219,7 @@ const CampaignDetailPage: React.FC = () => {
           .single();
         
         if (data) {
-          setUserSubmission(data);
+          setUserSubmission(normalizeSubmission(data));
         }
       } catch (err) {
         // Ignored, user just hasn't submitted yet
@@ -559,8 +562,8 @@ const CampaignDetailPage: React.FC = () => {
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-secondary">Submission Type</span>
-                      <Badge variant={userSubmission.submission_type === 'direct_discount' ? 'warning' : 'accent'} size="sm">
-                        {userSubmission.submission_type === 'direct_discount' ? '🏷️ Direct Discount' : '🏆 All Rewards'}
+                      <Badge variant={isDirectDiscountSubmission(userSubmission) ? 'warning' : 'accent'} size="sm">
+                        {isDirectDiscountSubmission(userSubmission) ? '🏷️ Direct Discount' : '🏆 All Rewards'}
                       </Badge>
                     </div>
                     <div className="flex justify-between items-center">
@@ -568,7 +571,7 @@ const CampaignDetailPage: React.FC = () => {
                       <span className="font-bold">{formatCount(userSubmission.current_views || 0)}</span>
                     </div>
                     {/* Direct Discount Voucher Details */}
-                    {userSubmission.submission_type === 'direct_discount' && (userSubmission.status === 'verified' || userSubmission.status === 'paid') && (
+                    {isDirectDiscountSubmission(userSubmission) && (userSubmission.status === 'verified' || userSubmission.status === 'paid') && (
                       <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex flex-col gap-2 mt-1">
                         <div className="flex items-center justify-between">
                           <span className="text-xs text-emerald-400 font-bold uppercase tracking-wider">
@@ -610,7 +613,7 @@ const CampaignDetailPage: React.FC = () => {
                       </div>
                     )}
 
-                    {userSubmission.submission_type !== 'direct_discount' && (
+                    {!isDirectDiscountSubmission(userSubmission) && (
                       <>
                         <div className="flex justify-between items-center">
                           <span className="text-sm text-secondary">Earned Amount</span>

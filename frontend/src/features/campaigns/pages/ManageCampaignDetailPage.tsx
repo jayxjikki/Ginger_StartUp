@@ -26,6 +26,8 @@ import { getVideoThumbnail } from '../../../utils/videoHelpers';
 import SubmissionVideoModal from '../components/SubmissionVideoModal';
 import DiscountCalculator from '../../../components/ui/DiscountCalculator';
 import VoucherVerifierModal from '../../../components/ui/VoucherVerifierModal';
+import CampaignCountdownTimer from '../../../components/ui/CampaignCountdownTimer';
+import { isDirectDiscountSubmission, normalizeSubmission } from '../../../utils/submissionHelpers';
 import toast from 'react-hot-toast';
 import './ManageCampaignsPage.css';
 
@@ -41,7 +43,6 @@ const ManageCampaignDetailPage: React.FC = () => {
     flagSubmissionByAdvertiser,
     approveSubmissionByAdvertiser,
     approveDirectDiscountSubmission,
-    submitCampaignToAdmin,
     isLoading: storeLoading,
   } = useCampaignStore();
   const { showConfirm, showAlert } = useGlobalModalStore();
@@ -77,7 +78,7 @@ const ManageCampaignDetailPage: React.FC = () => {
 
       setSingleCampaign({
         ...campaignRes,
-        submissions: subRes || [],
+        submissions: (subRes || []).map(normalizeSubmission),
       });
     } catch (err: any) {
       console.error('Error fetching campaign details:', err);
@@ -107,13 +108,13 @@ const ManageCampaignDetailPage: React.FC = () => {
     return submissions.find((s: any) => s.id === selectedSubmissionId) || null;
   }, [submissions, selectedSubmissionId]);
 
-  // Split submissions by mode
+  // Split submissions by mode using bulletproof helper
   const rewardSubmissions = useMemo(
-    () => submissions.filter((s: any) => s.submission_type !== 'direct_discount'),
+    () => submissions.filter((s: any) => !isDirectDiscountSubmission(s)),
     [submissions]
   );
   const discountSubmissions = useMemo(
-    () => submissions.filter((s: any) => s.submission_type === 'direct_discount'),
+    () => submissions.filter((s: any) => isDirectDiscountSubmission(s)),
     [submissions]
   );
 
@@ -236,17 +237,52 @@ const ManageCampaignDetailPage: React.FC = () => {
     }
   };
 
-  const handleSubmitCampaign = async () => {
+  const handleToggleSubmissionMode = async (sub: any) => {
+    const isCurrentlyDirect = isDirectDiscountSubmission(sub);
+    const targetType = isCurrentlyDirect ? 'all_rewards' : 'direct_discount';
+    const targetLabel = isCurrentlyDirect ? 'All Campaign Rewards' : 'Direct Discount Videos & Vouchers';
+
     const confirmed = await showConfirm(
-      'Submit this campaign for final approval? You will not be able to verify more submissions after this.'
+      `Move this video submission to "${targetLabel}"?`,
+      'Change Submission Category'
     );
     if (!confirmed) return;
+
     try {
-      await submitCampaignToAdmin(id!);
-      toast.success('Campaign submitted for final approval and payout!');
-      fetchCampaignData();
+      const currentVideoId = sub.video_id || `auto-${Math.random().toString(36).substring(7)}`;
+      const cleanVideoId = currentVideoId.replace(/^(direct_discount::|all_rewards::)/, '');
+      const newVideoId = `${targetType}::${cleanVideoId}`;
+
+      const updatePayload: any = {
+        video_id: newVideoId,
+        submission_type: targetType,
+      };
+
+      let { error } = await supabase.from('submissions').update(updatePayload).eq('id', sub.id);
+      if (error && (error.code === '42703' || error.message?.toLowerCase().includes('submission_type'))) {
+        delete updatePayload.submission_type;
+        const retryRes = await supabase.from('submissions').update(updatePayload).eq('id', sub.id);
+        error = retryRes.error;
+      }
+      if (error) throw error;
+
+      setSingleCampaign((prev: any) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          submissions: (prev.submissions || []).map((s: any) =>
+            s.id === sub.id
+              ? { ...s, video_id: newVideoId, submission_type: targetType }
+              : s
+          ),
+        };
+      });
+
+      toast.success(`Video moved to "${targetLabel}"!`);
+      setSubmissionMode(targetType);
     } catch (err: any) {
-      toast.error(err.message || 'Failed to submit campaign.');
+      console.error('Error switching submission type:', err);
+      toast.error(err.message || 'Failed to move submission.');
     }
   };
 
@@ -371,25 +407,15 @@ const ManageCampaignDetailPage: React.FC = () => {
             </div>
           </div>
 
-          {campaign.status === 'active' && (
-            <div className="mt-5">
-              <button
-                className="fancy-btn primary-glow w-full"
-                onClick={handleSubmitCampaign}
-              >
-                Submit Campaign for Final Approval
-              </button>
-              <p className="text-xs text-secondary mt-2 text-center">
-                Review and approve all valid creator videos before final payout submission.
-              </p>
-            </div>
-          )}
-
-          {campaign.status === 'paused' && (
-            <div className="mt-5 p-3.5 rounded-xl border border-warning/20 bg-warning/5 text-warning flex items-center justify-center font-bold text-sm gap-2">
-              <FiCheck /> Campaign Submitted for Admin Final Approval & Payout
-            </div>
-          )}
+          {/* Campaign Ending Live Countdown Timer */}
+          <div className="mt-5">
+            <CampaignCountdownTimer
+              createdAt={campaign.created_at}
+              endDate={campaign.end_date}
+              durationDays={campaign.verification_days || 35}
+              status={campaign.status}
+            />
+          </div>
         </motion.div>
 
         {/* Mode Switcher: All Campaign Rewards vs Direct Discount */}
@@ -628,8 +654,8 @@ const ManageCampaignDetailPage: React.FC = () => {
                             })}
                           </span>
                         </div>
-                        <Badge variant={sub.submission_type === 'direct_discount' ? 'warning' : 'accent'} size="sm">
-                          {sub.submission_type === 'direct_discount' ? '🏷️ Direct Discount' : '🏆 All Rewards'}
+                        <Badge variant={isDirectDiscountSubmission(sub) ? 'warning' : 'accent'} size="sm">
+                          {isDirectDiscountSubmission(sub) ? '🏷️ Direct Discount' : '🏆 All Rewards'}
                         </Badge>
                       </div>
 
@@ -641,7 +667,7 @@ const ManageCampaignDetailPage: React.FC = () => {
                       </div>
 
                       {/* Direct Discount Voucher Details with Quick Calculator */}
-                      {sub.submission_type === 'direct_discount' && (sub.status === 'verified' || sub.status === 'paid') && (
+                      {isDirectDiscountSubmission(sub) && (sub.status === 'verified' || sub.status === 'paid') && (
                         <div className="submission-voucher-box">
                           <div className="voucher-row-top">
                             <div className="flex items-center gap-2">
@@ -721,25 +747,45 @@ const ManageCampaignDetailPage: React.FC = () => {
                               type="button"
                               className="btn btn-primary approve-action-btn"
                               style={
-                                sub.submission_type === 'direct_discount'
+                                isDirectDiscountSubmission(sub)
                                   ? { background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)' }
                                   : undefined
                               }
                               onClick={() => {
-                                if (sub.submission_type === 'direct_discount') {
+                                if (isDirectDiscountSubmission(sub)) {
                                   handleApproveDirectDiscount(sub.id);
                                 } else {
                                   handleApproveSubmission(sub.id);
                                 }
                               }}
                               title={
-                                sub.submission_type === 'direct_discount'
+                                isDirectDiscountSubmission(sub)
                                   ? 'Approve and generate voucher code (no admin needed)'
                                   : 'Approve submission (sends to Admin)'
                               }
                             >
                               <FiCheck size={15} />
-                              <span>{sub.submission_type === 'direct_discount' ? 'Approve & Issue Voucher' : 'Approve'}</span>
+                              <span>{isDirectDiscountSubmission(sub) ? 'Approve & Issue Voucher' : 'Approve'}</span>
+                            </button>
+                          )}
+
+                          {/* Toggle Mode Button: Move to Direct Discount / All Rewards */}
+                          {campaign.status === 'active' && (
+                            <button
+                              type="button"
+                              className="category-toggle-btn"
+                              onClick={() => handleToggleSubmissionMode(sub)}
+                              title={
+                                isDirectDiscountSubmission(sub)
+                                  ? 'Move this video to All Campaign Rewards'
+                                  : 'Move this video to Direct Discount Videos & Vouchers'
+                              }
+                            >
+                              <span>
+                                {isDirectDiscountSubmission(sub)
+                                  ? '🏆 Move to All Rewards'
+                                  : '🏷️ Move to Direct Discount'}
+                              </span>
                             </button>
                           )}
 
@@ -775,7 +821,7 @@ const ManageCampaignDetailPage: React.FC = () => {
         submission={selectedSubmission}
         onClose={() => setSelectedSubmissionId(null)}
         onApprove={(id) => {
-          if (selectedSubmission?.submission_type === 'direct_discount') {
+          if (isDirectDiscountSubmission(selectedSubmission)) {
             handleApproveDirectDiscount(id);
           } else {
             handleApproveSubmission(id);

@@ -22,6 +22,7 @@ import Badge from '../../../components/ui/Badge';
 import Avatar from '../../../components/ui/Avatar';
 import Button from '../../../components/ui/Button';
 import ImageUpload from '../../../components/ui/ImageUpload';
+import { isDirectDiscountSubmission } from '../../../utils/submissionHelpers';
 import './AdminDashboard.css';
 
 // --- Animation Variants ---
@@ -92,7 +93,7 @@ const AdminDashboard: React.FC = () => {
   };
 
   const handleApproveSubmission = async (sub: any) => {
-    const isDirectDiscount = sub.submission_type === 'direct_discount';
+    const isDirectDiscount = isDirectDiscountSubmission(sub);
     let payout = 0;
 
     if (isDirectDiscount) {
@@ -432,10 +433,10 @@ const AdminDashboard: React.FC = () => {
                     {/* Submission Type */}
                     <td>
                       <Badge 
-                        variant={s.submission_type === 'direct_discount' ? 'warning' : 'accent'} 
+                        variant={isDirectDiscountSubmission(s) ? 'warning' : 'accent'} 
                         size="sm"
                       >
-                        {s.submission_type === 'direct_discount' ? '🏷️ Direct Discount' : '🏆 All Rewards'}
+                        {isDirectDiscountSubmission(s) ? '🏷️ Direct Discount' : '🏆 All Rewards'}
                       </Badge>
                     </td>
 
