@@ -455,3 +455,243 @@
   background: rgba(255, 255, 255, 0.2);
   transform: translateY(-2px);
 }
+
+/* ═══════════════════════════════════════════════════════════
+   ADMIN SUBMISSIONS ENHANCED VIEW
+   ═══════════════════════════════════════════════════════════ */
+
+.admin-submissions-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* Filter Pills */
+.admin-sub-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.sub-filter-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.9rem;
+  border-radius: 20px;
+  background: rgba(25, 25, 25, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sub-filter-pill:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.sub-filter-pill.active {
+  background: rgba(255, 77, 77, 0.15);
+  border-color: rgba(255, 77, 77, 0.4);
+  color: #fff;
+  box-shadow: 0 2px 10px rgba(255, 77, 77, 0.15);
+}
+
+.sub-filter-pill .pill-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.1rem 0.45rem;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-tertiary);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.sub-filter-pill.active .pill-count {
+  background: rgba(255, 77, 77, 0.3);
+  color: #fff;
+}
+
+.sub-filter-pill.highlight-needs-admin {
+  border-color: rgba(52, 211, 153, 0.3);
+}
+
+.sub-filter-pill.highlight-needs-admin.active {
+  background: rgba(52, 211, 153, 0.15);
+  border-color: rgba(52, 211, 153, 0.5);
+  box-shadow: 0 2px 12px rgba(52, 211, 153, 0.2);
+}
+
+.sub-filter-pill.highlight-needs-admin .pill-count.count-highlight {
+  background: rgba(52, 211, 153, 0.2);
+  color: #34d399;
+}
+
+.pulsing-dot-accent {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #34d399;
+  box-shadow: 0 0 8px #34d399;
+  animation: pulse-badge 1.8s infinite;
+}
+
+.pulsing-dot-inline {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  margin-right: 4px;
+  animation: pulse-badge 1.5s infinite;
+}
+
+@keyframes pulse-badge {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
+}
+
+/* Video Thumbnail Cell */
+.video-thumb-cell {
+  width: 84px;
+  padding: 0.75rem 0.5rem !important;
+}
+
+.admin-video-thumb-box {
+  position: relative;
+  width: 72px;
+  height: 48px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #111;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.admin-video-thumb-box:hover {
+  transform: scale(1.05);
+  border-color: rgba(255, 77, 77, 0.5);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.admin-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.admin-thumb-play-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  transition: all 0.2s ease;
+}
+
+.admin-video-thumb-box:hover .admin-thumb-play-overlay {
+  background: rgba(255, 77, 77, 0.6);
+}
+
+.admin-thumb-platform-tag {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(4px);
+  border-radius: 4px;
+  padding: 2px 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Campaign Cell */
+.admin-camp-cell {
+  display: flex;
+  flex-direction: column;
+  max-width: 180px;
+}
+
+.admin-camp-title {
+  font-weight: 600;
+  font-size: 0.88rem;
+  color: var(--text-primary);
+  max-width: 100%;
+}
+
+.admin-camp-adv {
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+}
+
+/* Views & Earned Cell */
+.admin-views-earned-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+/* Submissions Actions */
+.admin-submission-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.btn-admin-preview {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.65rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.btn-admin-preview:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.25);
+  transform: translateY(-1px);
+}
+
+.btn-admin-approve {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
+}
+
+.btn-admin-approve:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4);
+  filter: brightness(1.1);
+}
+

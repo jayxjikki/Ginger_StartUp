@@ -341,3 +341,63 @@
   background: var(--bg-card-hover);
   color: var(--text-primary);
 }
+
+/* ── Submission Type Selector in Modal ─────────────────── */
+.submission-type-selector {
+  margin-top: 16px;
+}
+
+.type-option-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+  width: 100%;
+}
+
+.type-option-card:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.type-option-card.active {
+  background: rgba(255, 107, 43, 0.08);
+  border-color: rgba(255, 107, 43, 0.4);
+  box-shadow: 0 0 16px rgba(255, 107, 43, 0.15);
+}
+
+.type-radio-circle {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 2px;
+  flex-shrink: 0;
+  transition: border-color 0.2s ease;
+}
+
+.type-option-card.active .type-radio-circle {
+  border-color: #ff6b2b;
+}
+
+.type-radio-inner {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ff6b2b;
+}
+
+.type-option-text {
+  flex: 1;
+  min-width: 0;
+}
+

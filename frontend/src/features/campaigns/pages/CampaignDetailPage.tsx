@@ -9,8 +9,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../../lib/supabase';
 import {
   FiArrowLeft, FiShare2, FiMapPin, FiClock, FiUsers,
-  FiExternalLink, FiCheck, FiAlertCircle
+  FiExternalLink, FiCheck, FiAlertCircle, FiTrash2
 } from 'react-icons/fi';
+import { validateAllowedVideoUrl } from '../../../utils/videoHelpers';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../../store/authStore';
 import { useCampaignStore } from '../../../store/campaignStore';
@@ -52,52 +53,58 @@ const CampaignDetailPage: React.FC = () => {
   const [topEarners, setTopEarners] = useState<any[]>([]);
   const [userSubmission, setUserSubmission] = useState<any | null>(null);
 
+  const [submissionType, setSubmissionType] = useState<'all_rewards' | 'direct_discount'>('all_rewards');
+
   const handleSubmit = async () => {
     if (!user) {
       toast.error('You must be logged in to submit a video.');
       return;
     }
-    if (!videoUrl) {
+    if (!videoUrl || !videoUrl.trim()) {
       toast.error('Please enter a video URL.');
       return;
+    }
+
+    // Enforce whitelist: only YouTube, Instagram, or Facebook allowed
+    const validation = validateAllowedVideoUrl(videoUrl);
+    if (!validation.isValid) {
+      toast.error(validation.error || 'Only YouTube, Instagram, or Facebook video links are allowed.');
+      return;
+    }
+
+    const platform = validation.platform;
+
+    if (campaign?.required_platforms && campaign.required_platforms.length > 0) {
+      const requiredLower = campaign.required_platforms.map((p: string) => p.toLowerCase());
+      if (!requiredLower.includes(platform)) {
+        toast.error(`Invalid link. This campaign only accepts: ${campaign.required_platforms.join(', ')}`);
+        return;
+      }
     }
     
     setIsSubmitting(true);
     try {
-      let platform = 'other';
-      const lowerUrl = videoUrl.toLowerCase();
-      if (lowerUrl.includes('youtube.com') || lowerUrl.includes('youtu.be')) platform = 'youtube';
-      else if (lowerUrl.includes('instagram.com')) platform = 'instagram';
-      else if (lowerUrl.includes('tiktok.com')) platform = 'tiktok';
-      else if (lowerUrl.includes('twitter.com') || lowerUrl.includes('x.com')) platform = 'twitter';
-      else if (lowerUrl.includes('facebook.com') || lowerUrl.includes('fb.watch') || lowerUrl.includes('fb.com')) platform = 'facebook';
-      else if (lowerUrl.includes('telegram.org') || lowerUrl.includes('t.me') || lowerUrl.includes('telegram.me')) platform = 'telegram';
-      else if (lowerUrl.includes('reddit.com') || lowerUrl.includes('redd.it')) platform = 'reddit';
-      else if (lowerUrl.includes('pinterest.com') || lowerUrl.includes('pin.it')) platform = 'pinterest';
-      else if (lowerUrl.includes('quora.com')) platform = 'quora';
-      else if (lowerUrl.includes('linkedin.com')) platform = 'linkedin';
-      else if (lowerUrl.includes('github.com')) platform = 'github';
-      else if (lowerUrl.includes('whatsapp.com') || lowerUrl.includes('wa.me')) platform = 'whatsapp';
-
-      if (campaign?.required_platforms && campaign.required_platforms.length > 0) {
-        const requiredLower = campaign.required_platforms.map((p: string) => p.toLowerCase());
-        if (!requiredLower.includes(platform)) {
-          toast.error(`Invalid link. This campaign only accepts: ${campaign.required_platforms.join(', ')}`);
-          setIsSubmitting(false);
-          return;
-        }
-      }
-
-      const { error } = await supabase.from('submissions').insert({
+      const cleanUrl = videoUrl.trim();
+      const insertPayload: any = {
         campaign_id: campaign!.id,
         creator_id: user.id,
-        video_url: videoUrl,
+        video_url: cleanUrl,
         platform: platform,
-        video_id: 'auto-' + Math.random().toString(36).substring(7)
-      });
+        video_id: 'auto-' + Math.random().toString(36).substring(7),
+        submission_type: submissionType,
+      };
+
+      let { error } = await supabase.from('submissions').insert(insertPayload);
+
+      // Safe fallback if remote table does not have submission_type column yet
+      if (error && (error.code === '42703' || error.message?.toLowerCase().includes('submission_type'))) {
+        delete insertPayload.submission_type;
+        const retryRes = await supabase.from('submissions').insert(insertPayload);
+        error = retryRes.error;
+      }
 
       if (error) {
-        if (error.code === '23505') { // Unique constraint violation
+        if (error.code === '23505') {
           throw new Error('You have already submitted a video for this campaign.');
         }
         throw error;
@@ -109,14 +116,48 @@ const CampaignDetailPage: React.FC = () => {
       
       // Update local state to hide button immediately
       setUserSubmission({
+        campaign_id: campaign!.id,
+        creator_id: user.id,
         status: 'pending',
         current_views: 0,
         earned_amount: 0,
-        video_url: videoUrl
+        video_url: cleanUrl,
+        platform: platform,
+        submission_type: submissionType,
+        submitted_at: new Date().toISOString(),
       });
     } catch (err: any) {
       console.error('Submit error:', err);
       toast.error(err.message || 'Failed to submit video');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleRemoveSubmission = async () => {
+    if (!userSubmission || !user) return;
+    const confirmed = await showConfirm(
+      'Are you sure you want to remove your video submission? You will be able to submit a new video link.',
+      'Remove Submission'
+    );
+    if (!confirmed) return;
+
+    setIsSubmitting(true);
+    try {
+      const { error } = await supabase
+        .from('submissions')
+        .delete()
+        .eq('campaign_id', campaign!.id)
+        .eq('creator_id', user.id);
+
+      if (error) throw error;
+
+      setUserSubmission(null);
+      setVideoUrl('');
+      toast.success('Submission removed! You can now submit a new video link.');
+    } catch (err: any) {
+      console.error('Error removing submission:', err);
+      toast.error(err.message || 'Failed to remove submission.');
     } finally {
       setIsSubmitting(false);
     }
@@ -504,7 +545,13 @@ const CampaignDetailPage: React.FC = () => {
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-secondary">Status</span>
                       <Badge variant={userSubmission.status === 'verified' ? 'success' : 'default'} size="sm">
-                        {userSubmission.status.toUpperCase()}
+                        {userSubmission.status === 'verified' ? 'APPROVED' : userSubmission.status.toUpperCase()}
+                      </Badge>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-secondary">Submission Type</span>
+                      <Badge variant={userSubmission.submission_type === 'direct_discount' ? 'warning' : 'accent'} size="sm">
+                        {userSubmission.submission_type === 'direct_discount' ? '🏷️ Direct Discount' : '🏆 All Rewards'}
                       </Badge>
                     </div>
                     <div className="flex justify-between items-center">
@@ -531,12 +578,29 @@ const CampaignDetailPage: React.FC = () => {
                     <a 
                       href={userSubmission.video_url} 
                       target="_blank" 
-                      rel="noopener noreferrer"
+                      rel="noopener noreferrer" 
                       className="text-center text-xs mt-3 pt-3 border-t border-white/5"
                       style={{ color: 'var(--text-tertiary)', textDecoration: 'none' }}
                     >
                       <span style={{ borderBottom: '1px solid rgba(255,255,255,0.2)', paddingBottom: '1px' }}>View Submitted Video</span>
                     </a>
+
+                    {/* Remove submission if submitted by mistake */}
+                    {userSubmission.status !== 'paid' && (
+                      <div className="pt-2 border-t border-white/5">
+                        <button
+                          type="button"
+                          className="btn btn-outline flex items-center justify-center gap-2 text-xs py-2 px-3 w-full"
+                          style={{ borderColor: 'rgba(255, 69, 58, 0.3)', color: '#ff453a' }}
+                          onClick={handleRemoveSubmission}
+                          disabled={isSubmitting}
+                          title="Remove this video if you submitted the wrong link"
+                        >
+                          <FiTrash2 size={13} />
+                          <span>Remove / Change Video</span>
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </Card>
               );
@@ -565,23 +629,73 @@ const CampaignDetailPage: React.FC = () => {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               transition={{ type: 'spring' as const, stiffness: 300, damping: 30 }}
             >
-              <h3>Submit Your Video</h3>
-              <p className="text-sm text-secondary mt-2">
-                Paste your video link below. We'll verify the views after {campaign.verification_days} days.
+              <h3 className="text-lg font-bold text-white">Submit Your Video</h3>
+              <p className="text-xs text-secondary mt-1">
+                Select your reward category and enter your video URL from YouTube, Instagram, or Facebook.
               </p>
+
+              {/* Submission Type Selector */}
+              <div className="submission-type-selector mt-4">
+                <label className="text-[11px] font-bold text-secondary uppercase tracking-wider mb-2 block">
+                  Select Submission Type
+                </label>
+                <div className="flex flex-col gap-2">
+                  <div
+                    className={`type-option-card ${submissionType === 'all_rewards' ? 'active' : ''}`}
+                    onClick={() => setSubmissionType('all_rewards')}
+                  >
+                    <div className="type-radio-circle">
+                      {submissionType === 'all_rewards' && <div className="type-radio-inner" />}
+                    </div>
+                    <div className="type-option-text">
+                      <div className="font-bold text-sm text-white flex items-center gap-2">
+                        <span>🏆 All Campaign Rewards</span>
+                        <Badge variant="success" size="sm">Standard</Badge>
+                      </div>
+                      <p className="text-xs text-secondary mt-0.5">
+                        Eligible for view milestone payouts and all cash & gift prizes.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div
+                    className={`type-option-card ${submissionType === 'direct_discount' ? 'active' : ''}`}
+                    onClick={() => setSubmissionType('direct_discount')}
+                  >
+                    <div className="type-radio-circle">
+                      {submissionType === 'direct_discount' && <div className="type-radio-inner" />}
+                    </div>
+                    <div className="type-option-text">
+                      <div className="font-bold text-sm text-white flex items-center gap-2">
+                        <span>🏷️ Direct Discount Video</span>
+                        <Badge variant="warning" size="sm">Perk</Badge>
+                      </div>
+                      <p className="text-xs text-secondary mt-0.5">
+                        Specific to store visits, coupon codes, and direct discount rewards.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div className="mt-4">
                 <Input
                   label="Video URL"
-                  placeholder="https://youtube.com/watch?v=..."
+                  placeholder="https://www.youtube.com/watch?v=... or instagram.com/reel/..."
                   value={videoUrl}
                   onChange={(e) => setVideoUrl(e.target.value)}
                   id="input-video-url"
                 />
+                <p className="text-[11px] text-tertiary mt-1.5 flex items-center gap-1.5">
+                  <FiAlertCircle size={12} className="text-accent shrink-0" />
+                  <span>Only YouTube, Instagram, or Facebook video links are accepted.</span>
+                </p>
               </div>
+
               <div className="modal-actions mt-6">
                 <Button variant="ghost" onClick={() => setShowSubmitModal(false)} disabled={isSubmitting}>Cancel</Button>
                 <Button variant="primary" onClick={handleSubmit} disabled={isSubmitting} isLoading={isSubmitting}>
-                  Submit
+                  Submit Video
                 </Button>
               </div>
             </motion.div>

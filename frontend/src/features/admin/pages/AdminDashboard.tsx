@@ -7,13 +7,17 @@ import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FiUsers, FiVideo, FiDollarSign, FiImage, FiTarget, 
-  FiTrash2, FiCheckCircle, FiXCircle, FiSlash, FiMenu 
+  FiTrash2, FiCheckCircle, FiXCircle, FiSlash, FiMenu,
+  FiPlay, FiEye, FiCheck
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { useAdminStore } from '../../../store/adminStore';
 import { useAuthStore } from '../../../store/authStore';
 import { useGlobalModalStore } from '../../../store/globalModalStore';
-import { formatCurrency, formatDate } from '../../../utils/formatters';
+import { formatCurrency, formatDate, formatCount } from '../../../utils/formatters';
+import { getVideoThumbnail } from '../../../utils/videoHelpers';
+import { getSocialIcon } from '../../../utils/socialHelpers';
+import SubmissionVideoModal from '../../campaigns/components/SubmissionVideoModal';
 import Badge from '../../../components/ui/Badge';
 import Avatar from '../../../components/ui/Avatar';
 import Button from '../../../components/ui/Button';
@@ -38,11 +42,14 @@ const AdminDashboard: React.FC = () => {
   
   const { 
     users, campaigns, submissions, withdrawals, slideshows, isLoading,
-    fetchAllData, toggleUserBan, rejectSubmission,
+    fetchAllData, toggleUserBan, rejectSubmission, deleteSubmission,
+    approveSubmissionAsAdmin,
     processWithdrawal, deleteSlideshow, createSlideshow, deleteCampaign, approveAndPayCampaign 
   } = useAdminStore();
 
   const [isSlideModalOpen, setIsSlideModalOpen] = useState(false);
+  const [selectedSubmissionForModal, setSelectedSubmissionForModal] = useState<any | null>(null);
+  const [subFilter, setSubFilter] = useState<'all' | 'needs_admin' | 'pending' | 'paid' | 'rejected'>('all');
   const [slideForm, setSlideForm] = useState({
     title: '', subtitle: '', image_url: '', badge_text: '', badge_icon: 'star', theme_color: 'red', link_url: ''
   });
@@ -84,14 +91,64 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
+  const handleApproveSubmission = async (sub: any) => {
+    const isDirectDiscount = sub.submission_type === 'direct_discount';
+    let payout = 0;
+
+    if (isDirectDiscount) {
+      const confirmed = await useGlobalModalStore.getState().showConfirm(
+        `Approve this direct discount video as final call? Creator will receive verified completion status for "${sub.campaign?.title || 'this campaign'}".`
+      );
+      if (!confirmed) return;
+    } else {
+      const input = prompt(
+        `Approve this submission as final call?\n\nEnter cash payout amount in ₹ (leave 0 if milestone/tier or perk reward):`,
+        sub.earned_amount > 0 ? String(sub.earned_amount) : '0'
+      );
+      if (input === null) return;
+      payout = parseFloat(input.trim()) || 0;
+      if (payout < 0) return toast.error('Payout amount cannot be negative');
+    }
+
+    try {
+      await approveSubmissionAsAdmin(sub.id, payout);
+      toast.success(payout > 0 
+        ? `Submission approved! ${formatCurrency(payout)} paid to creator.` 
+        : 'Submission approved as final call!'
+      );
+      if (selectedSubmissionForModal?.id === sub.id) {
+        setSelectedSubmissionForModal(null);
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to approve submission');
+    }
+  };
+
   const handleRejectSubmission = async (subId: string) => {
-    const confirmed = await useGlobalModalStore.getState().showConfirm('Reject this submission?');
+    const confirmed = await useGlobalModalStore.getState().showConfirm('Reject this submission? Creator will see the rejected status.');
     if (!confirmed) return;
     try {
       await rejectSubmission(subId);
       toast.success('Submission rejected');
+      if (selectedSubmissionForModal?.id === subId) {
+        setSelectedSubmissionForModal(null);
+      }
     } catch (err: any) {
-      toast.error(err.message);
+      toast.error(err.message || 'Failed to reject submission');
+    }
+  };
+
+  const handleDeleteSubmission = async (subId: string) => {
+    const confirmed = await useGlobalModalStore.getState().showConfirm('Delete this submission permanently?');
+    if (!confirmed) return;
+    try {
+      await deleteSubmission(subId);
+      toast.success('Submission deleted permanently');
+      if (selectedSubmissionForModal?.id === subId) {
+        setSelectedSubmissionForModal(null);
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to delete submission');
     }
   };
 
@@ -227,56 +284,251 @@ const AdminDashboard: React.FC = () => {
     </motion.div>
   );
 
-  const renderSubmissions = () => (
-    <motion.div variants={listVariants} initial="hidden" animate="show" className="admin-table-container">
-      <table className="admin-table">
-        <thead>
-          <tr>
-            <th>Creator</th>
-            <th>Video Link</th>
-            <th>Status</th>
-            <th>Earned</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {submissions.map(s => (
-            <motion.tr variants={itemVariants} key={s.id} className="admin-table-row">
-              <td className="user-cell">
-                <Avatar src={s.profiles?.avatar_url} name={s.profiles?.full_name || '?'} size="sm" />
-                <span className="user-cell-name">{s.profiles?.full_name}</span>
-              </td>
-              <td>
-                <a href={s.video_url} target="_blank" rel="noopener noreferrer" className="text-accent underline">
-                  View Video
-                </a>
-              </td>
-              <td>
-                <Badge variant={s.status === 'approved' ? 'success' : s.status === 'rejected' ? 'error' : 'warning'}>
-                  {s.status.toUpperCase()}
-                </Badge>
-              </td>
-              <td>{s.earned_amount > 0 ? formatCurrency(s.earned_amount) : '-'}</td>
-              <td>
-                {(s.status === 'pending' || s.status === 'flagged' || s.status === 'verified') && (
-                  <div className="action-buttons">
-                    <button className="icon-btn reject" onClick={() => handleRejectSubmission(s.id)} title="Reject">
-                      <FiXCircle />
-                    </button>
-                  </div>
-                )}
-              </td>
-            </motion.tr>
-          ))}
-          {submissions.length === 0 && (
-            <tr>
-              <td colSpan={5} className="empty-state">No pending video submissions.</td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-    </motion.div>
-  );
+  const renderSubmissions = () => {
+    const counts = {
+      all: submissions.length,
+      needs_admin: submissions.filter(s => s.status === 'verified').length,
+      pending: submissions.filter(s => s.status === 'pending').length,
+      paid: submissions.filter(s => s.status === 'paid').length,
+      rejected: submissions.filter(s => s.status === 'rejected').length,
+    };
+
+    const filtered = submissions.filter(s => {
+      if (subFilter === 'needs_admin') return s.status === 'verified';
+      if (subFilter === 'pending') return s.status === 'pending';
+      if (subFilter === 'paid') return s.status === 'paid';
+      if (subFilter === 'rejected') return s.status === 'rejected';
+      return true;
+    });
+
+    return (
+      <motion.div variants={listVariants} initial="hidden" animate="show" className="admin-submissions-section">
+        {/* Submissions Filter Pills */}
+        <div className="admin-sub-filters">
+          <button
+            type="button"
+            className={`sub-filter-pill ${subFilter === 'all' ? 'active' : ''}`}
+            onClick={() => setSubFilter('all')}
+          >
+            <span>All Submissions</span>
+            <span className="pill-count">{counts.all}</span>
+          </button>
+
+          <button
+            type="button"
+            className={`sub-filter-pill highlight-needs-admin ${subFilter === 'needs_admin' ? 'active' : ''}`}
+            onClick={() => setSubFilter('needs_admin')}
+          >
+            <span className="pulsing-dot-accent" />
+            <span>Needs Final Call (Owner Approved)</span>
+            <span className="pill-count count-highlight">{counts.needs_admin}</span>
+          </button>
+
+          <button
+            type="button"
+            className={`sub-filter-pill ${subFilter === 'pending' ? 'active' : ''}`}
+            onClick={() => setSubFilter('pending')}
+          >
+            <span>Pending Owner Review</span>
+            <span className="pill-count">{counts.pending}</span>
+          </button>
+
+          <button
+            type="button"
+            className={`sub-filter-pill ${subFilter === 'paid' ? 'active' : ''}`}
+            onClick={() => setSubFilter('paid')}
+          >
+            <span>Approved & Paid</span>
+            <span className="pill-count">{counts.paid}</span>
+          </button>
+
+          <button
+            type="button"
+            className={`sub-filter-pill ${subFilter === 'rejected' ? 'active' : ''}`}
+            onClick={() => setSubFilter('rejected')}
+          >
+            <span>Rejected</span>
+            <span className="pill-count">{counts.rejected}</span>
+          </button>
+        </div>
+
+        {/* Table Container */}
+        <div className="admin-table-container">
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th>Video</th>
+                <th>Creator</th>
+                <th>Campaign</th>
+                <th>Type</th>
+                <th>Views & Earned</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map(s => {
+                const platform = s.platform || 'video';
+                const platformIcon = getSocialIcon(platform);
+                const thumbUrl = getVideoThumbnail(s.video_url, platform);
+
+                return (
+                  <motion.tr variants={itemVariants} key={s.id} className="admin-table-row">
+                    {/* Video Thumbnail Cell */}
+                    <td className="video-thumb-cell">
+                      <div 
+                        className="admin-video-thumb-box"
+                        onClick={() => setSelectedSubmissionForModal(s)}
+                        title="Click to play video"
+                      >
+                        <img 
+                          src={thumbUrl || '/images/brand/logo.png'} 
+                          alt="Video thumbnail"
+                          className="admin-thumb-img"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = '/images/brand/logo.png';
+                          }}
+                        />
+                        <div className="admin-thumb-play-overlay">
+                          <FiPlay size={14} />
+                        </div>
+                        {platformIcon && (
+                          <div className="admin-thumb-platform-tag">
+                            <img 
+                              src={platformIcon} 
+                              alt={platform} 
+                              style={{ width: 12, height: 12, minWidth: 12, maxWidth: 12, objectFit: 'contain' }} 
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </td>
+
+                    {/* Creator Info */}
+                    <td className="user-cell">
+                      <Avatar 
+                        src={s.creator?.avatar_url} 
+                        name={s.creator?.full_name || 'Creator'} 
+                        size="sm" 
+                      />
+                      <div className="user-cell-info">
+                        <span className="user-cell-name">{s.creator?.full_name || 'Creator'}</span>
+                        <span className="user-cell-handle">@{s.creator?.username || 'user'}</span>
+                      </div>
+                    </td>
+
+                    {/* Campaign Info */}
+                    <td>
+                      <div className="admin-camp-cell">
+                        <span className="admin-camp-title truncate" title={s.campaign?.title}>
+                          {s.campaign?.title || 'Unknown Campaign'}
+                        </span>
+                        <span className="admin-camp-adv">
+                          by {s.campaign?.advertiser?.full_name || 'Advertiser'}
+                        </span>
+                      </div>
+                    </td>
+
+                    {/* Submission Type */}
+                    <td>
+                      <Badge 
+                        variant={s.submission_type === 'direct_discount' ? 'warning' : 'accent'} 
+                        size="sm"
+                      >
+                        {s.submission_type === 'direct_discount' ? '🏷️ Direct Discount' : '🏆 All Rewards'}
+                      </Badge>
+                    </td>
+
+                    {/* Views & Earned */}
+                    <td>
+                      <div className="admin-views-earned-cell">
+                        <span className="admin-views-text flex items-center gap-1 text-xs">
+                          <FiEye size={12} className="text-secondary" />
+                          {formatCount(s.current_views || 0)}
+                        </span>
+                        <span className="admin-earned-text text-accent font-bold text-xs">
+                          {s.earned_amount > 0 ? formatCurrency(s.earned_amount) : '₹0'}
+                        </span>
+                      </div>
+                    </td>
+
+                    {/* Status */}
+                    <td>
+                      {s.status === 'verified' ? (
+                        <Badge variant="success" size="sm">
+                          <span className="pulsing-dot-inline" /> Owner Approved (Needs Admin)
+                        </Badge>
+                      ) : s.status === 'paid' ? (
+                        <Badge variant="accent" size="sm">Admin Approved & Paid</Badge>
+                      ) : s.status === 'pending' ? (
+                        <Badge variant="warning" size="sm">Pending Owner Review</Badge>
+                      ) : s.status === 'rejected' ? (
+                        <Badge variant="error" size="sm">Rejected</Badge>
+                      ) : (
+                        <Badge variant="default" size="sm">{s.status?.toUpperCase()}</Badge>
+                      )}
+                    </td>
+
+                    {/* Actions */}
+                    <td>
+                      <div className="action-buttons admin-submission-actions">
+                        <button 
+                          className="btn-admin-preview"
+                          onClick={() => setSelectedSubmissionForModal(s)}
+                          title="Watch Video"
+                        >
+                          <FiPlay size={12} />
+                          <span>Watch</span>
+                        </button>
+
+                        {s.status !== 'paid' && (
+                          <button 
+                            className="btn-admin-approve"
+                            onClick={() => handleApproveSubmission(s)}
+                            title="Approve as Final Call"
+                          >
+                            <FiCheck size={13} />
+                            <span>Approve (Final Call)</span>
+                          </button>
+                        )}
+
+                        {s.status !== 'rejected' && (
+                          <button 
+                            className="icon-btn reject"
+                            onClick={() => handleRejectSubmission(s.id)}
+                            title="Reject Submission"
+                          >
+                            <FiXCircle size={15} />
+                          </button>
+                        )}
+
+                        <button 
+                          className="icon-btn reject"
+                          style={{ opacity: 0.7 }}
+                          onClick={() => handleDeleteSubmission(s.id)}
+                          title="Delete Submission"
+                        >
+                          <FiTrash2 size={14} />
+                        </button>
+                      </div>
+                    </td>
+                  </motion.tr>
+                );
+              })}
+
+              {filtered.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="empty-state">
+                    No video submissions found in this category.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </motion.div>
+    );
+  };
 
   const renderCampaigns = () => {
     // Sort campaigns so 'paused' (pending admin approval) appear first
@@ -539,6 +791,15 @@ const AdminDashboard: React.FC = () => {
           </motion.div>
         )}
       </AnimatePresence>
+      {/* Submission Video Modal */}
+      <SubmissionVideoModal
+        submission={selectedSubmissionForModal}
+        isOpen={!!selectedSubmissionForModal}
+        onClose={() => setSelectedSubmissionForModal(null)}
+        onApprove={() => handleApproveSubmission(selectedSubmissionForModal)}
+        onReject={(id) => handleRejectSubmission(id)}
+        isAdmin={true}
+      />
     </div>
   );
 };

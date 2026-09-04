@@ -31,7 +31,7 @@ export function extractInstagramCode(url: string): string | null {
   return match ? match[1] : null;
 }
 
-export function getVideoThumbnail(url: string): string | null {
+export function getVideoThumbnail(url: string, _platform?: string): string | null {
   if (!url) return null;
   const ytId = extractYouTubeId(url);
   if (ytId) {
@@ -41,7 +41,7 @@ export function getVideoThumbnail(url: string): string | null {
 }
 
 export function getEmbedInfo(url: string): {
-  type: 'youtube' | 'direct' | 'instagram' | 'external';
+  type: 'youtube' | 'direct' | 'instagram' | 'facebook' | 'external';
   embedUrl: string;
   youtubeId?: string;
   instagramCode?: string;
@@ -73,5 +73,66 @@ export function getEmbedInfo(url: string): {
     };
   }
 
+  if (url.includes('facebook.com') || url.includes('fb.watch')) {
+    return {
+      type: 'facebook',
+      embedUrl: `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}&show_text=0`,
+    };
+  }
+
   return { type: 'external', embedUrl: url };
 }
+
+export interface VideoValidationResult {
+  isValid: boolean;
+  platform: 'youtube' | 'instagram' | 'facebook' | 'invalid';
+  error?: string;
+}
+
+export function validateAllowedVideoUrl(url: string): VideoValidationResult {
+  if (!url || typeof url !== 'string' || !url.trim()) {
+    return {
+      isValid: false,
+      platform: 'invalid',
+      error: 'Please enter a video URL.',
+    };
+  }
+
+  const cleanUrl = url.trim().toLowerCase();
+
+  // Validate format starts with http:// or https://
+  if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
+    return {
+      isValid: false,
+      platform: 'invalid',
+      error: 'URL must start with http:// or https://',
+    };
+  }
+
+  // 1. YouTube
+  if (cleanUrl.includes('youtube.com') || cleanUrl.includes('youtu.be')) {
+    return { isValid: true, platform: 'youtube' };
+  }
+
+  // 2. Instagram
+  if (cleanUrl.includes('instagram.com')) {
+    return { isValid: true, platform: 'instagram' };
+  }
+
+  // 3. Facebook
+  if (
+    cleanUrl.includes('facebook.com') ||
+    cleanUrl.includes('fb.watch') ||
+    cleanUrl.includes('fb.com')
+  ) {
+    return { isValid: true, platform: 'facebook' };
+  }
+
+  // Any other URL or spam link
+  return {
+    isValid: false,
+    platform: 'invalid',
+    error: 'Only YouTube, Instagram, or Facebook video links are allowed.',
+  };
+}
+

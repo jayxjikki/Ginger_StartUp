@@ -196,9 +196,9 @@ const ManageCampaignDetailPage: React.FC = () => {
       case 'pending':
         return <Badge variant="warning" size="sm">Pending</Badge>;
       case 'verified':
-        return <Badge variant="success" size="sm">Approved</Badge>;
+        return <Badge variant="success" size="sm">Approved (Pending Admin)</Badge>;
       case 'paid':
-        return <Badge variant="accent" size="sm">Paid</Badge>;
+        return <Badge variant="accent" size="sm">Admin Approved & Paid</Badge>;
       case 'rejected':
         return <Badge variant="error" size="sm">Rejected</Badge>;
       case 'flagged':
@@ -517,6 +517,9 @@ const ManageCampaignDetailPage: React.FC = () => {
                             })}
                           </span>
                         </div>
+                        <Badge variant={sub.submission_type === 'direct_discount' ? 'warning' : 'accent'} size="sm">
+                          {sub.submission_type === 'direct_discount' ? '🏷️ Direct Discount' : '🏆 All Rewards'}
+                        </Badge>
                       </div>
 
                       {/* Video URL Display */}

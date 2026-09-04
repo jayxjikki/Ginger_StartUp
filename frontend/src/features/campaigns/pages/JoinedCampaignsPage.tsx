@@ -5,14 +5,17 @@ import { useCampaignStore } from '../../../store/campaignStore';
 import { useGlobalModalStore } from '../../../store/globalModalStore';
 import { getSocialIcon } from '../../../utils/socialHelpers';
 import { formatCurrency } from '../../../utils/formatters';
-import { FiArrowLeft, FiClock, FiVideo } from 'react-icons/fi';
+import { FiArrowLeft, FiClock, FiVideo, FiTrash2 } from 'react-icons/fi';
+import { supabase } from '../../../lib/supabase';
 import Badge from '../../../components/ui/Badge';
+import toast from 'react-hot-toast';
 import './JoinedCampaignsPage.css';
 
 const JoinedCampaignsPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const { mySubmissions, fetchMySubmissions, raiseDispute, isLoading } = useCampaignStore();
+  const { showConfirm } = useGlobalModalStore();
 
   useEffect(() => {
     if (user?.id) {
@@ -20,11 +23,30 @@ const JoinedCampaignsPage: React.FC = () => {
     }
   }, [user?.id, fetchMySubmissions]);
 
+  const handleRemoveSubmission = async (e: React.MouseEvent, submissionId: string) => {
+    e.stopPropagation();
+    const confirmed = await showConfirm(
+      'Are you sure you want to remove this video submission? You will be able to submit a new video link.',
+      'Remove Submission'
+    );
+    if (!confirmed) return;
+
+    try {
+      const { error } = await supabase.from('submissions').delete().eq('id', submissionId);
+      if (error) throw error;
+      toast.success('Submission removed successfully.');
+      if (user?.id) fetchMySubmissions(user.id);
+    } catch (err: any) {
+      console.error('Error removing submission:', err);
+      toast.error(err.message || 'Failed to remove submission.');
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'pending': return <Badge variant="warning" size="sm">Pending Verification</Badge>;
-      case 'verified': return <Badge variant="success" size="sm">Verified</Badge>;
-      case 'paid': return <Badge variant="accent" size="sm">Paid</Badge>;
+      case 'verified': return <Badge variant="success" size="sm">Approved (Pending Admin)</Badge>;
+      case 'paid': return <Badge variant="accent" size="sm">Admin Approved & Paid</Badge>;
       case 'rejected': return <Badge variant="error" size="sm">Rejected</Badge>;
       case 'disputed': return <Badge variant="warning" size="sm">Disputed</Badge>;
       default: return <Badge variant="default" size="sm">{status}</Badge>;
@@ -85,7 +107,12 @@ const JoinedCampaignsPage: React.FC = () => {
                       by {sub.campaign?.advertiser?.full_name || 'Advertiser'}
                     </p>
                   </div>
-                  {getStatusBadge(sub.status)}
+                  <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                    <Badge variant={(sub as any).submission_type === 'direct_discount' ? 'warning' : 'accent'} size="sm">
+                      {(sub as any).submission_type === 'direct_discount' ? '🏷️ Direct Discount' : '🏆 All Rewards'}
+                    </Badge>
+                    {getStatusBadge(sub.status)}
+                  </div>
                 </div>
 
                 <div className="submission-card-body">
@@ -112,6 +139,16 @@ const JoinedCampaignsPage: React.FC = () => {
                     <span>Submitted {new Date(sub.submitted_at).toLocaleDateString()}</span>
                   </div>
                   <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    {sub.status !== 'paid' && (
+                      <button 
+                        className="btn btn-outline" 
+                        style={{ padding: '4px 8px', fontSize: '12px', color: '#ff453a', borderColor: 'rgba(255, 69, 58, 0.35)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                        onClick={(e) => handleRemoveSubmission(e, sub.id)}
+                        title="Remove submission if made by mistake"
+                      >
+                        <FiTrash2 size={13} /> Remove
+                      </button>
+                    )}
                     {sub.status === 'rejected' && (
                       <button 
                         className="btn btn-primary" 

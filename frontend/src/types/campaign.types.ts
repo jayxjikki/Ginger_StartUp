@@ -157,6 +157,7 @@ export interface Submission {
   submitted_at: string;
   verified_at: string | null;
   paid_at: string | null;
+  submission_type?: 'all_rewards' | 'direct_discount';
   // Joined fields
   campaign?: Campaign;
   creator?: {

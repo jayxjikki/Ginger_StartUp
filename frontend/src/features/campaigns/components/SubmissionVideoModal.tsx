@@ -14,7 +14,9 @@ interface SubmissionVideoModalProps {
   onClose: () => void;
   onApprove?: (id: string) => void;
   onFlag?: (id: string) => void;
+  onReject?: (id: string) => void;
   campaignStatus?: string;
+  isAdmin?: boolean;
 }
 
 const SubmissionVideoModal: React.FC<SubmissionVideoModalProps> = ({
@@ -23,7 +25,9 @@ const SubmissionVideoModal: React.FC<SubmissionVideoModalProps> = ({
   onClose,
   onApprove,
   onFlag,
+  onReject,
   campaignStatus = 'active',
+  isAdmin = false,
 }) => {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -53,8 +57,8 @@ const SubmissionVideoModal: React.FC<SubmissionVideoModalProps> = ({
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'pending': return <Badge variant="warning" size="sm">Pending</Badge>;
-      case 'verified': return <Badge variant="success" size="sm">Approved</Badge>;
-      case 'paid': return <Badge variant="accent" size="sm">Paid</Badge>;
+      case 'verified': return <Badge variant="success" size="sm">{isAdmin ? 'Owner Approved (Needs Admin)' : 'Approved (Pending Admin)'}</Badge>;
+      case 'paid': return <Badge variant="accent" size="sm">Admin Approved & Paid</Badge>;
       case 'rejected': return <Badge variant="error" size="sm">Rejected</Badge>;
       case 'flagged': return <Badge variant="error" size="sm">Flagged</Badge>;
       case 'disputed': return <Badge variant="warning" size="sm">Disputed</Badge>;
@@ -99,6 +103,11 @@ const SubmissionVideoModal: React.FC<SubmissionVideoModalProps> = ({
                   <p className="modal-creator-handle">
                     @{submission.creator?.username || 'creator'} • {platform.toUpperCase()}
                   </p>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <Badge variant={(submission as any).submission_type === 'direct_discount' ? 'warning' : 'accent'} size="sm">
+                      {(submission as any).submission_type === 'direct_discount' ? '🏷️ Direct Discount' : '🏆 All Rewards'}
+                    </Badge>
+                  </div>
                 </div>
               </div>
 
@@ -115,68 +124,77 @@ const SubmissionVideoModal: React.FC<SubmissionVideoModalProps> = ({
               </div>
             </div>
 
-            {/* Video Player Container */}
-            <div className="submission-video-viewport">
+            {/* Video Player / Fallback View */}
+            <div className="submission-modal-player-wrapper">
               {embedInfo.type === 'youtube' && (
-                <div className="video-aspect-box">
-                  <iframe
-                    src={embedInfo.embedUrl}
-                    title="YouTube video player"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                    allowFullScreen
-                    className="video-iframe"
-                  />
-                </div>
+                <iframe
+                  src={embedInfo.embedUrl}
+                  title="YouTube video player"
+                  frameBorder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                  className="modal-iframe youtube-frame"
+                />
+              )}
+
+              {embedInfo.type === 'instagram' && (
+                <iframe
+                  src={embedInfo.embedUrl}
+                  title="Instagram video player"
+                  frameBorder="0"
+                  scrolling="no"
+                  allowTransparency
+                  allow="encrypted-media"
+                  className="modal-iframe instagram-frame"
+                />
+              )}
+
+              {embedInfo.type === 'facebook' && (
+                <iframe
+                  src={embedInfo.embedUrl}
+                  title="Facebook video player"
+                  frameBorder="0"
+                  scrolling="no"
+                  allowFullScreen
+                  allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
+                  className="modal-iframe facebook-frame"
+                />
               )}
 
               {embedInfo.type === 'direct' && (
-                <div className="video-aspect-box">
-                  <video
-                    src={embedInfo.embedUrl}
-                    controls
-                    autoPlay
-                    playsInline
-                    className="video-element"
-                  >
-                    Your browser does not support the video tag.
-                  </video>
-                </div>
+                <video
+                  src={embedInfo.embedUrl}
+                  controls
+                  autoPlay
+                  playsInline
+                  className="modal-direct-video"
+                />
               )}
 
-              {(embedInfo.type === 'instagram' || embedInfo.type === 'external') && (
-                <div className="external-video-preview">
-                  {getVideoThumbnail(submission.video_url) && (
+              {embedInfo.type === 'external' && (
+                <div className="modal-unsupported-preview">
+                  <div className="modal-unsupported-thumb-box">
                     <img
-                      src={getVideoThumbnail(submission.video_url)!}
-                      alt="Video thumbnail"
-                      className="external-video-thumb-bg"
+                      src={getVideoThumbnail(submission.video_url, platform) || '/images/brand/logo.png'}
+                      alt="Video preview"
+                      className="modal-unsupported-thumb"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = '/images/brand/logo.png';
+                      }}
                     />
-                  )}
-                  <div className="external-video-overlay">
-                    {platformIcon && (
-                      <div className="external-platform-logo-circle">
-                        <img
-                          src={platformIcon}
-                          alt={platform}
-                          className="external-platform-logo-img"
-                          style={{ width: 36, height: 36, objectFit: 'contain' }}
-                        />
-                      </div>
-                    )}
-                    <h4 className="text-white font-bold text-lg mt-3">Watch on {platform.toUpperCase()}</h4>
-                    <p className="text-xs text-secondary max-w-md text-center mt-1 px-4">
-                      Click below to watch this creator's video directly on {platform} in a new tab or app.
-                    </p>
-                    <a
-                      href={submission.video_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="fancy-btn primary-glow mt-5 flex items-center gap-2 px-6 py-2.5"
-                    >
-                      <FiExternalLink size={17} />
-                      <span>Open Video Link</span>
-                    </a>
                   </div>
+                  <p className="modal-unsupported-text">
+                    This video format cannot be previewed inline. Open directly to view:
+                  </p>
+                  <a
+                    href={submission.video_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn btn-primary flex items-center gap-2"
+                  >
+                    <span>Open in {platform}</span>
+                    <FiExternalLink size={16} />
+                  </a>
                 </div>
               )}
             </div>
@@ -228,29 +246,59 @@ const SubmissionVideoModal: React.FC<SubmissionVideoModalProps> = ({
 
             {/* Modal Actions Footer */}
             <div className="submission-modal-actions">
-              {submission.status === 'pending' && campaignStatus === 'active' && onApprove && (
-                <button
-                  type="button"
-                  className="btn btn-primary flex-1 flex items-center justify-center gap-2"
-                  onClick={() => onApprove(submission.id)}
-                >
-                  <FiCheck size={18} />
-                  <span>Approve Submission</span>
-                </button>
-              )}
+              {isAdmin ? (
+                <>
+                  {submission.status !== 'paid' && onApprove && (
+                    <button
+                      type="button"
+                      className="btn btn-primary flex-1 flex items-center justify-center gap-2"
+                      style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: '#fff' }}
+                      onClick={() => onApprove(submission.id)}
+                    >
+                      <FiCheck size={18} />
+                      <span>Approve (Final Call)</span>
+                    </button>
+                  )}
 
-              {(submission.status === 'pending' || submission.status === 'verified') &&
-                campaignStatus === 'active' &&
-                onFlag && (
-                  <button
-                    type="button"
-                    className="btn btn-outline flag-btn flex-1 flex items-center justify-center gap-2"
-                    onClick={() => onFlag(submission.id)}
-                  >
-                    <FiFlag size={16} />
-                    <span>Flag Video</span>
-                  </button>
-                )}
+                  {submission.status !== 'rejected' && onReject && (
+                    <button
+                      type="button"
+                      className="btn btn-outline flag-btn flex-1 flex items-center justify-center gap-2"
+                      style={{ borderColor: 'rgba(239, 68, 68, 0.4)', color: '#ef4444' }}
+                      onClick={() => onReject(submission.id)}
+                    >
+                      <FiX size={16} />
+                      <span>Reject Video</span>
+                    </button>
+                  )}
+                </>
+              ) : (
+                <>
+                  {submission.status === 'pending' && campaignStatus === 'active' && onApprove && (
+                    <button
+                      type="button"
+                      className="btn btn-primary flex-1 flex items-center justify-center gap-2"
+                      onClick={() => onApprove(submission.id)}
+                    >
+                      <FiCheck size={18} />
+                      <span>Approve Submission</span>
+                    </button>
+                  )}
+
+                  {(submission.status === 'pending' || submission.status === 'verified') &&
+                    campaignStatus === 'active' &&
+                    onFlag && (
+                      <button
+                        type="button"
+                        className="btn btn-outline flag-btn flex-1 flex items-center justify-center gap-2"
+                        onClick={() => onFlag(submission.id)}
+                      >
+                        <FiFlag size={16} />
+                        <span>Flag Video</span>
+                      </button>
+                    )}
+                </>
+              )}
 
               <button
                 type="button"

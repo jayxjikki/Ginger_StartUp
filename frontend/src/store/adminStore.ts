@@ -34,6 +34,8 @@ export interface AdminState {
   createSlideshow: (data: any) => Promise<void>;
   updateSlideshow: (slideId: string, data: any) => Promise<void>;
   deleteSubmission: (submissionId: string) => Promise<void>;
+  approveSubmissionAsAdmin: (submissionId: string, payoutAmount?: number) => Promise<void>;
+  verifySubmissionAsAdmin: (submissionId: string) => Promise<void>;
   approveAndPayCampaign: (campaignId: string, payoutPerCreator: number) => Promise<void>;
 }
 
@@ -258,6 +260,79 @@ export const useAdminStore = create<AdminState>((set, get) => ({
     if (error) throw error;
     set((state) => ({
       submissions: state.submissions.map(s => s.id === submissionId ? { ...s, status: 'rejected' } : s)
+    }));
+  },
+
+  approveSubmissionAsAdmin: async (submissionId: string, payoutAmount: number = 0) => {
+    // 1. Fetch submission details
+    const { data: sub, error: subError } = await supabase
+      .from('submissions')
+      .select('*, campaign:campaigns(*), creator:profiles(*)')
+      .eq('id', submissionId)
+      .single();
+
+    if (subError) throw subError;
+    if (!sub) throw new Error('Submission not found');
+
+    const now = new Date().toISOString();
+
+    // 2. Update submission to 'paid' (Admin Final Call)
+    const { error: updateError } = await supabase
+      .from('submissions')
+      .update({
+        status: 'paid',
+        earned_amount: payoutAmount,
+        verified_at: now,
+        paid_at: now
+      })
+      .eq('id', submissionId);
+
+    if (updateError) throw updateError;
+
+    // 3. If payoutAmount > 0, create earning wallet transaction for creator
+    if (payoutAmount > 0 && sub.creator_id) {
+      await supabase.from('wallet_transactions').insert({
+        user_id: sub.creator_id,
+        amount: payoutAmount,
+        type: 'earning',
+        status: 'completed',
+        description: `Payout for campaign: ${sub.campaign?.title || 'Campaign'}`
+      });
+
+      // Deduct from campaign remaining_pool if available
+      if (sub.campaign_id && sub.campaign?.remaining_pool !== undefined) {
+        const newPool = Math.max(0, (sub.campaign.remaining_pool || 0) - payoutAmount);
+        await supabase.from('campaigns').update({ remaining_pool: newPool }).eq('id', sub.campaign_id);
+      }
+    }
+
+    // 4. Update local state
+    set((state) => ({
+      submissions: state.submissions.map(s =>
+        s.id === submissionId
+          ? { ...s, status: 'paid', earned_amount: payoutAmount, verified_at: now, paid_at: now }
+          : s
+      ),
+      campaigns: payoutAmount > 0 && sub.campaign_id
+        ? state.campaigns.map(c =>
+            c.id === sub.campaign_id
+              ? { ...c, remaining_pool: Math.max(0, (c.remaining_pool || 0) - payoutAmount) }
+              : c
+          )
+        : state.campaigns
+    }));
+  },
+
+  verifySubmissionAsAdmin: async (submissionId: string) => {
+    const { error } = await supabase
+      .from('submissions')
+      .update({ status: 'verified', verified_at: new Date().toISOString() })
+      .eq('id', submissionId);
+    if (error) throw error;
+    set((state) => ({
+      submissions: state.submissions.map(s =>
+        s.id === submissionId ? { ...s, status: 'verified', verified_at: new Date().toISOString() } : s
+      )
     }));
   },
 
