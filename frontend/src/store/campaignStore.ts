@@ -5,6 +5,7 @@
 import { create } from 'zustand';
 import type { Campaign, CampaignFilters, Submission, SlideshowItem } from '../types/campaign.types';
 import { supabase } from '../lib/supabase';
+import { generateVoucherCode } from '../utils/voucherHelpers';
 
 interface CampaignState {
   campaigns: Campaign[];
@@ -34,6 +35,7 @@ interface CampaignState {
   fetchMyCreatedCampaigns: (userId: string) => Promise<void>;
   flagSubmissionByAdvertiser: (submissionId: string) => Promise<void>;
   approveSubmissionByAdvertiser: (submissionId: string) => Promise<void>;
+  approveDirectDiscountSubmission: (submissionId: string, customDiscount?: number) => Promise<string>;
   submitCampaignToAdmin: (campaignId: string) => Promise<void>;
   
   // Realtime Subscriptions
@@ -359,6 +361,97 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
       }));
     } catch (error) {
       console.error('Error approving submission by advertiser:', error);
+      throw error;
+    }
+  },
+
+  approveDirectDiscountSubmission: async (submissionId: string, customDiscount?: number) => {
+    try {
+      // 1. Fetch submission details
+      const { data: sub, error: fetchErr } = await supabase
+        .from('submissions')
+        .select('*, campaign:campaigns(*), creator:profiles(*)')
+        .eq('id', submissionId)
+        .single();
+
+      if (fetchErr) throw fetchErr;
+      if (!sub) throw new Error('Submission not found');
+
+      // 2. Generate unique voucher code
+      const voucherCode = generateVoucherCode();
+      const discountPercent = customDiscount && customDiscount > 0 
+        ? customDiscount 
+        : (sub.campaign?.payout_tiers?.[0]?.payout_amount || 15);
+      const now = new Date().toISOString();
+
+      // 3. Update submission: only owner approval needed! Status becomes verified/approved
+      const updateData = {
+        status: 'verified',
+        voucher_code: voucherCode,
+        voucher_status: 'active',
+        discount_percent: discountPercent,
+        verified_at: now
+      };
+
+      const { error: updateErr } = await supabase
+        .from('submissions')
+        .update(updateData)
+        .eq('id', submissionId);
+
+      if (updateErr) {
+        // Fallback without voucher fields if DB column not migrated yet
+        console.warn('Fallback update without voucher columns:', updateErr);
+        await supabase
+          .from('submissions')
+          .update({ status: 'verified', verified_at: now })
+          .eq('id', submissionId);
+      }
+
+      // 4. Send notification to Creator (user)
+      if (sub.creator_id) {
+        await supabase.from('notifications').insert({
+          user_id: sub.creator_id,
+          actor_id: sub.campaign?.advertiser_id || null,
+          type: 'system',
+          entity_id: sub.campaign_id,
+          content: `🎟️ Direct Discount Voucher Approved! Code: ${voucherCode} for campaign "${sub.campaign?.title || 'Campaign'}" (${discountPercent}% OFF). Use the discount calculator to check your savings!`
+        });
+      }
+
+      // 5. Send notification to Owner
+      const ownerId = sub.campaign?.advertiser_id;
+      if (ownerId) {
+        await supabase.from('notifications').insert({
+          user_id: ownerId,
+          actor_id: sub.creator_id || null,
+          type: 'system',
+          entity_id: sub.campaign_id,
+          content: `🎟️ Voucher Issued: ${voucherCode} for creator @${sub.creator?.username || 'creator'} on "${sub.campaign?.title || 'Campaign'}" (${discountPercent}% OFF). You can verify or redeem this voucher code anytime.`
+        });
+      }
+
+      // 6. Update local state
+      set((state) => ({
+        myCreatedCampaigns: state.myCreatedCampaigns.map(campaign => ({
+          ...campaign,
+          submissions: (campaign.submissions as any[] || []).map(s =>
+            s.id === submissionId
+              ? {
+                  ...s,
+                  status: 'verified',
+                  voucher_code: voucherCode,
+                  voucher_status: 'active',
+                  discount_percent: discountPercent,
+                  verified_at: now
+                }
+              : s
+          )
+        }))
+      }));
+
+      return voucherCode;
+    } catch (error) {
+      console.error('Error approving direct discount submission:', error);
       throw error;
     }
   },

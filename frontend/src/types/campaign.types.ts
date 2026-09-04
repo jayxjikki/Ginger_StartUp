@@ -158,6 +158,11 @@ export interface Submission {
   verified_at: string | null;
   paid_at: string | null;
   submission_type?: 'all_rewards' | 'direct_discount';
+  voucher_code?: string | null;
+  voucher_status?: 'active' | 'redeemed' | null;
+  discount_percent?: number | null;
+  voucher_details?: any | null;
+  voucher_redeemed_at?: string | null;
   // Joined fields
   campaign?: Campaign;
   creator?: {

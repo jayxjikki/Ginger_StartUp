@@ -5,9 +5,10 @@ import { useCampaignStore } from '../../../store/campaignStore';
 import { useGlobalModalStore } from '../../../store/globalModalStore';
 import { getSocialIcon } from '../../../utils/socialHelpers';
 import { formatCurrency } from '../../../utils/formatters';
-import { FiArrowLeft, FiClock, FiVideo, FiTrash2 } from 'react-icons/fi';
+import { FiArrowLeft, FiClock, FiVideo, FiTrash2, FiCopy } from 'react-icons/fi';
 import { supabase } from '../../../lib/supabase';
 import Badge from '../../../components/ui/Badge';
+import DiscountCalculator from '../../../components/ui/DiscountCalculator';
 import toast from 'react-hot-toast';
 import './JoinedCampaignsPage.css';
 
@@ -132,6 +133,48 @@ const JoinedCampaignsPage: React.FC = () => {
                     <span className="stat-value text-accent font-bold">{formatCurrency(sub.earned_amount || 0)}</span>
                   </div>
                 </div>
+
+                {/* Direct Discount Voucher Card with Calculator */}
+                {(sub as any).submission_type === 'direct_discount' && ((sub as any).voucher_code || sub.status === 'verified' || sub.status === 'paid') && (
+                  <div 
+                    className="p-3 mx-4 mb-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex flex-col gap-2"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-emerald-400">
+                        🎟️ Voucher Code:
+                      </span>
+                      <Badge variant={(sub as any).voucher_status === 'redeemed' ? 'warning' : 'success'} size="sm">
+                        {(sub as any).voucher_status === 'redeemed' ? 'REDEEMED' : 'ACTIVE'}
+                      </Badge>
+                    </div>
+
+                    <div className="flex items-center justify-between bg-black/40 p-2 rounded-lg border border-white/5">
+                      <span className="font-mono text-sm font-bold text-emerald-300">
+                        {(sub as any).voucher_code || 'VCH-ACTIVE'}
+                      </span>
+                      <button
+                        type="button"
+                        className="icon-btn"
+                        onClick={() => {
+                          navigator.clipboard.writeText((sub as any).voucher_code || '');
+                          toast.success('Voucher code copied!');
+                        }}
+                        title="Copy voucher code"
+                      >
+                        <FiCopy size={13} />
+                      </button>
+                    </div>
+
+                    {/* Quick Calculator beside voucher! */}
+                    <div className="mt-1">
+                      <DiscountCalculator
+                        initialDiscountPercent={(sub as any).discount_percent || 15}
+                        voucherCode={(sub as any).voucher_code}
+                      />
+                    </div>
+                  </div>
+                )}
 
                 <div className="submission-card-footer">
                   <div className="submitted-date">

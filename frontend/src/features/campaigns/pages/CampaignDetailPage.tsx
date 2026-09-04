@@ -9,8 +9,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../../lib/supabase';
 import {
   FiArrowLeft, FiShare2, FiMapPin, FiClock, FiUsers,
-  FiExternalLink, FiCheck, FiAlertCircle, FiTrash2
+  FiExternalLink, FiCheck, FiAlertCircle, FiTrash2, FiCopy
 } from 'react-icons/fi';
+import DiscountCalculator from '../../../components/ui/DiscountCalculator';
 import { validateAllowedVideoUrl } from '../../../utils/videoHelpers';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../../store/authStore';
@@ -50,6 +51,10 @@ const CampaignDetailPage: React.FC = () => {
 
   const campaign = campaigns.find((c) => c.id === id);
   const isExpired = campaign?.end_date ? new Date(campaign.end_date) < new Date() : false;
+  const isCampaignOwner = !!user && !!campaign && (
+    user.id === campaign.advertiser_id || 
+    user.id === (campaign.advertiser as any)?.id
+  );
   const [topEarners, setTopEarners] = useState<any[]>([]);
   const [userSubmission, setUserSubmission] = useState<any | null>(null);
 
@@ -58,6 +63,10 @@ const CampaignDetailPage: React.FC = () => {
   const handleSubmit = async () => {
     if (!user) {
       toast.error('You must be logged in to submit a video.');
+      return;
+    }
+    if (isCampaignOwner) {
+      toast.error('Campaign owners cannot submit videos to their own campaigns.');
       return;
     }
     if (!videoUrl || !videoUrl.trim()) {
@@ -558,23 +567,70 @@ const CampaignDetailPage: React.FC = () => {
                       <span className="text-sm text-secondary">Views Tracked</span>
                       <span className="font-bold">{formatCount(userSubmission.current_views || 0)}</span>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-secondary">Earned Amount</span>
-                      <span className="font-bold text-ginger">{formatCurrency(userSubmission.earned_amount || 0, true)}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-secondary">Expected Earning</span>
-                      {nextTier === 'max' ? (
-                        <span className="font-bold text-success text-sm">Max Reached! 🏆</span>
-                      ) : nextTier ? (
-                        <div className="text-right">
-                          <span className="font-bold">{formatCurrency(nextTier.payout_amount, true)}</span>
-                          <span className="block text-[10px] text-tertiary uppercase tracking-wider mt-0.5">at {formatCount(nextTier.min_views)} views</span>
+                    {/* Direct Discount Voucher Details */}
+                    {userSubmission.submission_type === 'direct_discount' && (userSubmission.status === 'verified' || userSubmission.status === 'paid') && (
+                      <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex flex-col gap-2 mt-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-emerald-400 font-bold uppercase tracking-wider">
+                            🎟️ Your Direct Discount Voucher
+                          </span>
+                          <Badge variant={userSubmission.voucher_status === 'redeemed' ? 'warning' : 'success'} size="sm">
+                            {userSubmission.voucher_status === 'redeemed' ? 'REDEEMED' : 'ACTIVE'}
+                          </Badge>
                         </div>
-                      ) : (
-                        <span className="text-sm text-tertiary">No Tiers</span>
-                      )}
-                    </div>
+
+                        <div className="flex items-center justify-between bg-black/40 p-2.5 rounded-lg border border-white/5">
+                          <span className="font-mono text-base font-bold text-emerald-300">
+                            {userSubmission.voucher_code || 'VCH-ACTIVE'}
+                          </span>
+                          <button
+                            type="button"
+                            className="icon-btn"
+                            onClick={() => {
+                              navigator.clipboard.writeText(userSubmission.voucher_code || '');
+                              toast.success('Voucher code copied!');
+                            }}
+                            title="Copy voucher code"
+                          >
+                            <FiCopy size={13} />
+                          </button>
+                        </div>
+
+                        <p className="text-[11px] text-secondary">
+                          Present this code at the store / checkout to receive your discount or perk!
+                        </p>
+
+                        {/* Quick Discount Calculator right beside voucher! */}
+                        <div className="mt-1 pt-1 border-t border-white/5">
+                          <DiscountCalculator
+                            initialDiscountPercent={userSubmission.discount_percent || 15}
+                            voucherCode={userSubmission.voucher_code}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {userSubmission.submission_type !== 'direct_discount' && (
+                      <>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-secondary">Earned Amount</span>
+                          <span className="font-bold text-ginger">{formatCurrency(userSubmission.earned_amount || 0, true)}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-secondary">Expected Earning</span>
+                          {nextTier === 'max' ? (
+                            <span className="font-bold text-success text-sm">Max Reached! 🏆</span>
+                          ) : nextTier ? (
+                            <div className="text-right">
+                              <span className="font-bold">{formatCurrency(nextTier.payout_amount, true)}</span>
+                              <span className="block text-[10px] text-tertiary uppercase tracking-wider mt-0.5">at {formatCount(nextTier.min_views)} views</span>
+                            </div>
+                          ) : (
+                            <span className="text-sm text-tertiary">No Tiers</span>
+                          )}
+                        </div>
+                      </>
+                    )}
                     <a 
                       href={userSubmission.video_url} 
                       target="_blank" 
@@ -605,6 +661,24 @@ const CampaignDetailPage: React.FC = () => {
                 </Card>
               );
             })()
+          ) : isCampaignOwner ? (
+            <div className="p-4 rounded-xl border border-amber-400/30 bg-amber-400/10 text-center flex flex-col items-center gap-2">
+              <div className="flex items-center gap-2 text-amber-400 font-bold text-sm">
+                <span>👑</span>
+                <span>You Are The Campaign Owner</span>
+              </div>
+              <p className="text-xs text-secondary max-w-sm">
+                Campaign owners cannot submit videos to their own campaigns. You can review submitted creator videos and issue vouchers.
+              </p>
+              <Button
+                variant="secondary"
+                size="md"
+                onClick={() => navigate(`/manage-campaigns/${campaign.id}`)}
+                className="mt-1"
+              >
+                Manage Campaign & Submissions
+              </Button>
+            </div>
           ) : (
             <Button
               variant="primary"

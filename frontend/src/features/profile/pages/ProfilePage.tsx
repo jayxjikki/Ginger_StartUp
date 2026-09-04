@@ -19,6 +19,9 @@ import SettingsModal from '../components/SettingsModal';
 import VerifiedChannelsModal from '../components/VerifiedChannelsModal';
 import ChatModal from '../../../components/ui/ChatModal';
 import TransitionLoader from '../../../components/ui/TransitionLoader';
+import DiscountCalculator from '../../../components/ui/DiscountCalculator';
+import VoucherVerifierModal from '../../../components/ui/VoucherVerifierModal';
+import { FiCopy, FiSearch } from 'react-icons/fi';
 import youtubeIcon from '../../../assets/youtube.png';
 import instagramIcon from '../../../assets/instagram.png';
 import tiktokIcon from '../../../assets/tiktok.png';
@@ -126,6 +129,8 @@ const ProfilePage: React.FC = () => {
   const [showMediaKitModal, setShowMediaKitModal] = useState(false);
   const [messageSearch, setMessageSearch] = useState('');
   const [isEntering, setIsEntering] = useState((location.state as any)?.fromTransition || false);
+  const [verifierModalOpen, setVerifierModalOpen] = useState(false);
+  const [verifierModalCode, setVerifierModalCode] = useState('');
 
   useEffect(() => {
     if (isEntering) {
@@ -1024,37 +1029,94 @@ const ProfilePage: React.FC = () => {
                   <p>No notifications yet</p>
                 </div>
               ) : (
-                notifications.map(notification => (
-                  <div 
-                    key={notification.id} 
-                    className={`notification-item ${!notification.is_read ? 'unread' : ''}`}
-                    onClick={() => {
-                      if (!notification.is_read) markAsRead(notification.id);
-                      // Depending on entity type, we could navigate them to the post
-                    }}
-                  >
-                    {notification.actor ? (
-                      <div className="notification-avatar">
-                        <img src={notification.actor.avatar_url || 'https://via.placeholder.com/150'} alt={notification.actor.full_name} />
-                      </div>
-                    ) : (
-                      <div className="notification-icon-wrap bg-accent">
-                        <span className="material-symbols-outlined">campaign</span>
-                      </div>
-                    )}
-                    
-                    <div className="notification-text">
+                notifications.map(notification => {
+                  const isVoucherNotif = notification.content.includes('🎟️') || notification.content.includes('VCH-');
+                  const voucherMatch = notification.content.match(/(VCH-[A-Z0-9-]+)/i);
+                  const extractedVoucherCode = voucherMatch ? voucherMatch[1].toUpperCase() : '';
+                  const isOwnerNotif = notification.content.includes('Voucher Issued:');
+
+                  return (
+                    <div 
+                      key={notification.id} 
+                      className={`notification-item ${!notification.is_read ? 'unread' : ''}`}
+                      style={isVoucherNotif ? { borderLeft: '3px solid #34d399', background: 'rgba(52, 211, 153, 0.04)' } : undefined}
+                      onClick={() => {
+                        if (!notification.is_read) markAsRead(notification.id);
+                      }}
+                    >
                       {notification.actor ? (
-                        <><strong>{notification.actor.full_name}</strong> {notification.content}</>
+                        <div className="notification-avatar">
+                          <img src={notification.actor.avatar_url || 'https://via.placeholder.com/150'} alt={notification.actor.full_name} />
+                        </div>
                       ) : (
-                        <>{notification.content}</>
+                        <div className="notification-icon-wrap" style={isVoucherNotif ? { background: '#10b981' } : undefined}>
+                          <span className="material-symbols-outlined">
+                            {isVoucherNotif ? 'confirmation_number' : 'campaign'}
+                          </span>
+                        </div>
                       )}
-                      <div className="notification-time">
-                        {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
+                      
+                      <div className="notification-text" style={{ width: '100%' }}>
+                        {notification.actor ? (
+                          <><strong>{notification.actor.full_name}</strong> {notification.content}</>
+                        ) : (
+                          <>{notification.content}</>
+                        )}
+
+                        {/* Special Voucher Card inside notification */}
+                        {isVoucherNotif && extractedVoucherCode && (
+                          <div 
+                            className="mt-2.5 p-2.5 rounded-xl border border-emerald-500/30 bg-black/50 flex flex-col gap-2"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="font-mono text-sm font-bold text-emerald-300">
+                                {extractedVoucherCode}
+                              </span>
+                              <div className="flex items-center gap-1.5">
+                                <button
+                                  type="button"
+                                  className="icon-btn"
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(extractedVoucherCode);
+                                    toast.success('Voucher code copied!');
+                                  }}
+                                  title="Copy voucher code"
+                                >
+                                  <FiCopy size={13} />
+                                </button>
+                                {isOwnerNotif && (
+                                  <button
+                                    type="button"
+                                    className="btn btn-outline text-xs py-1 px-2 flex items-center gap-1"
+                                    style={{ borderColor: 'rgba(52, 211, 153, 0.35)', color: '#34d399' }}
+                                    onClick={() => {
+                                      setVerifierModalCode(extractedVoucherCode);
+                                      setVerifierModalOpen(true);
+                                    }}
+                                    title="Verify whether voucher is valid or redeemed"
+                                  >
+                                    <FiSearch size={11} />
+                                    <span>Verify Voucher</span>
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Quick Discount Calculator right beside voucher! */}
+                            <div className="mt-1 pt-1 border-t border-white/5">
+                              <DiscountCalculator voucherCode={extractedVoucherCode} />
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="notification-time">
+                          {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </div>
@@ -1209,6 +1271,12 @@ const ProfilePage: React.FC = () => {
         </div>
       )}
 
+      {/* Dedicated Voucher Verifier Modal for Owner */}
+      <VoucherVerifierModal
+        isOpen={verifierModalOpen}
+        onClose={() => setVerifierModalOpen(false)}
+        initialCode={verifierModalCode}
+      />
     </div>
     </>
   );

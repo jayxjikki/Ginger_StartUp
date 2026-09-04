@@ -11,6 +11,8 @@ import {
   FiEye,
   FiClock,
   FiRefreshCw,
+  FiCopy,
+  FiSearch,
 } from 'react-icons/fi';
 import { useAuthStore } from '../../../store/authStore';
 import { useCampaignStore } from '../../../store/campaignStore';
@@ -22,6 +24,8 @@ import { formatCurrency, formatCount } from '../../../utils/formatters';
 import { getSocialIcon } from '../../../utils/socialHelpers';
 import { getVideoThumbnail } from '../../../utils/videoHelpers';
 import SubmissionVideoModal from '../components/SubmissionVideoModal';
+import DiscountCalculator from '../../../components/ui/DiscountCalculator';
+import VoucherVerifierModal from '../../../components/ui/VoucherVerifierModal';
 import toast from 'react-hot-toast';
 import './ManageCampaignsPage.css';
 
@@ -36,6 +40,7 @@ const ManageCampaignDetailPage: React.FC = () => {
     fetchMyCreatedCampaigns,
     flagSubmissionByAdvertiser,
     approveSubmissionByAdvertiser,
+    approveDirectDiscountSubmission,
     submitCampaignToAdmin,
     isLoading: storeLoading,
   } = useCampaignStore();
@@ -43,8 +48,11 @@ const ManageCampaignDetailPage: React.FC = () => {
 
   const [singleCampaign, setSingleCampaign] = useState<any | null>(null);
   const [isFetchingDirect, setIsFetchingDirect] = useState(false);
+  const [submissionMode, setSubmissionMode] = useState<'all_rewards' | 'direct_discount'>('all_rewards');
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
   const [selectedSubmissionId, setSelectedSubmissionId] = useState<string | null>(null);
+  const [isVerifierModalOpen, setIsVerifierModalOpen] = useState(false);
+  const [verifierInitialCode, setVerifierInitialCode] = useState('');
 
   // Direct fetch for fresh submissions & campaign details
   const fetchCampaignData = useCallback(async () => {
@@ -99,39 +107,54 @@ const ManageCampaignDetailPage: React.FC = () => {
     return submissions.find((s: any) => s.id === selectedSubmissionId) || null;
   }, [submissions, selectedSubmissionId]);
 
-  // Counts for tabs
-  const pendingCount = useMemo(
-    () => submissions.filter((s: any) => s.status === 'pending').length,
+  // Split submissions by mode
+  const rewardSubmissions = useMemo(
+    () => submissions.filter((s: any) => s.submission_type !== 'direct_discount'),
     [submissions]
+  );
+  const discountSubmissions = useMemo(
+    () => submissions.filter((s: any) => s.submission_type === 'direct_discount'),
+    [submissions]
+  );
+
+  const currentModeSubmissions = useMemo(
+    () => (submissionMode === 'all_rewards' ? rewardSubmissions : discountSubmissions),
+    [submissionMode, rewardSubmissions, discountSubmissions]
+  );
+
+  // Counts for tabs in current mode
+  const pendingCount = useMemo(
+    () => currentModeSubmissions.filter((s: any) => s.status === 'pending').length,
+    [currentModeSubmissions]
   );
   const approvedCount = useMemo(
     () =>
-      submissions.filter(
+      currentModeSubmissions.filter(
         (s: any) => s.status === 'verified' || s.status === 'approved' || s.status === 'paid'
       ).length,
-    [submissions]
+    [currentModeSubmissions]
   );
   const flaggedCount = useMemo(
-    () => submissions.filter((s: any) => s.status === 'flagged').length,
-    [submissions]
+    () => currentModeSubmissions.filter((s: any) => s.status === 'flagged').length,
+    [currentModeSubmissions]
   );
 
   // Filtered submissions list
   const filteredSubmissions = useMemo(() => {
     switch (activeFilter) {
       case 'pending':
-        return submissions.filter((s: any) => s.status === 'pending');
+        return currentModeSubmissions.filter((s: any) => s.status === 'pending');
       case 'verified':
-        return submissions.filter(
+        return currentModeSubmissions.filter(
           (s: any) => s.status === 'verified' || s.status === 'approved' || s.status === 'paid'
         );
       case 'flagged':
-        return submissions.filter((s: any) => s.status === 'flagged');
+        return currentModeSubmissions.filter((s: any) => s.status === 'flagged');
       case 'all':
       default:
-        return submissions;
+        return currentModeSubmissions;
     }
-  }, [submissions, activeFilter]);
+  }, [currentModeSubmissions, activeFilter]);
 
   const handleFlagSubmission = async (submissionId: string) => {
     const confirmed = await showConfirm(
@@ -174,6 +197,42 @@ const ManageCampaignDetailPage: React.FC = () => {
     } catch (err) {
       console.error(err);
       showAlert('Failed to approve submission. Please try again.');
+    }
+  };
+
+  const handleApproveDirectDiscount = async (submissionId: string) => {
+    const defaultDiscount = campaign?.payout_tiers?.[0]?.payout_amount || 15;
+    const input = prompt(
+      `Approve this direct discount video?\n\nThis will instantly issue a unique voucher code and notify both the creator & you (no admin approval needed).\n\nEnter Discount Percentage (%):`,
+      String(defaultDiscount)
+    );
+    if (input === null) return;
+    const discountRate = parseFloat(input.trim()) || defaultDiscount;
+
+    try {
+      const voucherCode = await approveDirectDiscountSubmission(submissionId, discountRate);
+      setSingleCampaign((prev: any) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          submissions: (prev.submissions || []).map((s: any) =>
+            s.id === submissionId
+              ? {
+                  ...s,
+                  status: 'verified',
+                  voucher_code: voucherCode,
+                  voucher_status: 'active',
+                  discount_percent: discountRate,
+                  verified_at: new Date().toISOString(),
+                }
+              : s
+          ),
+        };
+      });
+      toast.success(`Direct discount approved! Voucher Code: ${voucherCode} generated.`);
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || 'Failed to approve direct discount submission.');
     }
   };
 
@@ -333,12 +392,64 @@ const ManageCampaignDetailPage: React.FC = () => {
           )}
         </motion.div>
 
+        {/* Mode Switcher: All Campaign Rewards vs Direct Discount */}
+        <div className="manage-mode-switcher">
+          <button
+            type="button"
+            className={`mode-switch-btn ${submissionMode === 'all_rewards' ? 'active' : ''}`}
+            onClick={() => {
+              setSubmissionMode('all_rewards');
+              setActiveFilter('all');
+            }}
+          >
+            <span>🏆 All Campaign Rewards Submissions</span>
+            <span className="mode-pill-badge">{rewardSubmissions.length}</span>
+          </button>
+
+          <button
+            type="button"
+            className={`mode-switch-btn highlight-discount ${submissionMode === 'direct_discount' ? 'active' : ''}`}
+            onClick={() => {
+              setSubmissionMode('direct_discount');
+              setActiveFilter('all');
+            }}
+          >
+            <span>🏷️ Direct Discount Videos & Vouchers</span>
+            <span className="mode-pill-badge discount">{discountSubmissions.length}</span>
+          </button>
+        </div>
+
+        {/* Direct Discount Top Banner with Verifier Shortcut */}
+        {submissionMode === 'direct_discount' && (
+          <div className="direct-discount-banner">
+            <div className="direct-discount-banner-text">
+              <h4>🏷️ Direct Discount Videos & Vouchers</h4>
+              <p>
+                Direct discount videos only require your approval (Admin review is not needed). Approving automatically creates an authentic voucher code and notifies both you and the creator.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="btn-open-verifier"
+              onClick={() => {
+                setVerifierInitialCode('');
+                setIsVerifierModalOpen(true);
+              }}
+            >
+              <FiSearch size={14} />
+              <span>Verify Customer Voucher</span>
+            </button>
+          </div>
+        )}
+
         {/* Submissions Section Header & Filter Tabs */}
         <div className="submissions-section-header">
           <div className="submissions-title-row">
             <div className="flex items-center gap-2">
-              <h3 className="font-extrabold text-xl text-white">Submitted Videos</h3>
-              <span className="submissions-total-pill">{submissions.length}</span>
+              <h3 className="font-extrabold text-xl text-white">
+                {submissionMode === 'all_rewards' ? 'Campaign Reward Videos' : 'Direct Discount Videos'}
+              </h3>
+              <span className="submissions-total-pill">{currentModeSubmissions.length}</span>
             </div>
 
             {/* Filter Tabs */}
@@ -348,7 +459,7 @@ const ManageCampaignDetailPage: React.FC = () => {
                 className={`filter-tab-btn ${activeFilter === 'all' ? 'active' : ''}`}
                 onClick={() => setActiveFilter('all')}
               >
-                All <span className="tab-badge">{submissions.length}</span>
+                All <span className="tab-badge">{currentModeSubmissions.length}</span>
               </button>
               <button
                 type="button"
@@ -529,6 +640,55 @@ const ManageCampaignDetailPage: React.FC = () => {
                         </span>
                       </div>
 
+                      {/* Direct Discount Voucher Details with Quick Calculator */}
+                      {sub.submission_type === 'direct_discount' && (sub.status === 'verified' || sub.status === 'paid') && (
+                        <div className="submission-voucher-box">
+                          <div className="voucher-row-top">
+                            <div className="flex items-center gap-2">
+                              <span className="voucher-code-pill">
+                                🎟️ {sub.voucher_code || 'VCH-ACTIVE'}
+                              </span>
+                              <button
+                                type="button"
+                                className="icon-btn"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(sub.voucher_code || '');
+                                  toast.success('Voucher code copied!');
+                                }}
+                                title="Copy voucher code"
+                              >
+                                <FiCopy size={13} />
+                              </button>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <Badge variant={sub.voucher_status === 'redeemed' ? 'warning' : 'success'} size="sm">
+                                {sub.voucher_status === 'redeemed' ? 'REDEEMED' : 'ACTIVE'}
+                              </Badge>
+                              <button
+                                type="button"
+                                className="btn btn-outline text-xs py-1 px-2.5"
+                                style={{ borderColor: 'rgba(52, 211, 153, 0.35)', color: '#34d399' }}
+                                onClick={() => {
+                                  setVerifierInitialCode(sub.voucher_code || '');
+                                  setIsVerifierModalOpen(true);
+                                }}
+                                title="Open verifier for this voucher"
+                              >
+                                Verify / Redeem
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Quick Discount Calculator right beside voucher! */}
+                          <div className="mt-1">
+                            <DiscountCalculator
+                              initialDiscountPercent={sub.discount_percent || 15}
+                              voucherCode={sub.voucher_code}
+                            />
+                          </div>
+                        </div>
+                      )}
+
                       {/* Action Buttons Row */}
                       <div className="submission-actions-row">
                         {/* Primary Watch Video Button */}
@@ -560,11 +720,26 @@ const ManageCampaignDetailPage: React.FC = () => {
                             <button
                               type="button"
                               className="btn btn-primary approve-action-btn"
-                              onClick={() => handleApproveSubmission(sub.id)}
-                              title="Approve submission"
+                              style={
+                                sub.submission_type === 'direct_discount'
+                                  ? { background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)' }
+                                  : undefined
+                              }
+                              onClick={() => {
+                                if (sub.submission_type === 'direct_discount') {
+                                  handleApproveDirectDiscount(sub.id);
+                                } else {
+                                  handleApproveSubmission(sub.id);
+                                }
+                              }}
+                              title={
+                                sub.submission_type === 'direct_discount'
+                                  ? 'Approve and generate voucher code (no admin needed)'
+                                  : 'Approve submission (sends to Admin)'
+                              }
                             >
                               <FiCheck size={15} />
-                              <span>Approve</span>
+                              <span>{sub.submission_type === 'direct_discount' ? 'Approve & Issue Voucher' : 'Approve'}</span>
                             </button>
                           )}
 
@@ -599,9 +774,22 @@ const ManageCampaignDetailPage: React.FC = () => {
         isOpen={!!selectedSubmission}
         submission={selectedSubmission}
         onClose={() => setSelectedSubmissionId(null)}
-        onApprove={handleApproveSubmission}
+        onApprove={(id) => {
+          if (selectedSubmission?.submission_type === 'direct_discount') {
+            handleApproveDirectDiscount(id);
+          } else {
+            handleApproveSubmission(id);
+          }
+        }}
         onFlag={handleFlagSubmission}
         campaignStatus={campaign.status}
+      />
+
+      {/* Dedicated Voucher Verifier Modal for Owner */}
+      <VoucherVerifierModal
+        isOpen={isVerifierModalOpen}
+        onClose={() => setIsVerifierModalOpen(false)}
+        initialCode={verifierInitialCode}
       />
     </div>
   );
