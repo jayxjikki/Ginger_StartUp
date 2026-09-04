@@ -39,6 +39,39 @@ const stagger = {
   show: { opacity: 1, transition: { staggerChildren: 0.06 } },
 };
 
+interface ExpandableDetailValueProps {
+  text: string;
+  limit?: number;
+}
+
+const ExpandableDetailValue: React.FC<ExpandableDetailValueProps> = ({ text, limit = 48 }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  if (!text || text.length <= limit) {
+    return <span className="info-value">{text}</span>;
+  }
+
+  const truncated = text.slice(0, limit).trim();
+
+  return (
+    <div className="info-expandable-wrap">
+      <span className="info-value">
+        {isExpanded ? text : `${truncated}...`}
+      </span>
+      <button
+        type="button"
+        className="info-read-more-btn"
+        onClick={(e) => {
+          e.stopPropagation();
+          setIsExpanded(!isExpanded);
+        }}
+      >
+        {isExpanded ? 'Read less' : 'Read more'}
+      </button>
+    </div>
+  );
+};
+
 const CampaignDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -337,7 +370,7 @@ const CampaignDetailPage: React.FC = () => {
         {/* Prize Pool Card */}
         {campaign.prize_pool > 0 && (
           <motion.div variants={fadeUp}>
-            <Card variant="ginger" padding="lg" className="prize-pool-card">
+            <Card variant="ginger" padding="md" className="prize-pool-card">
               <div className="prize-pool-header">
                 <div>
                   <span className="prize-pool-label">Total Prize Pool</span>
@@ -463,11 +496,14 @@ const CampaignDetailPage: React.FC = () => {
               <FiMapPin className="info-icon" />
               <div>
                 <span className="info-label">Location</span>
-                <span className="info-value">
-                  {campaign.location && campaign.location.toLowerCase() !== 'none'
-                    ? campaign.location
-                    : 'Online (None)'}
-                </span>
+                <ExpandableDetailValue
+                  text={
+                    campaign.location && campaign.location.toLowerCase() !== 'none'
+                      ? campaign.location
+                      : 'Online (None)'
+                  }
+                  limit={45}
+                />
               </div>
             </div>
             <div className="info-item">
@@ -488,7 +524,10 @@ const CampaignDetailPage: React.FC = () => {
               <FiExternalLink className="info-icon" />
               <div>
                 <span className="info-label">Platforms</span>
-                <span className="info-value">{campaign.required_platforms.join(', ')}</span>
+                <ExpandableDetailValue
+                  text={campaign.required_platforms.join(', ')}
+                  limit={45}
+                />
               </div>
             </div>
           </div>

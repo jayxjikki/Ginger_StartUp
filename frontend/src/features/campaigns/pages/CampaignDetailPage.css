@@ -7,7 +7,7 @@
   flex-direction: column;
   gap: var(--space-5);
   padding-top: calc(var(--safe-top) + var(--space-3));
-  padding-bottom: 100px; /* To prevent bottom nav from covering content */
+  padding-bottom: var(--space-4); /* Safe spacing above bottom nav, removing empty dead void */
 }
 
 /* ── Top Bar ───────────────────────────────────────────── */
@@ -43,13 +43,16 @@
   display: flex;
   align-items: center;
   gap: var(--space-3);
+  margin-top: -6px;
+  margin-bottom: -10px; /* Reduces space between profile and money card */
 }
 
 /* ── Prize Pool Card ───────────────────────────────────── */
 .prize-pool-card {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: var(--space-3);
+  padding: 16px 18px !important;
 }
 
 .prize-pool-header {
@@ -212,6 +215,12 @@
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
+  min-width: 0;
+}
+
+.info-item > div {
+  flex: 1;
+  min-width: 0;
 }
 
 .info-icon {
@@ -235,6 +244,34 @@
   font-weight: 600;
   color: var(--text-primary);
   margin-top: 2px;
+  word-break: break-word;
+  line-height: 1.35;
+}
+
+.info-expandable-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+}
+
+.info-read-more-btn {
+  background: transparent;
+  border: none;
+  color: #ff8a4c;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 4px 0 0 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  transition: opacity 0.2s ease;
+}
+
+.info-read-more-btn:hover {
+  opacity: 0.8;
+  text-decoration: underline;
 }
 
 /* ── Top Earners ───────────────────────────────────────── */
@@ -282,7 +319,7 @@
 
 /* ── CTA ───────────────────────────────────────────────── */
 .detail-cta {
-  padding: var(--space-4) 0;
+  padding: var(--space-2) 0 0 0;
 }
 
 /* ── Modal ─────────────────────────────────────────────── */
