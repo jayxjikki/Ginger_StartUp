@@ -6,7 +6,6 @@ import {
   FiFlag,
   FiVideo,
   FiCheck,
-  FiCheckCircle,
   FiPlay,
   FiExternalLink,
   FiEye,
@@ -55,6 +54,7 @@ const ManageCampaignDetailPage: React.FC = () => {
   const [selectedSubmissionId, setSelectedSubmissionId] = useState<string | null>(null);
   const [isVerifierModalOpen, setIsVerifierModalOpen] = useState(false);
   const [verifierInitialCode, setVerifierInitialCode] = useState('');
+  const [showTopCalculator, setShowTopCalculator] = useState(false);
 
   // Direct fetch for fresh submissions & campaign details
   const fetchCampaignData = useCallback(async () => {
@@ -238,44 +238,6 @@ const ManageCampaignDetailPage: React.FC = () => {
     }
   };
 
-  const handleSendBillToCreator = async (
-    sub: any,
-    billAmount: number,
-    finalPrice: number,
-    discountRate: number,
-    savings: number
-  ) => {
-    if (!sub.creator_id) {
-      toast.error('Creator ID not found for this submission.');
-      return;
-    }
-    try {
-      const creatorName = sub.creator?.username || sub.creator?.full_name || 'user';
-      const campTitle = campaign?.title || 'Store';
-      
-      const { error: notifErr } = await supabase.from('notifications').insert({
-        user_id: sub.creator_id,
-        actor_id: user?.id || campaign?.advertiser_id || null,
-        type: 'system',
-        entity_id: sub.campaign_id,
-        content: `🧾 Bill Receipt from "${campTitle}": Total Bill ₹${billAmount.toLocaleString('en-IN')} - ${discountRate}% Discount (-₹${savings.toLocaleString('en-IN')}) = Final to Pay: ₹${finalPrice.toLocaleString('en-IN')}. Voucher: ${sub.voucher_code || 'VCH-ACTIVE'}`
-      });
-
-      if (notifErr) {
-        console.error('Failed to insert bill notification:', notifErr);
-        toast.error('Could not deliver bill notification: ' + notifErr.message);
-        return;
-      }
-
-      toast.success(
-        `🧾 Bill of ₹${finalPrice.toLocaleString('en-IN')} sent to @${creatorName}! Notification delivered.`
-      );
-    } catch (err: any) {
-      console.error('Error sending bill:', err);
-      toast.error('Error sending bill receipt.');
-    }
-  };
-
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'pending':
@@ -435,7 +397,7 @@ const ManageCampaignDetailPage: React.FC = () => {
           </button>
         </div>
 
-        {/* Direct Discount Top Banner with Verifier Shortcut */}
+        {/* Direct Discount Top Banner with Verifier & Calculator Shortcuts */}
         {submissionMode === 'direct_discount' && (
           <div className="direct-discount-banner">
             <div className="direct-discount-banner-text">
@@ -444,17 +406,39 @@ const ManageCampaignDetailPage: React.FC = () => {
                 Direct discount videos only require your approval (Admin review is not needed). Approving automatically creates an authentic voucher code and notifies both you and the creator.
               </p>
             </div>
-            <button
-              type="button"
-              className="btn-open-verifier"
-              onClick={() => {
-                setVerifierInitialCode('');
-                setIsVerifierModalOpen(true);
-              }}
-            >
-              <FiSearch size={14} />
-              <span>Verify Customer Voucher</span>
-            </button>
+            <div className="direct-discount-banner-actions">
+              <button
+                type="button"
+                className="btn-open-verifier"
+                onClick={() => {
+                  setVerifierInitialCode('');
+                  setIsVerifierModalOpen(true);
+                }}
+              >
+                <FiSearch size={14} />
+                <span>Verify Customer Voucher</span>
+              </button>
+              <button
+                type="button"
+                className={`btn-open-calc ${showTopCalculator ? 'active' : ''}`}
+                onClick={() => setShowTopCalculator(!showTopCalculator)}
+              >
+                <span>🧮</span>
+                <span>{showTopCalculator ? 'Hide Calculator' : 'Discount Calculator'}</span>
+              </button>
+            </div>
+
+            {/* Direct Discount Calculator for Owner right beside Verifier */}
+            {showTopCalculator && (
+              <div className="mt-3 pt-3 border-t border-emerald-500/20 w-full">
+                <DiscountCalculator
+                  initialDiscountPercent={campaign?.payout_tiers?.[0]?.payout_amount || 15}
+                  isLockedPercent={false}
+                  inline={true}
+                  isOwner={true}
+                />
+              </div>
+            )}
           </div>
         )}
 
@@ -656,10 +640,10 @@ const ManageCampaignDetailPage: React.FC = () => {
                         </span>
                       </div>
 
-                      {/* Direct Discount Voucher Details with Quick Calculator */}
+                      {/* Direct Discount Voucher Details (Clean & Uncluttered) */}
                       {isDirectDiscountSubmission(sub) && (sub.status === 'verified' || sub.status === 'paid') && (
                         <div className="submission-voucher-box">
-                          {/* Top Row: Voucher Code & Copy on Left, Status Badge on Right */}
+                          {/* Clean Voucher Code & Status Header */}
                           <div className="voucher-card-header">
                             <div className="voucher-code-wrapper">
                               <span className="voucher-code-pill">
@@ -682,37 +666,6 @@ const ManageCampaignDetailPage: React.FC = () => {
                                 {sub.voucher_status === 'redeemed' ? 'REDEEMED' : 'ACTIVE'}
                               </Badge>
                             </div>
-                          </div>
-
-                          {/* Action Row: Verify / Redeem Button */}
-                          <div className="voucher-card-actions">
-                            <button
-                              type="button"
-                              className="voucher-redeem-action-btn"
-                              onClick={() => {
-                                setVerifierInitialCode(sub.voucher_code || '');
-                                setIsVerifierModalOpen(true);
-                              }}
-                              title="Open verifier for this voucher"
-                            >
-                              <FiCheckCircle size={14} />
-                              <span>Verify / Redeem Voucher</span>
-                            </button>
-                          </div>
-
-                          {/* Quick Discount Calculator with pre-locked rate and Owner Send Bill action! */}
-                          <div className="voucher-card-calc">
-                            <DiscountCalculator
-                              initialDiscountPercent={sub.discount_percent || 15}
-                              lockedDiscountPercent={sub.discount_percent || 15}
-                              isLockedPercent={true}
-                              voucherCode={sub.voucher_code}
-                              isOwner={true}
-                              recipientUsername={sub.creator?.username}
-                              onSendBill={async (billAmount, finalPrice, discountRate, savings) => {
-                                await handleSendBillToCreator(sub, billAmount, finalPrice, discountRate, savings);
-                              }}
-                            />
                           </div>
                         </div>
                       )}
