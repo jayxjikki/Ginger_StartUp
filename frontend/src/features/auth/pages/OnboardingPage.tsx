@@ -187,7 +187,9 @@ const OnboardingPage: React.FC = () => {
       }
       
       await completeOnboarding();
-      navigate('/profile');
+      const redirectPath = localStorage.getItem('auth_redirect_url') || '/profile';
+      localStorage.removeItem('auth_redirect_url');
+      navigate(redirectPath);
     } catch (err) {
       toast.error('Failed to finish onboarding.');
     } finally {

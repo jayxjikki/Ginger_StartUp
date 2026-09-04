@@ -26,11 +26,13 @@ const LoginPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    // If the user is already logged in, redirect them to the app
+    // If the user is already logged in, redirect them to the intended page or app
     if (isInitialized && user) {
-      navigate('/campaigns', { replace: true });
+      const redirectPath = (location.state as any)?.from || localStorage.getItem('auth_redirect_url') || '/campaigns';
+      localStorage.removeItem('auth_redirect_url');
+      navigate(redirectPath, { replace: true });
     }
-  }, [user, isInitialized, navigate]);
+  }, [user, isInitialized, navigate, location.state]);
 
   const handleTermsCheckboxClick = () => {
     if (isTermsAccepted) {

@@ -59,6 +59,7 @@ import './styles/utilities.css';
 // Auth guard wrapper
 const ProtectedRoute: React.FC<{ children: React.ReactNode, requireOnboarding?: boolean }> = ({ children, requireOnboarding = true }) => {
   const { user, profile, isInitialized, isLoading } = useAuthStore();
+  const location = useLocation();
   
   if (!isInitialized || isLoading) {
     return (
@@ -68,7 +69,12 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode, requireOnboarding?: 
     );
   }
   
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) {
+    if (location.pathname && location.pathname !== '/login') {
+      localStorage.setItem('auth_redirect_url', location.pathname + location.search);
+    }
+    return <Navigate to="/login" state={{ from: location.pathname + location.search }} replace />;
+  }
 
   if (requireOnboarding && profile && !profile.onboarding_completed) {
     return <Navigate to="/onboarding" replace />;

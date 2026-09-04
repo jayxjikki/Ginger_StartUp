@@ -27,6 +27,7 @@ import { formatCurrency, formatCount, formatTimeLeft } from '../../../utils/form
 import { getCampaignImages, parseTierReward } from '../../../types/campaign.types';
 import { CampaignImageSlideshow } from '../../../components/ui/CampaignImageSlideshow';
 import { isDirectDiscountSubmission, normalizeSubmission, encodeVideoId } from '../../../utils/submissionHelpers';
+import CampaignShareModal from '../../../components/ui/CampaignShareModal';
 import './CampaignDetailPage.css';
 
 const fadeUp = {
@@ -77,6 +78,7 @@ const CampaignDetailPage: React.FC = () => {
   const navigate = useNavigate();
   const { campaigns, savedCampaignIds, fetchSavedCampaigns, toggleSavedCampaign } = useCampaignStore();
   const [showSubmitModal, setShowSubmitModal] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [videoUrl, setVideoUrl] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { user } = useAuthStore();
@@ -305,7 +307,12 @@ const CampaignDetailPage: React.FC = () => {
                 bookmark
               </span>
             </button>
-            <button className="icon-btn" aria-label="Share">
+            <button
+              className="icon-btn"
+              aria-label="Share Campaign"
+              onClick={() => setIsShareModalOpen(true)}
+              title="Share Campaign (QR & Link)"
+            >
               <FiShare2 />
             </button>
             <button 
@@ -817,6 +824,12 @@ const CampaignDetailPage: React.FC = () => {
             </motion.div>
           </div>
         )}
+        {/* Share Campaign Modal (1st QR, 2nd Link) */}
+        <CampaignShareModal
+          isOpen={isShareModalOpen}
+          onClose={() => setIsShareModalOpen(false)}
+          campaign={campaign}
+        />
       </motion.div>
     </div>
   );
