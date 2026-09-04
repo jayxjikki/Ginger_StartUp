@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiArrowLeft, FiTarget, FiPlusCircle } from 'react-icons/fi';
+import { FiArrowLeft, FiTarget, FiChevronRight } from 'react-icons/fi';
 import { useAuthStore } from '../../../store/authStore';
 import { useCampaignStore } from '../../../store/campaignStore';
 import Badge from '../../../components/ui/Badge';
@@ -28,12 +28,18 @@ const ManageCampaignsPage: React.FC = () => {
       </div>
 
       <header className="manage-header relative z-20">
-        <button className="icon-btn manage-back-btn" onClick={() => navigate(-1)}>
-          <FiArrowLeft size={22} />
-        </button>
-        <div className="manage-header-text">
-          <h1 className="manage-title bg-gradient-text">Manage Campaigns</h1>
-          <p className="manage-subtitle">Track performance and review submissions</p>
+        <div className="manage-header-left">
+          <button
+            className="icon-btn manage-back-btn"
+            onClick={() => navigate(-1)}
+            aria-label="Go Back"
+          >
+            <FiArrowLeft size={22} />
+          </button>
+          <div className="manage-header-text">
+            <h1 className="manage-title bg-gradient-text">Manage Campaigns</h1>
+            <p className="manage-subtitle">Track performance and review submissions</p>
+          </div>
         </div>
       </header>
 
@@ -94,7 +100,7 @@ const ManageCampaignsPage: React.FC = () => {
                     <div className="card-gradient-overlay"></div>
                     <div className="card-content-inner">
                       <div className="manage-card-header">
-                        <div className="title-wrapper pr-4">
+                        <div className="title-wrapper pr-3 min-w-0 flex-1">
                           <h3 className="manage-card-title">{campaign.title || 'Untitled'}</h3>
                           <p className="manage-card-platform">
                             {campaign.platform || 'Cross-Platform'}
@@ -143,7 +149,7 @@ const ManageCampaignsPage: React.FC = () => {
                             No pending reviews
                           </div>
                         )}
-                        <FiArrowLeft className="action-arrow text-tertiary group-hover:text-white transition-colors" style={{ transform: 'rotate(180deg)' }} />
+                        <FiChevronRight className="action-arrow text-tertiary group-hover:text-white transition-transform group-hover:translate-x-1" size={18} />
                       </div>
                     </div>
                   </motion.div>
@@ -153,19 +159,6 @@ const ManageCampaignsPage: React.FC = () => {
           )}
         </AnimatePresence>
       </main>
-
-      {/* Floating Create Button when campaigns exist */}
-      {myCreatedCampaigns.length > 0 && !isLoading && (
-        <motion.button 
-          className="floating-create-btn"
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          onClick={() => navigate('/advertise/create')}
-          title="Create New Campaign"
-        >
-          <FiPlusCircle size={28} />
-        </motion.button>
-      )}
     </div>
   );
 };
