@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiX, FiExternalLink, FiCheck, FiFlag, FiEye, FiCopy } from 'react-icons/fi';
 import Avatar from '../../../components/ui/Avatar';
@@ -25,7 +25,7 @@ const SubmissionVideoModal: React.FC<SubmissionVideoModalProps> = ({
   onFlag,
   campaignStatus = 'active',
 }) => {
-  React.useEffect(() => {
+  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
     };
@@ -52,11 +52,11 @@ const SubmissionVideoModal: React.FC<SubmissionVideoModalProps> = ({
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'pending': return <Badge variant="warning" size="sm">Pending Review</Badge>;
-      case 'verified': return <Badge variant="success" size="sm">Approved / Verified</Badge>;
+      case 'pending': return <Badge variant="warning" size="sm">Pending</Badge>;
+      case 'verified': return <Badge variant="success" size="sm">Approved</Badge>;
       case 'paid': return <Badge variant="accent" size="sm">Paid</Badge>;
       case 'rejected': return <Badge variant="error" size="sm">Rejected</Badge>;
-      case 'flagged': return <Badge variant="error" size="sm">Flagged (Reviewing)</Badge>;
+      case 'flagged': return <Badge variant="error" size="sm">Flagged</Badge>;
       case 'disputed': return <Badge variant="warning" size="sm">Disputed</Badge>;
       default: return <Badge variant="default" size="sm">{status}</Badge>;
     }
@@ -67,37 +67,42 @@ const SubmissionVideoModal: React.FC<SubmissionVideoModalProps> = ({
       {isOpen && (
         <div className="submission-modal-overlay" onClick={onClose}>
           <motion.div
-            className="submission-modal-content glass-strong"
-            initial={{ opacity: 0, scale: 0.92, y: 30 }}
+            className="submission-modal-content"
+            initial={{ opacity: 0, scale: 0.94, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.92, y: 30 }}
-            transition={{ duration: 0.25, ease: 'easeOut' }}
+            exit={{ opacity: 0, scale: 0.94, y: 20 }}
+            transition={{ duration: 0.22, ease: 'easeOut' }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
             <div className="submission-modal-header">
-              <div className="flex items-center gap-3">
+              <div className="modal-header-creator">
                 <Avatar
                   src={submission.creator?.avatar_url}
                   name={submission.creator?.full_name || 'Creator'}
                   size="md"
                 />
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-white font-bold text-base leading-tight">
+                <div className="modal-creator-text">
+                  <div className="modal-creator-name-row">
+                    <h3 className="modal-creator-name">
                       {submission.creator?.full_name || 'Creator'}
                     </h3>
                     {platformIcon && (
-                      <img src={platformIcon} alt={platform} className="w-4 h-4 object-contain inline-block" />
+                      <img
+                        src={platformIcon}
+                        alt={platform}
+                        className="modal-platform-icon"
+                        style={{ width: 16, height: 16, minWidth: 16, maxWidth: 16, objectFit: 'contain' }}
+                      />
                     )}
                   </div>
-                  <p className="text-xs text-secondary mt-0.5">
+                  <p className="modal-creator-handle">
                     @{submission.creator?.username || 'creator'} • {platform.toUpperCase()}
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-3">
+              <div className="modal-header-actions">
                 {getStatusBadge(submission.status)}
                 <button
                   type="button"
@@ -105,7 +110,7 @@ const SubmissionVideoModal: React.FC<SubmissionVideoModalProps> = ({
                   onClick={onClose}
                   aria-label="Close modal"
                 >
-                  <FiX size={20} />
+                  <FiX size={18} />
                 </button>
               </div>
             </div>
@@ -150,7 +155,12 @@ const SubmissionVideoModal: React.FC<SubmissionVideoModalProps> = ({
                   <div className="external-video-overlay">
                     {platformIcon && (
                       <div className="external-platform-logo-circle">
-                        <img src={platformIcon} alt={platform} className="w-10 h-10 object-contain" />
+                        <img
+                          src={platformIcon}
+                          alt={platform}
+                          className="external-platform-logo-img"
+                          style={{ width: 36, height: 36, objectFit: 'contain' }}
+                        />
                       </div>
                     )}
                     <h4 className="text-white font-bold text-lg mt-3">Watch on {platform.toUpperCase()}</h4>
@@ -175,14 +185,14 @@ const SubmissionVideoModal: React.FC<SubmissionVideoModalProps> = ({
             <div className="submission-modal-meta">
               <div className="meta-left">
                 <div className="meta-item">
-                  <span className="meta-label">Views Tracked</span>
+                  <span className="meta-label">VIEWS TRACKED</span>
                   <span className="meta-value flex items-center gap-1.5 font-bold text-white">
                     <FiEye size={15} className="text-accent" />
-                    {formatCount(submission.current_views || 0)}
+                    {formatCount(submission.current_views || 0)} views
                   </span>
                 </div>
                 <div className="meta-item">
-                  <span className="meta-label">Submitted</span>
+                  <span className="meta-label">SUBMITTED</span>
                   <span className="meta-value text-secondary">
                     {new Date(submission.submitted_at).toLocaleDateString(undefined, {
                       year: 'numeric',
@@ -200,7 +210,7 @@ const SubmissionVideoModal: React.FC<SubmissionVideoModalProps> = ({
                   onClick={handleCopyLink}
                   title="Copy video link"
                 >
-                  <FiCopy size={15} />
+                  <FiCopy size={14} />
                   <span>Copy Link</span>
                 </button>
                 <a
@@ -208,23 +218,21 @@ const SubmissionVideoModal: React.FC<SubmissionVideoModalProps> = ({
                   target="_blank"
                   rel="noopener noreferrer"
                   className="meta-action-btn external"
+                  title="Open original video in new tab"
                 >
-                  <FiExternalLink size={15} />
+                  <FiExternalLink size={14} />
                   <span>Open URL</span>
                 </a>
               </div>
             </div>
 
-            {/* Modal Actions */}
+            {/* Modal Actions Footer */}
             <div className="submission-modal-actions">
               {submission.status === 'pending' && campaignStatus === 'active' && onApprove && (
                 <button
                   type="button"
                   className="btn btn-primary flex-1 flex items-center justify-center gap-2"
-                  onClick={() => {
-                    onApprove(submission.id);
-                    onClose();
-                  }}
+                  onClick={() => onApprove(submission.id)}
                 >
                   <FiCheck size={18} />
                   <span>Approve Submission</span>
@@ -237,10 +245,7 @@ const SubmissionVideoModal: React.FC<SubmissionVideoModalProps> = ({
                   <button
                     type="button"
                     className="btn btn-outline flag-btn flex-1 flex items-center justify-center gap-2"
-                    onClick={() => {
-                      onFlag(submission.id);
-                      onClose();
-                    }}
+                    onClick={() => onFlag(submission.id)}
                   >
                     <FiFlag size={16} />
                     <span>Flag Video</span>
@@ -249,7 +254,7 @@ const SubmissionVideoModal: React.FC<SubmissionVideoModalProps> = ({
 
               <button
                 type="button"
-                className="btn btn-ghost"
+                className="btn btn-ghost modal-close-action"
                 onClick={onClose}
               >
                 Close

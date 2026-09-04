@@ -4,7 +4,24 @@
 
 export function extractYouTubeId(url: string): string | null {
   if (!url) return null;
-  const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/))([\w-]{11})/i);
+  try {
+    const urlObj = new URL(url);
+    if (urlObj.hostname.includes('youtube.com')) {
+      const v = urlObj.searchParams.get('v');
+      if (v && v.length >= 11) return v.substring(0, 11);
+      if (urlObj.pathname.startsWith('/shorts/')) {
+        return urlObj.pathname.split('/shorts/')[1]?.substring(0, 11) || null;
+      }
+      if (urlObj.pathname.startsWith('/embed/')) {
+        return urlObj.pathname.split('/embed/')[1]?.substring(0, 11) || null;
+      }
+    } else if (urlObj.hostname.includes('youtu.be')) {
+      return urlObj.pathname.substring(1, 12) || null;
+    }
+  } catch {
+    // fallback to regex if invalid URL format
+  }
+  const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.*[&?]v=|shorts\/))([\w-]{11})/i);
   return match ? match[1] : null;
 }
 

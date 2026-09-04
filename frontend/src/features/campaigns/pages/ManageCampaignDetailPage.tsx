@@ -248,7 +248,7 @@ const ManageCampaignDetailPage: React.FC = () => {
         >
           <FiArrowLeft size={22} />
         </button>
-        <div className="flex-1">
+        <div className="manage-header-center">
           <h1 className="manage-title bg-gradient-text">Manage Campaign</h1>
           <p className="manage-subtitle">Submissions & video reviews</p>
         </div>
@@ -270,19 +270,19 @@ const ManageCampaignDetailPage: React.FC = () => {
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <div className="flex justify-between items-start gap-4 mb-3">
-            <div>
-              <h2 className="text-2xl font-black text-white leading-tight">
+          <div className="manage-detail-top-row">
+            <div className="manage-detail-title-col">
+              <h2 className="manage-detail-title">
                 {campaign.title || 'Untitled Campaign'}
               </h2>
               {campaign.slogan && (
-                <p className="text-secondary text-sm mt-1">{campaign.slogan}</p>
+                <p className="manage-detail-slogan">{campaign.slogan}</p>
               )}
             </div>
             <Badge
               variant={campaign.status === 'active' ? 'success' : 'default'}
               size="md"
-              className="uppercase font-bold tracking-wider shrink-0"
+              className="status-pill-badge uppercase shrink-0"
             >
               {campaign.status}
             </Badge>
@@ -298,9 +298,9 @@ const ManageCampaignDetailPage: React.FC = () => {
             <div className="detail-stat-divider"></div>
             <div className="detail-stat">
               <span className="detail-stat-label">SUBMISSIONS</span>
-              <span className="detail-stat-value text-white flex items-center gap-1.5">
+              <span className="detail-stat-value text-white detail-stat-icon-val">
                 <FiVideo size={16} className="text-secondary" />
-                {submissions.length}
+                <span>{submissions.length}</span>
               </span>
             </div>
             <div className="detail-stat-divider"></div>
@@ -335,7 +335,7 @@ const ManageCampaignDetailPage: React.FC = () => {
 
         {/* Submissions Section Header & Filter Tabs */}
         <div className="submissions-section-header">
-          <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
+          <div className="submissions-title-row">
             <div className="flex items-center gap-2">
               <h3 className="font-extrabold text-xl text-white">Submitted Videos</h3>
               <span className="submissions-total-pill">{submissions.length}</span>
@@ -427,16 +427,29 @@ const ManageCampaignDetailPage: React.FC = () => {
                           alt="Video submission thumbnail"
                           className="submission-thumb-img"
                           loading="lazy"
+                          onError={(e) => {
+                            const current = e.currentTarget.src;
+                            if (current.includes('hqdefault.jpg')) {
+                              e.currentTarget.src = current.replace('hqdefault.jpg', 'mqdefault.jpg');
+                            } else {
+                              e.currentTarget.style.display = 'none';
+                            }
+                          }}
                         />
                       ) : (
                         <div className="submission-thumb-fallback">
                           {platformIcon ? (
-                            <img src={platformIcon} alt={platform} className="w-10 h-10 object-contain" />
+                            <img
+                              src={platformIcon}
+                              alt={platform}
+                              className="platform-icon-fallback"
+                              style={{ width: 36, height: 36, objectFit: 'contain' }}
+                            />
                           ) : (
                             <FiVideo size={32} className="text-accent" />
                           )}
-                          <span className="text-[11px] font-bold text-secondary uppercase mt-2">
-                            {platform} Video
+                          <span className="fallback-tag-text">
+                            {platform.toUpperCase()} VIDEO
                           </span>
                         </div>
                       )}
@@ -452,7 +465,12 @@ const ManageCampaignDetailPage: React.FC = () => {
                       {/* Platform Tag */}
                       {platformIcon && (
                         <div className="submission-platform-tag">
-                          <img src={platformIcon} alt={platform} className="w-3.5 h-3.5 object-contain" />
+                          <img
+                            src={platformIcon}
+                            alt={platform}
+                            className="platform-icon-tag"
+                            style={{ width: 14, height: 14, minWidth: 14, maxWidth: 14, objectFit: 'contain' }}
+                          />
                           <span>{platform.toUpperCase()}</span>
                         </div>
                       )}
@@ -467,11 +485,11 @@ const ManageCampaignDetailPage: React.FC = () => {
                             name={sub.creator?.full_name || 'Creator'}
                             size="md"
                           />
-                          <div>
-                            <h4 className="creator-name text-white font-bold text-base leading-tight">
+                          <div className="creator-meta">
+                            <h4 className="creator-name" title={sub.creator?.full_name}>
                               {sub.creator?.full_name || 'Creator'}
                             </h4>
-                            <p className="creator-handle text-xs text-secondary">
+                            <p className="creator-handle">
                               @{sub.creator?.username || 'creator'}
                             </p>
                           </div>
@@ -503,14 +521,14 @@ const ManageCampaignDetailPage: React.FC = () => {
 
                       {/* Video URL Display */}
                       <div className="submission-url-preview">
-                        <span className="text-xs text-secondary truncate block max-w-full font-mono">
+                        <span className="submission-url-text">
                           {sub.video_url}
                         </span>
                       </div>
 
                       {/* Action Buttons Row */}
                       <div className="submission-actions-row">
-                        {/* Open Video Player in Modal */}
+                        {/* Primary Watch Video Button */}
                         <button
                           type="button"
                           className="watch-video-btn"
@@ -520,46 +538,49 @@ const ManageCampaignDetailPage: React.FC = () => {
                           <span>Watch Video</span>
                         </button>
 
-                        {/* Open Original Link in New Tab */}
-                        <a
-                          href={sub.video_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="open-link-btn"
-                          title="Open original video URL in new tab"
-                        >
-                          <FiExternalLink size={15} />
-                          <span>Open Link</span>
-                        </a>
-
-                        {/* Quick Approve Action */}
-                        {sub.status === 'pending' && campaign.status === 'active' && (
-                          <button
-                            type="button"
-                            className="btn btn-primary approve-action-btn"
-                            onClick={() => handleApproveSubmission(sub.id)}
-                            title="Approve submission"
+                        {/* Secondary Button Row */}
+                        <div className="submission-sub-actions">
+                          {/* Open Original Link in New Tab */}
+                          <a
+                            href={sub.video_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="open-link-btn"
+                            title="Open original video URL in new tab"
                           >
-                            <FiCheck size={16} />
-                            <span>Approve</span>
-                          </button>
-                        )}
+                            <FiExternalLink size={14} />
+                            <span>Open Link</span>
+                          </a>
 
-                        {/* Quick Flag Action */}
-                        {(sub.status === 'pending' ||
-                          sub.status === 'verified' ||
-                          sub.status === 'paid') &&
-                          campaign.status === 'active' && (
+                          {/* Quick Approve Action */}
+                          {sub.status === 'pending' && campaign.status === 'active' && (
                             <button
                               type="button"
-                              className="flag-action-btn"
-                              onClick={() => handleFlagSubmission(sub.id)}
-                              title="Flag submission for admin review"
+                              className="btn btn-primary approve-action-btn"
+                              onClick={() => handleApproveSubmission(sub.id)}
+                              title="Approve submission"
                             >
-                              <FiFlag size={14} />
-                              <span>Flag</span>
+                              <FiCheck size={15} />
+                              <span>Approve</span>
                             </button>
                           )}
+
+                          {/* Quick Flag Action */}
+                          {(sub.status === 'pending' ||
+                            sub.status === 'verified' ||
+                            sub.status === 'paid') &&
+                            campaign.status === 'active' && (
+                              <button
+                                type="button"
+                                className="flag-action-btn"
+                                onClick={() => handleFlagSubmission(sub.id)}
+                                title="Flag submission for admin review"
+                              >
+                                <FiFlag size={13} />
+                                <span>Flag</span>
+                              </button>
+                            )}
+                        </div>
                       </div>
                     </div>
                   </motion.div>
