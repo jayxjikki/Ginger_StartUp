@@ -587,106 +587,28 @@ const ManageCampaignDetailPage: React.FC = () => {
                         <span className="play-text-pill">Watch Video</span>
                       </div>
 
-                      {/* Platform Tag */}
-                      {platformIcon && (
-                        <div className="submission-platform-tag">
+                      {/* Creator Profile & Platform on Top Left of Thumbnail */}
+                      <div className="submission-thumb-creator-pill" onClick={(e) => e.stopPropagation()}>
+                        <Avatar
+                          src={sub.creator?.avatar_url}
+                          name={sub.creator?.full_name || 'Creator'}
+                          size="xs"
+                        />
+                        <span className="creator-thumb-name" title={sub.creator?.full_name || sub.creator?.username}>
+                          @{sub.creator?.username || sub.creator?.full_name || 'creator'}
+                        </span>
+                        {platformIcon && (
                           <img
                             src={platformIcon}
                             alt={platform}
-                            className="platform-icon-tag"
-                            style={{ width: 14, height: 14, minWidth: 14, maxWidth: 14, objectFit: 'contain' }}
+                            className="creator-thumb-platform-icon"
                           />
-                          <span>{platform.toUpperCase()}</span>
-                        </div>
-                      )}
-
-                      {/* Three-dot menu at top right of video thumbnail */}
-                      <div className="submission-menu-container" onClick={(e) => e.stopPropagation()}>
-                        <button
-                          type="button"
-                          className="submission-menu-btn"
-                          aria-label="More options"
-                          title="More options"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setActiveMenuId((prev) => (prev === sub.id ? null : sub.id));
-                          }}
-                        >
-                          <FiMoreVertical size={16} />
-                        </button>
-
-                        {activeMenuId === sub.id && (
-                          <div className="submission-dropdown-menu" onClick={(e) => e.stopPropagation()}>
-                            <button
-                              type="button"
-                              className="submission-dropdown-item"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigator.clipboard.writeText(sub.video_url || '');
-                                toast.success('Video link copied to clipboard!');
-                                setActiveMenuId(null);
-                              }}
-                            >
-                              <FiCopy size={14} />
-                              <span>Copy Link</span>
-                            </button>
-
-                            <a
-                              href={sub.video_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="submission-dropdown-item"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setActiveMenuId(null);
-                              }}
-                            >
-                              <FiExternalLink size={14} />
-                              <span>Open in New Tab</span>
-                            </a>
-
-                            {(sub.status === 'pending' ||
-                              sub.status === 'verified' ||
-                              sub.status === 'paid') &&
-                              campaign.status === 'active' && (
-                                <button
-                                  type="button"
-                                  className="submission-dropdown-item text-danger"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setActiveMenuId(null);
-                                    handleFlagSubmission(sub.id);
-                                  }}
-                                >
-                                  <FiFlag size={14} />
-                                  <span>Flag Video</span>
-                                </button>
-                              )}
-                          </div>
                         )}
                       </div>
-                    </div>
 
-                    {/* Submission Content Info */}
-                    <div className="submission-body">
-                      <div className="submission-top-row">
-                        <div className="creator-profile-snippet">
-                          <Avatar
-                            src={sub.creator?.avatar_url}
-                            name={sub.creator?.full_name || 'Creator'}
-                            size="md"
-                          />
-                          <div className="creator-meta">
-                            <h4 className="creator-name" title={sub.creator?.full_name}>
-                              {sub.creator?.full_name || 'Creator'}
-                            </h4>
-                            <p className="creator-handle">
-                              @{sub.creator?.username || 'creator'}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="submission-status-wrapper">
+                      {/* Status Badge + Three-dot menu at top right of video thumbnail */}
+                      <div className="submission-thumb-top-right" onClick={(e) => e.stopPropagation()}>
+                        <div className="submission-status-badge-wrap">
                           {getStatusBadge(
                             sub.status,
                             isDirectDiscountSubmission(sub) ||
@@ -694,7 +616,76 @@ const ManageCampaignDetailPage: React.FC = () => {
                               campaign?.type === 'discount'
                           )}
                         </div>
+
+                        <div className="submission-menu-container">
+                          <button
+                            type="button"
+                            className="submission-menu-btn"
+                            aria-label="More options"
+                            title="More options"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveMenuId((prev) => (prev === sub.id ? null : sub.id));
+                            }}
+                          >
+                            <FiMoreVertical size={16} />
+                          </button>
+
+                          {activeMenuId === sub.id && (
+                            <div className="submission-dropdown-menu" onClick={(e) => e.stopPropagation()}>
+                              <button
+                                type="button"
+                                className="submission-dropdown-item"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigator.clipboard.writeText(sub.video_url || '');
+                                  toast.success('Video link copied to clipboard!');
+                                  setActiveMenuId(null);
+                                }}
+                              >
+                                <FiCopy size={14} />
+                                <span>Copy Link</span>
+                              </button>
+
+                              <a
+                                href={sub.video_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="submission-dropdown-item"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setActiveMenuId(null);
+                                }}
+                              >
+                                <FiExternalLink size={14} />
+                                <span>Open in New Tab</span>
+                              </a>
+
+                              {(sub.status === 'pending' ||
+                                sub.status === 'verified' ||
+                                sub.status === 'paid') &&
+                                campaign.status === 'active' && (
+                                  <button
+                                    type="button"
+                                    className="submission-dropdown-item text-danger"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setActiveMenuId(null);
+                                      handleFlagSubmission(sub.id);
+                                    }}
+                                  >
+                                    <FiFlag size={14} />
+                                    <span>Flag Video</span>
+                                  </button>
+                                )}
+                            </div>
+                          )}
+                        </div>
                       </div>
+                    </div>
+
+                    {/* Submission Content Info */}
+                    <div className="submission-body">
 
                       {/* Metrics strip */}
                       <div className="submission-metrics-row">
