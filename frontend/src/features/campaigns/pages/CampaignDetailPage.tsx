@@ -315,18 +315,20 @@ const CampaignDetailPage: React.FC = () => {
             >
               <FiShare2 />
             </button>
-            <button 
-              className="icon-btn" 
-              aria-label="Report Campaign"
-              onClick={async () => {
-                const confirmed = await showConfirm("Are you sure you want to report this campaign? Our moderation team will review it.", "Report Campaign");
-                if (confirmed && campaign) {
-                  await reportItem(campaign.id, 'campaign', 'Inappropriate content or spam');
-                }
-              }}
-            >
-              <FiAlertCircle />
-            </button>
+            {!isCampaignOwner && (
+              <button 
+                className="icon-btn" 
+                aria-label="Report Campaign"
+                onClick={async () => {
+                  const confirmed = await showConfirm("Are you sure you want to report this campaign? Our moderation team will review it.", "Report Campaign");
+                  if (confirmed && campaign) {
+                    await reportItem(campaign.id, 'campaign', 'Inappropriate content or spam');
+                  }
+                }}
+              >
+                <FiAlertCircle />
+              </button>
+            )}
           </div>
         </motion.div>
 
@@ -431,15 +433,23 @@ const CampaignDetailPage: React.FC = () => {
                   </div>
                   <div className="tier-arrow">→</div>
                   <div className="tier-reward">
-                    <span className="tier-amount">
-                      {tier.reward_type === 'gift'
-                        ? `🎁 ${parsed.rewardText}`
-                        : tier.reward_type === 'discount' || campaign.type === 'discount'
-                        ? `${tier.payout_amount}% Off`
-                        : formatCurrency(tier.payout_amount, true)}
-                    </span>
-                    {tier.reward_description && tier.reward_type !== 'gift' && (
-                      <span className="tier-bonus">{tier.reward_description}</span>
+                    {tier.reward_type === 'gift' ? (
+                      <span className="tier-amount">
+                        🎁 {parsed.rewardText}
+                      </span>
+                    ) : tier.reward_type === 'discount' || campaign.type === 'discount' ? (
+                      <span className="tier-amount tier-discount-amount">
+                        {tier.payout_amount ? `${tier.payout_amount}% Discount` : (tier.reward_description || 'Discount')}
+                      </span>
+                    ) : (
+                      <>
+                        <span className="tier-amount">
+                          {formatCurrency(tier.payout_amount, true)}
+                        </span>
+                        {tier.reward_description && (
+                          <span className="tier-bonus">{tier.reward_description}</span>
+                        )}
+                      </>
                     )}
                   </div>
                 </motion.div>

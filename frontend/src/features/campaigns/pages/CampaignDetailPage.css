@@ -164,6 +164,7 @@
 .tier-reward {
   display: flex;
   flex-direction: column;
+  justify-content: center;
   gap: 2px;
   flex: 1;
 }
@@ -173,6 +174,14 @@
   font-size: var(--text-base);
   font-weight: 700;
   color: var(--ginger-400);
+}
+
+.tier-discount-amount {
+  color: #34d399 !important;
+  font-family: var(--font-display);
+  font-size: var(--text-base);
+  font-weight: 700;
+  letter-spacing: -0.2px;
 }
 
 .tier-bonus {
