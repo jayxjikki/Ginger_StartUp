@@ -3,7 +3,7 @@
 // Full campaign view with payout tiers, requirements, submit
 // ═══════════════════════════════════════════════════════════
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../../lib/supabase';
@@ -85,7 +85,57 @@ const CampaignDetailPage: React.FC = () => {
   const { reportItem } = useUgcStore();
   const { showConfirm } = useGlobalModalStore();
 
-  const campaign = campaigns.find((c) => c.id === id);
+  const [singleCampaign, setSingleCampaign] = useState<any | null>(null);
+  const [isLoadingCampaign, setIsLoadingCampaign] = useState(true);
+
+  // Direct fetch for fresh campaign details (fixes reload & direct link/QR opens)
+  useEffect(() => {
+    if (!id) return;
+    let isMounted = true;
+
+    const loadCampaign = async () => {
+      // If already in Zustand, use it immediately
+      const existing = campaigns.find((c) => c.id === id);
+      if (existing) {
+        setSingleCampaign(existing);
+        setIsLoadingCampaign(false);
+      } else {
+        setIsLoadingCampaign(true);
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('campaigns')
+          .select('*, advertiser:profiles(*), payout_tiers(*)')
+          .eq('id', id)
+          .single();
+
+        if (error) {
+          console.error('Error fetching campaign:', error);
+        } else if (data && isMounted) {
+          setSingleCampaign(data);
+        }
+      } catch (err) {
+        console.error('Failed to load campaign:', err);
+      } finally {
+        if (isMounted) {
+          setIsLoadingCampaign(false);
+        }
+      }
+    };
+
+    loadCampaign();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [id, campaigns]);
+
+  const campaign = useMemo(() => {
+    if (singleCampaign) return singleCampaign;
+    return campaigns.find((c) => c.id === id) || null;
+  }, [singleCampaign, campaigns, id]);
+
   const isExpired = campaign?.end_date ? new Date(campaign.end_date) < new Date() : false;
   const isCampaignOwner = !!user && !!campaign && (
     user.id === campaign.advertiser_id || 
@@ -267,11 +317,20 @@ const CampaignDetailPage: React.FC = () => {
     }
   }, [campaign?.id, user?.id, fetchSavedCampaigns]);
 
+  if (isLoadingCampaign && !campaign) {
+    return (
+      <div className="page-content container" style={{ display: 'flex', minHeight: '60vh', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="btn-spinner" style={{ width: '40px', height: '40px', borderColor: 'rgba(255, 107, 43, 0.2)', borderTopColor: '#ff6b2b' }} />
+      </div>
+    );
+  }
+
   if (!campaign) {
     return (
-      <div className="page-content container">
-        <p>Campaign not found.</p>
-        <Button variant="ghost" onClick={() => navigate(-1)}>Go Back</Button>
+      <div className="page-content container" style={{ textAlign: 'center', padding: '60px 20px' }}>
+        <h3 className="text-lg font-bold text-white mb-2">Campaign Not Found</h3>
+        <p className="text-sm text-secondary mb-4">This campaign may have been removed or the link is invalid.</p>
+        <Button variant="secondary" onClick={() => navigate('/campaigns')}>Browse Campaigns</Button>
       </div>
     );
   }
@@ -413,7 +472,7 @@ const CampaignDetailPage: React.FC = () => {
         <motion.div variants={fadeUp}>
           <h5 className="section-title">{campaign.type === 'discount' ? 'Discount Tiers' : 'Payout Tiers'}</h5>
           <div className="payout-tiers">
-            {campaign.payout_tiers?.map((tier, idx) => {
+            {campaign.payout_tiers?.map((tier: any, idx: number) => {
               const parsed = parseTierReward(tier);
               return (
                 <motion.div
@@ -578,7 +637,7 @@ const CampaignDetailPage: React.FC = () => {
         {/* Keywords */}
         <motion.div variants={fadeUp}>
           <div className="detail-keywords">
-            {campaign.keywords.map((kw) => (
+            {(campaign.keywords || []).map((kw: string) => (
               <Badge key={kw} variant="default" size="sm">#{kw.replace(/\s+/g, '')}</Badge>
             ))}
           </div>

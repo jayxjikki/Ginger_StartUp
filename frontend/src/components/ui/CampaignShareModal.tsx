@@ -1,12 +1,11 @@
 // ═══════════════════════════════════════════════════════════
 // GINGER — Campaign Share Modal
-// QR Code & Direct Link sharing with authentication preservation
+// Clean QR Code modal with direct link copy & QR download
 // ═══════════════════════════════════════════════════════════
 
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { FiX, FiCopy, FiCheck, FiShare2, FiDownload, FiExternalLink, FiInfo, FiLink } from 'react-icons/fi';
-import { FaWhatsapp, FaTelegramPlane, FaTwitter, FaQrcode } from 'react-icons/fa';
+import { motion } from 'framer-motion';
+import { FiX, FiCopy, FiCheck, FiDownload } from 'react-icons/fi';
 import QRCode from 'qrcode';
 import toast from 'react-hot-toast';
 import './CampaignShareModal.css';
@@ -28,7 +27,6 @@ export const CampaignShareModal: React.FC<CampaignShareModalProps> = ({
   onClose,
   campaign,
 }) => {
-  const [activeTab, setActiveTab] = useState<'qr' | 'link'>('qr');
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
   const [copied, setCopied] = useState(false);
   const [isGeneratingQr, setIsGeneratingQr] = useState(false);
@@ -37,9 +35,7 @@ export const CampaignShareModal: React.FC<CampaignShareModalProps> = ({
     ? `${window.location.origin}/campaigns/${campaign.id}`
     : `/campaigns/${campaign.id}`;
 
-  const shareText = `Check out this campaign "${campaign.title}" on Ginger! Create videos and earn cash rewards or discounts:`;
-
-  // Generate crisp QR code on modal open or tab switch
+  // Generate crisp QR code on modal open
   useEffect(() => {
     if (isOpen && campaignUrl) {
       setIsGeneratingQr(true);
@@ -88,31 +84,6 @@ export const CampaignShareModal: React.FC<CampaignShareModalProps> = ({
     toast.success('QR Code downloaded!');
   };
 
-  // Handle Native Share Sheet
-  const handleNativeShare = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: campaign.title,
-          text: `${shareText} ${campaignUrl}`,
-          url: campaignUrl,
-        });
-        toast.success('Shared successfully!');
-      } catch (err: any) {
-        if (err.name !== 'AbortError') {
-          handleCopyLink();
-        }
-      }
-    } else {
-      handleCopyLink();
-    }
-  };
-
-  // Social Share URLs
-  const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(`${shareText} ${campaignUrl}`)}`;
-  const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(campaignUrl)}&text=${encodeURIComponent(shareText)}`;
-  const twitterUrl = `https://twitter.com/intent/tweet?url=${encodeURIComponent(campaignUrl)}&text=${encodeURIComponent(shareText)}`;
-
   if (!isOpen) return null;
 
   return (
@@ -141,181 +112,67 @@ export const CampaignShareModal: React.FC<CampaignShareModalProps> = ({
           </button>
         </div>
 
-        {/* Tab Switcher: QR Code vs Direct Link */}
-        <div className="share-tabs-nav">
-          <button
-            type="button"
-            className={`share-tab-btn ${activeTab === 'qr' ? 'active' : ''}`}
-            onClick={() => setActiveTab('qr')}
-          >
-            <FaQrcode size={14} />
-            <span>1st QR Code</span>
-          </button>
-          <button
-            type="button"
-            className={`share-tab-btn ${activeTab === 'link' ? 'active' : ''}`}
-            onClick={() => setActiveTab('link')}
-          >
-            <FiLink size={14} />
-            <span>2nd Direct Link</span>
-          </button>
-        </div>
-
-        {/* Tab Content */}
+        {/* Modal Body: Crisp QR Card & Actions */}
         <div className="share-tab-body">
-          <AnimatePresence mode="wait">
-            {activeTab === 'qr' ? (
-              <motion.div
-                key="qr-tab"
-                className="qr-preview-container"
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.18 }}
-              >
-                <div className="qr-card-frame">
-                  {isGeneratingQr ? (
-                    <div
-                      style={{
-                        width: 200,
-                        height: 200,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      <div
-                        className="btn-spinner"
-                        style={{
-                          width: 32,
-                          height: 32,
-                          borderColor: 'rgba(255, 107, 43, 0.2)',
-                          borderTopColor: '#ff6b2b',
-                        }}
-                      />
-                    </div>
-                  ) : (
-                    <img
-                      src={qrDataUrl}
-                      alt={`QR Code for ${campaign.title}`}
-                      className="qr-image-render"
-                    />
-                  )}
-                  <div className="qr-brand-tag">
-                    <span className="qr-brand-logo">⚡</span>
-                    <span>SCAN ON GINGER</span>
-                  </div>
-                </div>
-
-                <p className="qr-instructions">
-                  Scan this QR code with any phone camera or barcode scanner to open this campaign immediately.
-                </p>
-
-                <div className="qr-actions-row">
-                  <button
-                    type="button"
-                    className="qr-download-btn"
-                    onClick={handleDownloadQr}
-                    disabled={!qrDataUrl || isGeneratingQr}
-                  >
-                    <FiDownload size={15} />
-                    <span>Download QR</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    className="qr-copy-btn"
-                    onClick={handleCopyLink}
-                  >
-                    {copied ? <FiCheck size={15} color="#34d399" /> : <FiCopy size={15} />}
-                    <span>{copied ? 'Copied Link' : 'Copy Link'}</span>
-                  </button>
-                </div>
-              </motion.div>
-            ) : (
-              <motion.div
-                key="link-tab"
-                className="link-preview-container"
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.18 }}
-              >
-                {/* Direct Link Input Box */}
-                <div className="link-input-box">
-                  <FiExternalLink size={16} className="link-icon" />
-                  <input
-                    type="text"
-                    readOnly
-                    value={campaignUrl}
-                    className="link-text-input"
-                    onClick={(e) => (e.target as HTMLInputElement).select()}
+          <div className="qr-preview-container">
+            <div className="qr-card-frame">
+              {isGeneratingQr ? (
+                <div
+                  style={{
+                    width: 200,
+                    height: 200,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <div
+                    className="btn-spinner"
+                    style={{
+                      width: 32,
+                      height: 32,
+                      borderColor: 'rgba(255, 107, 43, 0.2)',
+                      borderTopColor: '#ff6b2b',
+                    }}
                   />
-                  <button
-                    type="button"
-                    className="link-copy-action-btn"
-                    onClick={handleCopyLink}
-                  >
-                    {copied ? <FiCheck size={14} /> : <FiCopy size={14} />}
-                    <span>{copied ? 'Copied' : 'Copy'}</span>
-                  </button>
                 </div>
+              ) : (
+                <img
+                  src={qrDataUrl}
+                  alt={`QR Code for ${campaign.title}`}
+                  className="qr-image-render"
+                />
+              )}
+              <div className="qr-brand-tag">
+                <span className="qr-brand-logo">⚡</span>
+                <span>SCAN ON GINGER</span>
+              </div>
+            </div>
 
-                {/* Social Share Buttons */}
-                <div className="social-share-section">
-                  <span className="social-share-label">Instant Share</span>
-                  <div className="social-buttons-grid">
-                    <a
-                      href={whatsappUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="social-share-btn"
-                    >
-                      <FaWhatsapp className="social-icon-whatsapp" />
-                      <span>WhatsApp</span>
-                    </a>
-                    <a
-                      href={telegramUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="social-share-btn"
-                    >
-                      <FaTelegramPlane className="social-icon-telegram" />
-                      <span>Telegram</span>
-                    </a>
-                    <a
-                      href={twitterUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="social-share-btn"
-                    >
-                      <FaTwitter className="social-icon-twitter" />
-                      <span>X / Twitter</span>
-                    </a>
-                  </div>
-                </div>
-
-                {/* Native Share Sheet */}
-                {typeof navigator !== 'undefined' && 'share' in navigator && (
-                  <button
-                    type="button"
-                    className="native-share-btn"
-                    onClick={handleNativeShare}
-                  >
-                    <FiShare2 size={16} />
-                    <span>Share via Other Apps...</span>
-                  </button>
-                )}
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* User Auth Guidance Note */}
-          <div className="share-modal-footer-note">
-            <FiInfo size={14} className="note-icon" />
-            <p>
-              Anyone clicking this link or scanning the QR code will open this campaign. If they are not logged in, they will be sent to the login page first and automatically directed back here!
+            <p className="qr-instructions">
+              Scan this QR code with any phone camera or barcode scanner to open this campaign immediately.
             </p>
+
+            <div className="qr-actions-row">
+              <button
+                type="button"
+                className="qr-download-btn"
+                onClick={handleDownloadQr}
+                disabled={!qrDataUrl || isGeneratingQr}
+              >
+                <FiDownload size={15} />
+                <span>Download QR</span>
+              </button>
+
+              <button
+                type="button"
+                className="qr-copy-btn"
+                onClick={handleCopyLink}
+              >
+                {copied ? <FiCheck size={15} color="#34d399" /> : <FiCopy size={15} />}
+                <span>{copied ? 'Copied Link' : 'Copy Link'}</span>
+              </button>
+            </div>
           </div>
         </div>
       </motion.div>
