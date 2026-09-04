@@ -150,10 +150,10 @@ export const resolveCoordinates = (
     }
   }
 
-  // 3. Add deterministic offset using campaignId to scatter pins within ~1.5 - 3 km
+  // 3. Add deterministic offset using campaignId to scatter pins across neighborhood zones (~1.2 - 5.5 km)
   const hash = getHashFromString(campaignId || locationString);
   const angle = ((hash % 360) * Math.PI) / 180;
-  const radiusKm = 0.4 + ((hash % 20) / 20) * 2.6; // 0.4 to 3.0 km offset
+  const radiusKm = 1.2 + ((hash % 20) / 20) * 4.3; // 1.2 to 5.5 km spread
 
   // 1 degree lat approx 111 km, 1 degree lng approx 111 * cos(lat) km
   const latOffset = (radiusKm * Math.cos(angle)) / 111;

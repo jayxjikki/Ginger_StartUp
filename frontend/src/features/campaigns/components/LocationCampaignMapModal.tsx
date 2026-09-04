@@ -31,6 +31,8 @@ interface MappedCampaignPin {
   // Normalized visual X & Y coordinates on canvas relative to user center
   offsetX: number;
   offsetY: number;
+  // Dynamic placement for floating tag to avoid collisions
+  tagPlacement: 'top' | 'bottom';
 }
 
 export const LocationCampaignMapModal: React.FC<LocationCampaignMapModalProps> = ({
@@ -45,10 +47,29 @@ export const LocationCampaignMapModal: React.FC<LocationCampaignMapModalProps> =
   const [isLocating, setIsLocating] = useState(false);
 
   // Map interactive state
-  const [zoomLevel, setZoomLevel] = useState<number>(1); // 0.7x to 2.0x
+  const [zoomLevel, setZoomLevel] = useState<number>(1); // 0.4x to 3.0x
   const [panOffset, setPanOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const dragStartRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  // Touch gesture tracking for mobile: two-finger pinch-to-zoom and 1-finger panning
+  const touchStateRef = useRef<{
+    mode: 'none' | 'pan' | 'pinch';
+    startX: number;
+    startY: number;
+    startPanX: number;
+    startPanY: number;
+    startDistance: number;
+    startZoom: number;
+  }>({
+    mode: 'none',
+    startX: 0,
+    startY: 0,
+    startPanX: 0,
+    startPanY: 0,
+    startDistance: 0,
+    startZoom: 1,
+  });
 
   // Filters
   const [activeTypeFilter, setActiveTypeFilter] = useState<string>('all');
@@ -136,9 +157,9 @@ export const LocationCampaignMapModal: React.FC<LocationCampaignMapModalProps> =
     }
   };
 
-  // Process and project location-based campaigns
+  // Process, project and declutter location-based campaigns
   const mappedPins: MappedCampaignPin[] = useMemo(() => {
-    const list: MappedCampaignPin[] = [];
+    const list: (Omit<MappedCampaignPin, 'tagPlacement'> & { tagPlacement?: 'top' | 'bottom' })[] = [];
 
     campaigns.forEach((camp) => {
       // Must have a valid physical location that isn't empty, online, or none
@@ -173,7 +194,7 @@ export const LocationCampaignMapModal: React.FC<LocationCampaignMapModalProps> =
       }
 
       // Convert geo delta (km) to pixel offset on canvas (scale factor)
-      // 1 km ~= 18 pixels at 1x zoom
+      // 1 km ~= 22 pixels at 1x zoom
       const deltaLatKm = (coords.lat - userLocation.lat) * 111;
       const deltaLngKm = (coords.lng - userLocation.lng) * (111 * Math.cos(userLocation.lat * (Math.PI / 180)));
 
@@ -191,11 +212,77 @@ export const LocationCampaignMapModal: React.FC<LocationCampaignMapModalProps> =
       });
     });
 
+    // ── Collision Resolution / Force Separation ───────────────────
+    // Prevent overlapping pins when campaigns share city or close proximity.
+    // Minimum 88px clearance ensures pins and tags don't overlap or block tapping.
+    const MIN_PIN_SPACING = 88; // pixels
+    const iterations = 30;
+
+    for (let iter = 0; iter < iterations; iter++) {
+      let moved = false;
+      for (let i = 0; i < list.length; i++) {
+        for (let j = i + 1; j < list.length; j++) {
+          let dx = list[j].offsetX - list[i].offsetX;
+          let dy = list[j].offsetY - list[i].offsetY;
+          let dist = Math.hypot(dx, dy);
+
+          if (dist < 0.001) {
+            // Exactly overlapping: give an angular separation
+            const angle = (j / Math.max(1, list.length)) * 2 * Math.PI;
+            dx = Math.cos(angle) * 4;
+            dy = Math.sin(angle) * 4;
+            dist = 4;
+          }
+
+          if (dist < MIN_PIN_SPACING) {
+            moved = true;
+            const overlap = MIN_PIN_SPACING - dist;
+            const nx = dx / dist;
+            const ny = dy / dist;
+            const halfOverlap = overlap * 0.5;
+
+            list[i].offsetX -= nx * halfOverlap;
+            list[i].offsetY -= ny * halfOverlap;
+            list[j].offsetX += nx * halfOverlap;
+            list[j].offsetY += ny * halfOverlap;
+          }
+        }
+      }
+      if (!moved) break;
+    }
+
+    // ── Smart Floating Tag Placement ──────────────────────────────
+    // Assign 'top' or 'bottom' dynamically based on nearest neighbor to eliminate label collisions
+    const finalizedList: MappedCampaignPin[] = list.map((pin, i) => {
+      let closestDist = Infinity;
+      let closestNeighbor: typeof pin | null = null;
+
+      for (let j = 0; j < list.length; j++) {
+        if (i === j) continue;
+        const d = Math.hypot(list[j].offsetX - pin.offsetX, list[j].offsetY - pin.offsetY);
+        if (d < closestDist) {
+          closestDist = d;
+          closestNeighbor = list[j];
+        }
+      }
+
+      let tagPlacement: 'top' | 'bottom' = i % 2 === 0 ? 'bottom' : 'top';
+      if (closestNeighbor && closestDist < 120) {
+        // If closest neighbor is below, put tag on top; if neighbor is above, put tag on bottom
+        tagPlacement = closestNeighbor.offsetY >= pin.offsetY ? 'top' : 'bottom';
+      }
+
+      return {
+        ...pin,
+        tagPlacement,
+      };
+    });
+
     // Sort closest first
-    return list.sort((a, b) => a.distanceKm - b.distanceKm);
+    return finalizedList.sort((a, b) => a.distanceKm - b.distanceKm);
   }, [campaigns, userLocation, activeRadiusKm, activeTypeFilter]);
 
-  // Handle Pan Events
+  // Handle Pan Events (Mouse)
   const handleMouseDown = (e: React.MouseEvent) => {
     setIsDragging(true);
     dragStartRef.current = { x: e.clientX - panOffset.x, y: e.clientY - panOffset.y };
@@ -211,6 +298,108 @@ export const LocationCampaignMapModal: React.FC<LocationCampaignMapModalProps> =
 
   const handleMouseUp = () => {
     setIsDragging(false);
+  };
+
+  // Desktop Mouse Wheel Zoom
+  const handleWheel = (e: React.WheelEvent) => {
+    e.preventDefault();
+    const factor = e.deltaY < 0 ? 1.15 : 0.85;
+    setZoomLevel((prev) => {
+      const next = Math.min(3.0, Math.max(0.4, prev * factor));
+      return Number(next.toFixed(2));
+    });
+  };
+
+  // Mobile Touch Gestures: 1-finger pan & 2-finger pinch-to-zoom
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 1) {
+      const t = e.touches[0];
+      touchStateRef.current = {
+        mode: 'pan',
+        startX: t.clientX,
+        startY: t.clientY,
+        startPanX: panOffset.x,
+        startPanY: panOffset.y,
+        startDistance: 0,
+        startZoom: zoomLevel,
+      };
+    } else if (e.touches.length >= 2) {
+      const t1 = e.touches[0];
+      const t2 = e.touches[1];
+      const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+      touchStateRef.current = {
+        mode: 'pinch',
+        startX: (t1.clientX + t2.clientX) / 2,
+        startY: (t1.clientY + t2.clientY) / 2,
+        startPanX: panOffset.x,
+        startPanY: panOffset.y,
+        startDistance: dist,
+        startZoom: zoomLevel,
+      };
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (touchStateRef.current.mode === 'pan' && e.touches.length === 1) {
+      const t = e.touches[0];
+      const dx = t.clientX - touchStateRef.current.startX;
+      const dy = t.clientY - touchStateRef.current.startY;
+      setPanOffset({
+        x: touchStateRef.current.startPanX + dx,
+        y: touchStateRef.current.startPanY + dy,
+      });
+    } else if (e.touches.length >= 2) {
+      const t1 = e.touches[0];
+      const t2 = e.touches[1];
+      const currentDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+
+      if (touchStateRef.current.mode !== 'pinch') {
+        touchStateRef.current = {
+          mode: 'pinch',
+          startX: (t1.clientX + t2.clientX) / 2,
+          startY: (t1.clientY + t2.clientY) / 2,
+          startPanX: panOffset.x,
+          startPanY: panOffset.y,
+          startDistance: currentDist,
+          startZoom: zoomLevel,
+        };
+        return;
+      }
+
+      // Pinch zoom calculation
+      if (touchStateRef.current.startDistance > 0) {
+        const scale = currentDist / touchStateRef.current.startDistance;
+        const newZoom = Math.min(3.0, Math.max(0.4, touchStateRef.current.startZoom * scale));
+        setZoomLevel(Number(newZoom.toFixed(2)));
+      }
+
+      // Simultaneous two-finger pan
+      const midX = (t1.clientX + t2.clientX) / 2;
+      const midY = (t1.clientY + t2.clientY) / 2;
+      const dx = midX - touchStateRef.current.startX;
+      const dy = midY - touchStateRef.current.startY;
+      setPanOffset({
+        x: touchStateRef.current.startPanX + dx,
+        y: touchStateRef.current.startPanY + dy,
+      });
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (e.touches.length === 1) {
+      const t = e.touches[0];
+      touchStateRef.current = {
+        mode: 'pan',
+        startX: t.clientX,
+        startY: t.clientY,
+        startPanX: panOffset.x,
+        startPanY: panOffset.y,
+        startDistance: 0,
+        startZoom: zoomLevel,
+      };
+    } else if (e.touches.length === 0) {
+      touchStateRef.current.mode = 'none';
+    }
   };
 
   // Recenter map
@@ -343,6 +532,11 @@ export const LocationCampaignMapModal: React.FC<LocationCampaignMapModalProps> =
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          onTouchCancel={handleTouchEnd}
+          onWheel={handleWheel}
         >
           {/* Futuristic Radar Grid Background */}
           <div className="map-grid-layer" />
@@ -377,9 +571,10 @@ export const LocationCampaignMapModal: React.FC<LocationCampaignMapModalProps> =
               return (
                 <div
                   key={pin.campaign.id}
-                  className={`map-campaign-pin type-${pin.campaign.type} ${isSelected ? 'selected' : ''}`}
+                  className={`map-campaign-pin type-${pin.campaign.type} ${isSelected ? 'selected' : ''} tag-${pin.tagPlacement}`}
                   style={{
-                    transform: `translate(${pin.offsetX}px, ${pin.offsetY}px)`,
+                    left: `${pin.offsetX}px`,
+                    top: `${pin.offsetY}px`,
                   }}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -409,10 +604,13 @@ export const LocationCampaignMapModal: React.FC<LocationCampaignMapModalProps> =
 
           {/* Map Overlay Floating HUD / Controls */}
           <div className="map-hud-controls">
-            <button className="hud-btn" onClick={() => setZoomLevel((z) => Math.min(2.0, z + 0.25))} title="Zoom In">
+            <div className="hud-zoom-indicator" title="Current Zoom">
+              {Math.round(zoomLevel * 100)}%
+            </div>
+            <button className="hud-btn" onClick={() => setZoomLevel((z) => Math.min(3.0, Number((z + 0.25).toFixed(2))))} title="Zoom In">
               <span className="material-symbols-outlined">add</span>
             </button>
-            <button className="hud-btn" onClick={() => setZoomLevel((z) => Math.max(0.6, z - 0.25))} title="Zoom Out">
+            <button className="hud-btn" onClick={() => setZoomLevel((z) => Math.max(0.4, Number((z - 0.25).toFixed(2))))} title="Zoom Out">
               <span className="material-symbols-outlined">remove</span>
             </button>
             <button className="hud-btn recenter" onClick={handleRecenter} title="Recenter to You">
