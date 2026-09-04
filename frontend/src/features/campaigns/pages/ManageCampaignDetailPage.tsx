@@ -13,6 +13,7 @@ import {
   FiRefreshCw,
   FiCopy,
   FiSearch,
+  FiMoreVertical,
 } from 'react-icons/fi';
 import { useAuthStore } from '../../../store/authStore';
 import { useCampaignStore } from '../../../store/campaignStore';
@@ -55,6 +56,18 @@ const ManageCampaignDetailPage: React.FC = () => {
   const [isVerifierModalOpen, setIsVerifierModalOpen] = useState(false);
   const [verifierInitialCode, setVerifierInitialCode] = useState('');
   const [showTopCalculator, setShowTopCalculator] = useState(false);
+  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+
+  // Close dropdown menu when clicking anywhere outside
+  useEffect(() => {
+    const handleGlobalClick = () => {
+      setActiveMenuId(null);
+    };
+    if (activeMenuId) {
+      window.addEventListener('click', handleGlobalClick);
+      return () => window.removeEventListener('click', handleGlobalClick);
+    }
+  }, [activeMenuId]);
 
   // Direct fetch for fresh submissions & campaign details
   const fetchCampaignData = useCallback(async () => {
@@ -243,6 +256,7 @@ const ManageCampaignDetailPage: React.FC = () => {
       case 'pending':
         return <Badge variant="warning" size="sm">Pending</Badge>;
       case 'verified':
+      case 'approved':
         return <Badge variant="success" size="sm">{isDirectDiscount ? 'Approved' : 'Approved (Pending Admin)'}</Badge>;
       case 'paid':
         return <Badge variant="accent" size="sm">{isDirectDiscount ? 'Approved' : 'Admin Approved & Paid'}</Badge>;
@@ -585,6 +599,72 @@ const ManageCampaignDetailPage: React.FC = () => {
                           <span>{platform.toUpperCase()}</span>
                         </div>
                       )}
+
+                      {/* Three-dot menu at top right of video thumbnail */}
+                      <div className="submission-menu-container" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          className="submission-menu-btn"
+                          aria-label="More options"
+                          title="More options"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveMenuId((prev) => (prev === sub.id ? null : sub.id));
+                          }}
+                        >
+                          <FiMoreVertical size={16} />
+                        </button>
+
+                        {activeMenuId === sub.id && (
+                          <div className="submission-dropdown-menu" onClick={(e) => e.stopPropagation()}>
+                            <button
+                              type="button"
+                              className="submission-dropdown-item"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigator.clipboard.writeText(sub.video_url || '');
+                                toast.success('Video link copied to clipboard!');
+                                setActiveMenuId(null);
+                              }}
+                            >
+                              <FiCopy size={14} />
+                              <span>Copy Link</span>
+                            </button>
+
+                            <a
+                              href={sub.video_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="submission-dropdown-item"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveMenuId(null);
+                              }}
+                            >
+                              <FiExternalLink size={14} />
+                              <span>Open in New Tab</span>
+                            </a>
+
+                            {(sub.status === 'pending' ||
+                              sub.status === 'verified' ||
+                              sub.status === 'paid') &&
+                              campaign.status === 'active' && (
+                                <button
+                                  type="button"
+                                  className="submission-dropdown-item text-danger"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActiveMenuId(null);
+                                    handleFlagSubmission(sub.id);
+                                  }}
+                                >
+                                  <FiFlag size={14} />
+                                  <span>Flag Video</span>
+                                </button>
+                              )}
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     {/* Submission Content Info */}
@@ -607,7 +687,12 @@ const ManageCampaignDetailPage: React.FC = () => {
                         </div>
 
                         <div className="submission-status-wrapper">
-                          {getStatusBadge(sub.status, isDirectDiscountSubmission(sub))}
+                          {getStatusBadge(
+                            sub.status,
+                            isDirectDiscountSubmission(sub) ||
+                              submissionMode === 'direct_discount' ||
+                              campaign?.type === 'discount'
+                          )}
                         </div>
                       </div>
 
@@ -631,13 +716,6 @@ const ManageCampaignDetailPage: React.FC = () => {
                         <Badge variant={isDirectDiscountSubmission(sub) ? 'warning' : 'accent'} size="sm">
                           {isDirectDiscountSubmission(sub) ? '🏷️ Direct Discount' : '🏆 All Rewards'}
                         </Badge>
-                      </div>
-
-                      {/* Video URL Display */}
-                      <div className="submission-url-preview">
-                        <span className="submission-url-text">
-                          {sub.video_url}
-                        </span>
                       </div>
 
                       {/* Direct Discount Voucher Details (Clean & Uncluttered) */}
@@ -670,77 +748,49 @@ const ManageCampaignDetailPage: React.FC = () => {
                         </div>
                       )}
 
-                      {/* Action Buttons Row */}
-                      <div className="submission-actions-row">
-                        {/* Primary Watch Video Button */}
-                        <button
-                          type="button"
-                          className="watch-video-btn"
-                          onClick={() => setSelectedSubmissionId(sub.id)}
-                        >
-                          <FiPlay size={15} />
-                          <span>Watch Video</span>
-                        </button>
-
-                        {/* Secondary Button Row */}
-                        <div className="submission-sub-actions">
-                          {/* Open Original Link in New Tab */}
-                          <a
-                            href={sub.video_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="open-link-btn"
-                            title="Open original video URL in new tab"
+                      {/* Quick Approve Action if pending */}
+                      {sub.status === 'pending' && campaign.status === 'active' && (
+                        <div className="submission-actions-row">
+                          <button
+                            type="button"
+                            className="btn btn-primary approve-action-btn w-full"
+                            style={
+                              isDirectDiscountSubmission(sub) ||
+                              submissionMode === 'direct_discount' ||
+                              campaign?.type === 'discount'
+                                ? { background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)' }
+                                : undefined
+                            }
+                            onClick={() => {
+                              if (
+                                isDirectDiscountSubmission(sub) ||
+                                submissionMode === 'direct_discount' ||
+                                campaign?.type === 'discount'
+                              ) {
+                                handleApproveDirectDiscount(sub.id);
+                              } else {
+                                handleApproveSubmission(sub.id);
+                              }
+                            }}
+                            title={
+                              isDirectDiscountSubmission(sub) ||
+                              submissionMode === 'direct_discount' ||
+                              campaign?.type === 'discount'
+                                ? 'Approve and generate voucher code (no admin needed)'
+                                : 'Approve submission (sends to Admin)'
+                            }
                           >
-                            <FiExternalLink size={14} />
-                            <span>Open Link</span>
-                          </a>
-
-                          {/* Quick Approve Action */}
-                          {sub.status === 'pending' && campaign.status === 'active' && (
-                            <button
-                              type="button"
-                              className="btn btn-primary approve-action-btn"
-                              style={
-                                isDirectDiscountSubmission(sub)
-                                  ? { background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)' }
-                                  : undefined
-                              }
-                              onClick={() => {
-                                if (isDirectDiscountSubmission(sub)) {
-                                  handleApproveDirectDiscount(sub.id);
-                                } else {
-                                  handleApproveSubmission(sub.id);
-                                }
-                              }}
-                              title={
-                                isDirectDiscountSubmission(sub)
-                                  ? 'Approve and generate voucher code (no admin needed)'
-                                  : 'Approve submission (sends to Admin)'
-                              }
-                            >
-                              <FiCheck size={15} />
-                              <span>{isDirectDiscountSubmission(sub) ? 'Approve & Issue Voucher' : 'Approve'}</span>
-                            </button>
-                          )}
-
-                          {/* Quick Flag Action */}
-                          {(sub.status === 'pending' ||
-                            sub.status === 'verified' ||
-                            sub.status === 'paid') &&
-                            campaign.status === 'active' && (
-                              <button
-                                type="button"
-                                className="flag-action-btn"
-                                onClick={() => handleFlagSubmission(sub.id)}
-                                title="Flag submission for admin review"
-                              >
-                                <FiFlag size={13} />
-                                <span>Flag</span>
-                              </button>
-                            )}
+                            <FiCheck size={15} />
+                            <span>
+                              {isDirectDiscountSubmission(sub) ||
+                              submissionMode === 'direct_discount' ||
+                              campaign?.type === 'discount'
+                                ? 'Approve & Issue Voucher'
+                                : 'Approve'}
+                            </span>
+                          </button>
                         </div>
-                      </div>
+                      )}
                     </div>
                   </motion.div>
                 );

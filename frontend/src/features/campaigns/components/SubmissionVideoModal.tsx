@@ -55,11 +55,13 @@ const SubmissionVideoModal: React.FC<SubmissionVideoModalProps> = ({
     toast.success('Video link copied to clipboard!');
   };
 
+  const isDiscount = isDirectDiscountSubmission(submission);
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'pending': return <Badge variant="warning" size="sm">Pending</Badge>;
-      case 'verified': return <Badge variant="success" size="sm">{isAdmin ? 'Owner Approved (Needs Admin)' : 'Approved (Pending Admin)'}</Badge>;
-      case 'paid': return <Badge variant="accent" size="sm">Admin Approved & Paid</Badge>;
+      case 'verified': return <Badge variant="success" size="sm">{isDiscount ? 'Approved' : isAdmin ? 'Owner Approved (Needs Admin)' : 'Approved (Pending Admin)'}</Badge>;
+      case 'paid': return <Badge variant="accent" size="sm">{isDiscount ? 'Approved' : 'Admin Approved & Paid'}</Badge>;
       case 'rejected': return <Badge variant="error" size="sm">Rejected</Badge>;
       case 'flagged': return <Badge variant="error" size="sm">Flagged</Badge>;
       case 'disputed': return <Badge variant="warning" size="sm">Disputed</Badge>;
