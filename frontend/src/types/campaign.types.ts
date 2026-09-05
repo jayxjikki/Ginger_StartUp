@@ -55,35 +55,74 @@ export interface CampaignTerms {
 
 /**
  * Helper to safely extract an array of image URLs from a Campaign
- * Prioritizes campaign.images, then terms.images, then parses image_url
+ * Prioritizes campaign.images, terms.images, terms.image_urls, and image_url fallbacks
  */
 export function getCampaignImages(campaign: {
   image_url?: string | null;
   images?: string[] | null;
   terms?: any;
-}): string[] {
+  [key: string]: any;
+} | null | undefined): string[] {
+  if (!campaign) return [];
+  const result: string[] = [];
+
+  const addImage = (img: any) => {
+    if (!img) return;
+    if (typeof img === 'string') {
+      const trimmed = img.trim();
+      if (!trimmed) return;
+      if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+        try {
+          const parsed = JSON.parse(trimmed);
+          if (Array.isArray(parsed)) {
+            parsed.forEach(addImage);
+            return;
+          }
+        } catch {}
+      }
+      if (trimmed.includes(',')) {
+        trimmed.split(',').forEach((part) => addImage(part.trim()));
+        return;
+      }
+      if (!result.includes(trimmed)) {
+        result.push(trimmed);
+      }
+    } else if (Array.isArray(img)) {
+      img.forEach(addImage);
+    }
+  };
+
+  // 1. Check direct images array
   if (Array.isArray(campaign.images) && campaign.images.length > 0) {
-    return campaign.images.filter(Boolean);
+    campaign.images.forEach(addImage);
   }
-  if (campaign.terms && Array.isArray(campaign.terms.images) && campaign.terms.images.length > 0) {
-    return campaign.terms.images.filter(Boolean);
+
+  // 2. Check terms images (supporting parsed object or raw stringified JSON)
+  let termsObj = campaign.terms;
+  if (typeof termsObj === 'string') {
+    try {
+      termsObj = JSON.parse(termsObj);
+    } catch {}
   }
-  if (campaign.image_url) {
-    const trimmed = campaign.image_url.trim();
-    if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
-      try {
-        const parsed = JSON.parse(trimmed);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed.filter(Boolean);
-        }
-      } catch {}
+  if (termsObj && typeof termsObj === 'object') {
+    if (Array.isArray(termsObj.images)) {
+      termsObj.images.forEach(addImage);
     }
-    if (trimmed.includes(',')) {
-      return trimmed.split(',').map((s: string) => s.trim()).filter(Boolean);
+    if (Array.isArray(termsObj.image_urls)) {
+      termsObj.image_urls.forEach(addImage);
     }
-    return [trimmed];
+    if (termsObj.image_url) {
+      addImage(termsObj.image_url);
+    }
   }
-  return [];
+
+  // 3. Check direct image_url, cover_image, banner_url, image
+  addImage(campaign.image_url);
+  addImage(campaign.cover_image);
+  addImage(campaign.banner_url);
+  addImage(campaign.image);
+
+  return result;
 }
 
 export interface PayoutTier {

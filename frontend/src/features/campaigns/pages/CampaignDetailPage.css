@@ -43,8 +43,80 @@
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  margin-top: -6px;
-  margin-bottom: -10px; /* Reduces space between profile and money card */
+  margin-top: -4px;
+  margin-bottom: 2px;
+}
+
+/* ── Campaign Banner (Single Image & Slideshow) ────────── */
+.detail-banner-wrapper {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  max-height: 390px;
+  border-radius: 22px;
+  overflow: hidden;
+  margin-top: 14px;
+  margin-bottom: 6px;
+  background: radial-gradient(circle at 50% 30%, #1c1c24 0%, #0c0c10 100%);
+  border: 1.5px solid rgba(255, 255, 255, 0.09);
+  box-shadow: 
+    0 14px 40px -8px rgba(0, 0, 0, 0.75),
+    0 2px 14px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.detail-banner-slideshow {
+  width: 100% !important;
+  height: 100% !important;
+  border-radius: inherit;
+}
+
+/* Fallback when no images uploaded */
+.detail-banner-placeholder {
+  background: 
+    radial-gradient(circle at 85% 15%, rgba(247, 147, 30, 0.15) 0%, transparent 55%),
+    radial-gradient(circle at 15% 85%, rgba(139, 92, 246, 0.12) 0%, transparent 55%),
+    linear-gradient(145deg, #181820 0%, #0d0d12 100%);
+  border: 1.5px dashed rgba(255, 255, 255, 0.14);
+}
+
+.detail-placeholder-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 24px;
+  gap: 10px;
+}
+
+.detail-placeholder-tag {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #F7931E;
+  background: rgba(247, 147, 30, 0.12);
+  padding: 5px 12px;
+  border-radius: 9999px;
+  border: 1px solid rgba(247, 147, 30, 0.35);
+}
+
+.detail-placeholder-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.detail-placeholder-slogan {
+  font-size: 13.5px;
+  color: rgba(255, 255, 255, 0.65);
+  font-style: italic;
+  margin: 0;
 }
 
 /* ── Prize Pool Card ───────────────────────────────────── */

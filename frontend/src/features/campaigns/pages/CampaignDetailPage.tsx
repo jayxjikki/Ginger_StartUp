@@ -424,14 +424,28 @@ const CampaignDetailPage: React.FC = () => {
         </motion.div>
 
         {/* Campaign Images (Single or Auto Slideshow) */}
-        {getCampaignImages(campaign).length > 0 && (
-          <motion.div variants={fadeUp} className="w-full h-56 bg-black/20 rounded-xl overflow-hidden mb-6">
+        {getCampaignImages(campaign).length > 0 ? (
+          <motion.div variants={fadeUp} className="detail-banner-wrapper">
             <CampaignImageSlideshow 
               images={getCampaignImages(campaign)} 
               alt={campaign.title} 
-              className="w-full h-full object-cover" 
+              className="detail-banner-slideshow" 
               showBadge={getCampaignImages(campaign).length > 1}
+              showNavArrows={getCampaignImages(campaign).length > 1}
+              showIndicators={getCampaignImages(campaign).length > 1}
+              intervalMs={3500}
             />
+          </motion.div>
+        ) : (
+          <motion.div variants={fadeUp} className="detail-banner-wrapper detail-banner-placeholder">
+            <div className="detail-placeholder-inner">
+              <span className="detail-placeholder-tag">
+                {campaign.type === 'pool' ? '💰 PRIZE POOL' :
+                 campaign.type === 'discount' ? '🏷️ DISCOUNT' : '⚡ HYBRID'}
+              </span>
+              <h3 className="detail-placeholder-title">{campaign.title}</h3>
+              {campaign.slogan && <p className="detail-placeholder-slogan">"{campaign.slogan}"</p>}
+            </div>
           </motion.div>
         )}
 

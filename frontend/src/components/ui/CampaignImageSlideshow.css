@@ -12,6 +12,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  touch-action: pan-y;
 }
 
 .campaign-single-image-wrapper {
@@ -30,6 +31,7 @@
   display: block;
   border-radius: inherit;
   user-select: none;
+  -webkit-user-drag: none;
 }
 
 .campaign-slideshow-container .campaign-slideshow-img {
@@ -40,26 +42,41 @@
   bottom: 0;
 }
 
+/* ── Subtle bottom scrim overlay ── */
+.campaign-slideshow-scrim {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.2) 50%, transparent 100%);
+  pointer-events: none;
+  z-index: 2;
+  border-bottom-left-radius: inherit;
+  border-bottom-right-radius: inherit;
+}
+
 /* ── Top-right live counter / badge ── */
 .campaign-slideshow-badge {
   position: absolute;
-  top: 8px;
-  right: 8px;
+  top: 10px;
+  right: 10px;
   display: flex;
   align-items: center;
-  gap: 5px;
-  padding: 3px 8px;
-  background: rgba(0, 0, 0, 0.65);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  gap: 6px;
+  padding: 4px 10px;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 9999px;
   color: #ffffff;
   font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  z-index: 3;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  z-index: 4;
   pointer-events: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
 .slideshow-pulse-dot {
@@ -67,31 +84,74 @@
   height: 6px;
   border-radius: 50%;
   background: #F7931E;
-  box-shadow: 0 0 6px rgba(247, 147, 30, 0.8);
+  box-shadow: 0 0 6px rgba(247, 147, 30, 0.9);
   animation: pulseDot 1.8s infinite ease-in-out;
 }
 
 @keyframes pulseDot {
   0%, 100% { opacity: 0.6; transform: scale(0.85); }
-  50% { opacity: 1; transform: scale(1.15); }
+  50% { opacity: 1; transform: scale(1.2); }
+}
+
+/* ── Manual Left / Right Navigation Buttons ── */
+.slideshow-nav-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 4;
+  opacity: 0.75;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+}
+
+.slideshow-nav-btn:hover {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.85);
+  border-color: rgba(247, 147, 30, 0.6);
+  transform: translateY(-50%) scale(1.08);
+}
+
+.slideshow-nav-btn:active {
+  transform: translateY(-50%) scale(0.94);
+}
+
+.slideshow-nav-prev {
+  left: 10px;
+}
+
+.slideshow-nav-next {
+  right: 10px;
 }
 
 /* ── Bottom dots indicators ── */
 .campaign-slideshow-indicators {
   position: absolute;
-  bottom: 8px;
+  bottom: 10px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
   align-items: center;
-  gap: 5px;
-  padding: 4px 8px;
-  background: rgba(0, 0, 0, 0.45);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  gap: 6px;
+  padding: 5px 10px;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border-radius: 9999px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  z-index: 3;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  z-index: 4;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
 }
 
 .slideshow-dot {
@@ -106,11 +166,11 @@
 }
 
 .slideshow-dot:hover {
-  background: rgba(255, 255, 255, 0.75);
+  background: rgba(255, 255, 255, 0.8);
 }
 
 .slideshow-dot.active {
-  width: 16px;
+  width: 18px;
   background: #F7931E;
-  box-shadow: 0 0 8px rgba(247, 147, 30, 0.6);
+  box-shadow: 0 0 10px rgba(247, 147, 30, 0.7);
 }
