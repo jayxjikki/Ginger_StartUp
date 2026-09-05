@@ -44,3 +44,17 @@ export const encodeVideoId = (type: SubmissionType, baseId?: string): string => 
     .replace(/^(direct_discount::|all_rewards::)/, '');
   return `${type}::${cleanId}`;
 };
+
+/**
+ * Checks if a submission is a review / rate us submission
+ */
+export const isReviewSubmission = (s: any): boolean => {
+  if (!s) return false;
+  if (s.platform === 'review') return true;
+  const term = (s.voucher_details?.action_term || '').toLowerCase();
+  if (term.includes('review') || term.includes('rate')) return true;
+  if (typeof s.video_id === 'string' && s.video_id.toLowerCase().includes('review')) return true;
+  if (typeof s.video_url === 'string' && (s.video_url.includes('google.com/search') || s.video_url.includes('maps') || s.video_url.includes('reviews'))) return true;
+  return false;
+};
+

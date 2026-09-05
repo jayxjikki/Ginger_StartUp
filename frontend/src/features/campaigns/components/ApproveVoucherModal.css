@@ -1,0 +1,156 @@
+/* ── Approve Voucher Modal Styles ── */
+.approve-voucher-modal-card {
+  width: 100%;
+  max-width: 500px;
+  background: #141416;
+  border: 1.5px solid rgba(255, 215, 0, 0.35);
+  border-radius: 18px;
+  padding: 1.5rem;
+  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.7), 0 0 25px rgba(255, 215, 0, 0.12);
+  color: #fff;
+  position: relative;
+}
+
+.approve-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.approve-mode-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+@media (max-width: 480px) {
+  .approve-mode-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.approve-mode-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.approve-mode-card:hover {
+  background: rgba(255, 215, 0, 0.06);
+  border-color: rgba(255, 215, 0, 0.3);
+}
+
+.approve-mode-card.active {
+  background: 
+    radial-gradient(circle at 10% 20%, rgba(255, 235, 130, 0.12) 0%, transparent 60%),
+    rgba(255, 215, 0, 0.05);
+  border-color: #FFD700;
+  box-shadow: 0 0 12px rgba(255, 215, 0, 0.2);
+}
+
+.mode-card-radio {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 2px;
+  flex-shrink: 0;
+  transition: border-color 0.2s ease;
+}
+
+.approve-mode-card.active .mode-card-radio {
+  border-color: #FFD700;
+}
+
+.mode-card-radio-inner {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #FFD700;
+}
+
+.discount-percent-field {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 18px;
+  font-weight: 800;
+  color: #FFD700;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.discount-percent-field:focus {
+  border-color: #FFD700;
+  box-shadow: 0 0 10px rgba(255, 215, 0, 0.25);
+}
+
+.discount-suffix {
+  position: absolute;
+  right: 14px;
+  font-size: 13px;
+  font-weight: 800;
+  color: #FFD700;
+  pointer-events: none;
+}
+
+.custom-msg-textarea {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: #ffffff;
+  outline: none;
+  resize: vertical;
+  min-height: 55px;
+  transition: border-color 0.2s ease;
+}
+
+.custom-msg-textarea:focus {
+  border-color: #FFD700;
+  box-shadow: 0 0 10px rgba(255, 215, 0, 0.25);
+}
+
+.suggestion-chip {
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #FFDF00;
+  background: rgba(255, 215, 0, 0.08);
+  border: 1px solid rgba(255, 215, 0, 0.25);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.suggestion-chip:hover {
+  background: rgba(255, 215, 0, 0.18);
+  border-color: #FFD700;
+  transform: translateY(-1px);
+}
+
+.approve-submit-btn {
+  box-shadow: 0 4px 15px rgba(245, 158, 11, 0.35);
+  transition: all 0.2s ease;
+}
+
+.approve-submit-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.5);
+}

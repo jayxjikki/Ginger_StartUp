@@ -28,20 +28,13 @@ import SubmissionVideoModal from '../components/SubmissionVideoModal';
 import DiscountCalculator from '../../../components/ui/DiscountCalculator';
 import VoucherVerifierModal from '../../../components/ui/VoucherVerifierModal';
 import SendBillModal from '../components/SendBillModal';
+import ApproveVoucherModal from '../components/ApproveVoucherModal';
 import CampaignCountdownTimer from '../../../components/ui/CampaignCountdownTimer';
-import { isDirectDiscountSubmission, normalizeSubmission } from '../../../utils/submissionHelpers';
+import { isDirectDiscountSubmission, normalizeSubmission, isReviewSubmission } from '../../../utils/submissionHelpers';
 import toast from 'react-hot-toast';
 import './ManageCampaignsPage.css';
 
-export const isReviewSubmission = (s: any): boolean => {
-  if (!s) return false;
-  if (s.platform === 'review') return true;
-  const term = (s.voucher_details?.action_term || '').toLowerCase();
-  if (term.includes('review') || term.includes('rate')) return true;
-  if (typeof s.video_id === 'string' && s.video_id.toLowerCase().includes('review')) return true;
-  if (typeof s.video_url === 'string' && (s.video_url.includes('google.com/search') || s.video_url.includes('maps') || s.video_url.includes('reviews'))) return true;
-  return false;
-};
+export { isReviewSubmission };
 
 type FilterType = 'all' | 'pending' | 'verified' | 'flagged';
 
@@ -69,6 +62,8 @@ const ManageCampaignDetailPage: React.FC = () => {
   const [verifierInitialCode, setVerifierInitialCode] = useState('');
   const [isSendBillModalOpen, setIsSendBillModalOpen] = useState(false);
   const [selectedBillSubmission, setSelectedBillSubmission] = useState<any | null>(null);
+  const [isApproveModalOpen, setIsApproveModalOpen] = useState(false);
+  const [selectedApproveSubmission, setSelectedApproveSubmission] = useState<any | null>(null);
   const [showTopCalculator, setShowTopCalculator] = useState(false);
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
 
@@ -234,25 +229,22 @@ const ManageCampaignDetailPage: React.FC = () => {
     }
   };
 
-  const handleApproveDirectDiscount = async (submissionId: string) => {
+  const handleOpenApproveModal = (submissionId: string) => {
     const subObj = submissions.find((s: any) => s.id === submissionId);
-    let defaultDiscount = 15;
-    if (subObj?.voucher_details?.reward_text) {
-      const match = String(subObj.voucher_details.reward_text).match(/(\d+(\.\d+)?)/);
-      if (match) defaultDiscount = parseFloat(match[1]);
-    } else if (campaign?.payout_tiers?.[0]?.payout_amount) {
-      defaultDiscount = campaign.payout_tiers[0].payout_amount;
-    }
+    if (!subObj) return;
+    setSelectedApproveSubmission(subObj);
+    setIsApproveModalOpen(true);
+  };
 
-    const input = prompt(
-      `Approve this submission?\n\nThis will instantly issue a unique voucher code and notify both the customer & you (no admin approval needed).\n\nEnter Discount Percentage (%):`,
-      String(defaultDiscount)
-    );
-    if (input === null) return;
-    const discountRate = parseFloat(input.trim()) || defaultDiscount;
-
+  const handleConfirmApprove = async (options: {
+    mode: 'discount' | 'custom_message';
+    discountPercent?: number;
+    customMessage?: string;
+  }) => {
+    if (!selectedApproveSubmission) return;
+    const submissionId = selectedApproveSubmission.id;
     try {
-      const voucherCode = await approveDirectDiscountSubmission(submissionId, discountRate);
+      const voucherCode = await approveDirectDiscountSubmission(submissionId, options);
       setSingleCampaign((prev: any) => {
         if (!prev) return prev;
         return {
@@ -264,17 +256,28 @@ const ManageCampaignDetailPage: React.FC = () => {
                   status: 'verified',
                   voucher_code: voucherCode,
                   voucher_status: 'active',
-                  discount_percent: discountRate,
+                  discount_percent: options.mode === 'custom_message' ? 0 : options.discountPercent,
+                  voucher_details: {
+                    ...(s.voucher_details || {}),
+                    reward_type: options.mode === 'custom_message' ? 'custom_message' : 'discount',
+                    is_custom_reward: options.mode === 'custom_message',
+                    custom_message: options.mode === 'custom_message' ? options.customMessage : undefined,
+                  },
                   verified_at: new Date().toISOString(),
                 }
               : s
           ),
         };
       });
-      toast.success(`Direct discount approved! Voucher Code: ${voucherCode} generated.`);
+      if (options.mode === 'custom_message') {
+        toast.success(`Custom reward approved! Voucher Code: ${voucherCode} generated.`);
+      } else {
+        toast.success(`Direct discount approved! Voucher Code: ${voucherCode} (${options.discountPercent}% OFF) generated.`);
+      }
     } catch (err: any) {
       console.error(err);
-      toast.error(err.message || 'Failed to approve direct discount submission.');
+      toast.error(err.message || 'Failed to approve submission.');
+      throw err;
     }
   };
 
@@ -861,29 +864,39 @@ const ManageCampaignDetailPage: React.FC = () => {
                               </button>
                             </div>
                             <div className="voucher-actions-wrapper">
-                              {/* Shining Red Send Bill Button for Direct Discount & Reviews */}
-                              <button
-                                type="button"
-                                className="btn-send-bill-shining"
-                                onClick={() => {
-                                  setSelectedBillSubmission(sub);
-                                  setIsSendBillModalOpen(true);
-                                }}
-                                title="Send bill to customer with pre-set discount"
-                              >
-                                <span className="shimmer-sweep-red" />
-                                <span className="btn-bill-icon">🧾</span>
-                                <span>
-                                  {sub.voucher_details?.bill_amount
-                                    ? `Bill: ₹${Number(sub.voucher_details.final_payable).toLocaleString()}`
-                                    : 'Send Bill'}
-                                </span>
-                              </button>
+                              {/* If custom message reward, do NOT show Send Bill button */}
+                              {sub.voucher_details?.is_custom_reward || sub.voucher_details?.reward_type === 'custom_message' ? (
+                                <div className="voucher-custom-reward-tag">
+                                  <span className="text-xs text-amber-300 font-bold flex items-center gap-1.5 bg-amber-400/10 border border-amber-400/30 px-2.5 py-1 rounded-lg">
+                                    <span>🎁</span>
+                                    <span>{sub.voucher_details?.custom_message || 'Custom Reward'}</span>
+                                  </span>
+                                </div>
+                              ) : (
+                                /* Shining Red Send Bill Button for Direct Discount & Reviews */
+                                <button
+                                  type="button"
+                                  className="btn-send-bill-shining"
+                                  onClick={() => {
+                                    setSelectedBillSubmission(sub);
+                                    setIsSendBillModalOpen(true);
+                                  }}
+                                  title="Send bill to customer with pre-set discount"
+                                >
+                                  <span className="shimmer-sweep-red" />
+                                  <span className="btn-bill-icon">🧾</span>
+                                  <span>
+                                    {sub.voucher_details?.bill_amount
+                                      ? `Bill: ₹${Number(sub.voucher_details.final_payable).toLocaleString()}`
+                                      : 'Send Bill'}
+                                  </span>
+                                </button>
+                              )}
                             </div>
                           </div>
 
-                          {/* Quick summary of sent bill if already billed */}
-                          {sub.voucher_details?.bill_amount && (
+                          {/* Quick summary of sent bill if already billed (only for discount mode) */}
+                          {!(sub.voucher_details?.is_custom_reward || sub.voucher_details?.reward_type === 'custom_message') && sub.voucher_details?.bill_amount && (
                             <div className="submission-billed-summary">
                               <div className="billed-summary-row">
                                 <span className="text-secondary text-xs">
@@ -925,7 +938,7 @@ const ManageCampaignDetailPage: React.FC = () => {
                                 submissionMode === 'reviews' ||
                                 campaign?.type === 'discount'
                               ) {
-                                handleApproveDirectDiscount(sub.id);
+                                handleOpenApproveModal(sub.id);
                               } else {
                                 handleApproveSubmission(sub.id);
                               }
@@ -970,7 +983,7 @@ const ManageCampaignDetailPage: React.FC = () => {
         onClose={() => setSelectedSubmissionId(null)}
         onApprove={(id) => {
           if (isDirectDiscountSubmission(selectedSubmission)) {
-            handleApproveDirectDiscount(id);
+            handleOpenApproveModal(id);
           } else {
             handleApproveSubmission(id);
           }
@@ -984,6 +997,18 @@ const ManageCampaignDetailPage: React.FC = () => {
         isOpen={isVerifierModalOpen}
         onClose={() => setIsVerifierModalOpen(false)}
         initialCode={verifierInitialCode}
+      />
+
+      {/* Approve & Issue Voucher Modal with Discount vs Custom Message options */}
+      <ApproveVoucherModal
+        isOpen={isApproveModalOpen}
+        onClose={() => {
+          setIsApproveModalOpen(false);
+          setSelectedApproveSubmission(null);
+        }}
+        submission={selectedApproveSubmission}
+        campaign={campaign}
+        onApprove={handleConfirmApprove}
       />
 
       {/* Send Bill Modal for Direct Discount Videos */}

@@ -36,7 +36,14 @@ interface CampaignState {
   fetchMyCreatedCampaigns: (userId: string) => Promise<void>;
   flagSubmissionByAdvertiser: (submissionId: string) => Promise<void>;
   approveSubmissionByAdvertiser: (submissionId: string) => Promise<void>;
-  approveDirectDiscountSubmission: (submissionId: string, customDiscount?: number) => Promise<string>;
+  approveDirectDiscountSubmission: (
+    submissionId: string,
+    options?: {
+      mode?: 'discount' | 'custom_message';
+      discountPercent?: number;
+      customMessage?: string;
+    } | number
+  ) => Promise<string>;
   sendBillToCreator: (submissionId: string, billData: {
     bill_amount: number;
     discount_percent: number;
@@ -395,7 +402,14 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
     }
   },
 
-  approveDirectDiscountSubmission: async (submissionId: string, customDiscount?: number) => {
+  approveDirectDiscountSubmission: async (
+    submissionId: string,
+    options?: {
+      mode?: 'discount' | 'custom_message';
+      discountPercent?: number;
+      customMessage?: string;
+    } | number
+  ) => {
     try {
       // 1. Fetch submission details
       let sub: any = null;
@@ -417,19 +431,35 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
         sub = subData;
       }
 
-      // 2. Generate unique voucher code
+      // 2. Determine mode and reward details
+      const isNum = typeof options === 'number';
+      const mode = !isNum && options?.mode ? options.mode : 'discount';
+      const isCustomMessage = mode === 'custom_message';
+      const customMessage = !isNum && options?.customMessage ? options.customMessage.trim() : '';
+
       const voucherCode = generateVoucherCode();
-      const discountPercent = customDiscount && customDiscount > 0 
-        ? customDiscount 
-        : (sub.campaign?.payout_tiers?.[0]?.payout_amount || 15);
+      const discountPercent = isCustomMessage
+        ? 0
+        : (isNum ? options : options?.discountPercent) || (sub.campaign?.payout_tiers?.[0]?.payout_amount || 15);
       const now = new Date().toISOString();
 
-      // 3. Update submission: only owner approval needed! Status becomes verified/approved
-      const updateData = {
+      const existingDetails = typeof sub.voucher_details === 'object' && sub.voucher_details ? sub.voucher_details : {};
+
+      const updatedVoucherDetails = {
+        ...existingDetails,
+        reward_type: isCustomMessage ? 'custom_message' : 'discount',
+        is_custom_reward: isCustomMessage,
+        custom_message: isCustomMessage ? customMessage : undefined,
+        discount_percent: isCustomMessage ? 0 : discountPercent,
+      };
+
+      // 3. Update submission
+      const updateData: any = {
         status: 'verified',
         voucher_code: voucherCode,
         voucher_status: 'active',
-        discount_percent: discountPercent,
+        discount_percent: isCustomMessage ? 0 : discountPercent,
+        voucher_details: updatedVoucherDetails,
         verified_at: now
       };
 
@@ -449,25 +479,33 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
 
       // 4. Send notification to Creator (user)
       if (sub.creator_id) {
+        const creatorMsg = isCustomMessage
+          ? `🎁 Reward Issued: "${customMessage}"! Your voucher code is ${voucherCode} for "${sub.campaign?.title || 'Campaign'}". Present this voucher code to claim your reward!`
+          : `🎟️ Voucher Issued: Your submission on "${sub.campaign?.title || 'Campaign'}" was approved! Your voucher code is ${voucherCode} (${discountPercent}% OFF).`;
+
         await supabase.from('notifications').insert({
           user_id: sub.creator_id,
           actor_id: sub.campaign?.advertiser_id || null,
           type: 'system',
           entity_id: sub.campaign_id,
-          content: `Your video was approved and voucher code ${voucherCode} was generated.`
+          content: creatorMsg
         });
       }
 
       // 5. Send notification to Owner
       const ownerId = sub.campaign?.advertiser_id;
       if (ownerId) {
-        const creatorHandle = sub.creator?.username ? `@${sub.creator.username}` : 'the creator';
+        const creatorHandle = sub.creator?.username ? `@${sub.creator.username}` : 'the customer';
+        const ownerMsg = isCustomMessage
+          ? `🎟️ Voucher Issued: ${voucherCode} for ${creatorHandle} on "${sub.campaign?.title || 'Campaign'}" (Reward: "${customMessage}").`
+          : `🎟️ Voucher Issued: ${voucherCode} for ${creatorHandle} on "${sub.campaign?.title || 'Campaign'}" (${discountPercent}% OFF). You can verify or redeem this voucher code anytime.`;
+
         await supabase.from('notifications').insert({
           user_id: ownerId,
           actor_id: sub.creator_id || null,
           type: 'system',
           entity_id: sub.campaign_id,
-          content: `🎟️ Voucher Issued: ${voucherCode} for ${creatorHandle} on "${sub.campaign?.title || 'Campaign'}" (${discountPercent}% OFF). You can verify or redeem this voucher code anytime.`
+          content: ownerMsg
         });
       }
 
@@ -482,7 +520,8 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
                   status: 'verified',
                   voucher_code: voucherCode,
                   voucher_status: 'active',
-                  discount_percent: discountPercent,
+                  discount_percent: isCustomMessage ? 0 : discountPercent,
+                  voucher_details: updatedVoucherDetails,
                   verified_at: now
                 }
               : s

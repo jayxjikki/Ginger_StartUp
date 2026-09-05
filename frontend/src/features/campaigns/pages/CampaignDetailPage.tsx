@@ -10,7 +10,7 @@ import { supabase } from '../../../lib/supabase';
 import {
   FiArrowLeft, FiShare2, FiMapPin, FiClock, FiUsers,
   FiExternalLink, FiCheck, FiAlertCircle, FiTrash2, FiCopy,
-  FiX, FiUpload
+  FiX, FiUpload, FiRotateCw
 } from 'react-icons/fi';
 import DiscountCalculator from '../../../components/ui/DiscountCalculator';
 import { validateAllowedVideoUrl } from '../../../utils/videoHelpers';
@@ -28,7 +28,7 @@ import { formatCurrency, formatCount, formatTimeLeft } from '../../../utils/form
 import { getCampaignImages, parseTierReward, getCampaignDirectDiscountTiers } from '../../../types/campaign.types';
 import { uploadToCloudinary } from '../../../lib/cloudinary';
 import { CampaignImageSlideshow } from '../../../components/ui/CampaignImageSlideshow';
-import { isDirectDiscountSubmission, normalizeSubmission, encodeVideoId } from '../../../utils/submissionHelpers';
+import { isDirectDiscountSubmission, normalizeSubmission, encodeVideoId, isReviewSubmission } from '../../../utils/submissionHelpers';
 import CampaignShareModal from '../../../components/ui/CampaignShareModal';
 import './CampaignDetailPage.css';
 
@@ -417,6 +417,35 @@ const CampaignDetailPage: React.FC = () => {
     } catch (err: any) {
       console.error('Submit error:', err);
       toast.error(err.message || 'Failed to submit');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSubmitAnotherReview = async () => {
+    if (!userSubmission || !user) return;
+    const confirmed = await showConfirm(
+      'Would you like to submit another review? Your previous review submission will be replaced.',
+      'Submit Another Review'
+    );
+    if (!confirmed) return;
+
+    setIsSubmitting(true);
+    try {
+      const { error } = await supabase
+        .from('submissions')
+        .delete()
+        .eq('campaign_id', campaign!.id)
+        .eq('creator_id', user.id);
+
+      if (error) throw error;
+
+      setUserSubmission(null);
+      toast.success('Ready to submit another review!');
+      openSubmitModal();
+    } catch (err: any) {
+      console.error('Error preparing new review submission:', err);
+      toast.error(err.message || 'Failed to submit another review.');
     } finally {
       setIsSubmitting(false);
     }
@@ -986,41 +1015,56 @@ const CampaignDetailPage: React.FC = () => {
                           Present this code at the store / checkout to receive your discount or perk!
                         </p>
 
-                        {/* Bill Summary from Owner if issued */}
-                        {userSubmission.voucher_details?.bill_amount && (
-                          <div className="creator-bill-receipt-card">
-                            <div className="receipt-header">
-                              <span className="receipt-title">🧾 Bill Summary from Owner</span>
-                              <span className="receipt-badge">ISSUED</span>
+                        {/* Custom Message Reward OR Bill Calculation */}
+                        {userSubmission.voucher_details?.is_custom_reward || userSubmission.voucher_details?.reward_type === 'custom_message' ? (
+                          <div className="p-3 rounded-xl bg-amber-400/10 border border-amber-400/30 flex items-center gap-2.5 mt-2">
+                            <span className="text-xl">🎁</span>
+                            <div>
+                              <span className="text-[11px] font-bold text-amber-400 uppercase tracking-wider block">Your Reward</span>
+                              <span className="text-sm font-bold text-white">
+                                {userSubmission.voucher_details?.custom_message || 'Custom Reward'}
+                              </span>
                             </div>
-                            <div className="receipt-row">
-                              <span className="receipt-label">Original Bill:</span>
-                              <span className="receipt-val">₹{Number(userSubmission.voucher_details.bill_amount).toLocaleString()}</span>
-                            </div>
-                            <div className="receipt-row discount-highlight">
-                              <span className="receipt-label">Discount Applied ({userSubmission.voucher_details.discount_percent}%):</span>
-                              <span className="receipt-val">-₹{Number(userSubmission.voucher_details.discount_amount).toLocaleString()}</span>
-                            </div>
-                            <div className="receipt-divider" />
-                            <div className="receipt-row total-highlight">
-                              <span className="receipt-label-total">Final Amount You Pay:</span>
-                              <span className="receipt-val-total">₹{Number(userSubmission.voucher_details.final_payable).toLocaleString()}</span>
-                            </div>
-                            {userSubmission.voucher_details.note && (
-                              <p className="receipt-note">"{userSubmission.voucher_details.note}"</p>
-                            )}
                           </div>
-                        )}
+                        ) : (
+                          <>
+                            {/* Bill Summary from Owner if issued */}
+                            {userSubmission.voucher_details?.bill_amount && (
+                              <div className="creator-bill-receipt-card">
+                                <div className="receipt-header">
+                                  <span className="receipt-title">🧾 Bill Summary from Owner</span>
+                                  <span className="receipt-badge">ISSUED</span>
+                                </div>
+                                <div className="receipt-row">
+                                  <span className="receipt-label">Original Bill:</span>
+                                  <span className="receipt-val">₹{Number(userSubmission.voucher_details.bill_amount).toLocaleString()}</span>
+                                </div>
+                                <div className="receipt-row discount-highlight">
+                                  <span className="receipt-label">Discount Applied ({userSubmission.voucher_details.discount_percent}%):</span>
+                                  <span className="receipt-val">-₹{Number(userSubmission.voucher_details.discount_amount).toLocaleString()}</span>
+                                </div>
+                                <div className="receipt-divider" />
+                                <div className="receipt-row total-highlight">
+                                  <span className="receipt-label-total">Final Amount You Pay:</span>
+                                  <span className="receipt-val-total">₹{Number(userSubmission.voucher_details.final_payable).toLocaleString()}</span>
+                                </div>
+                                {userSubmission.voucher_details.note && (
+                                  <p className="receipt-note">"{userSubmission.voucher_details.note}"</p>
+                                )}
+                              </div>
+                            )}
 
-                        {/* Quick Discount Calculator with locked discount pre-set by owner! */}
-                        <div className="mt-1 pt-1 border-t border-white/5">
-                          <DiscountCalculator
-                            initialDiscountPercent={userSubmission.discount_percent || 15}
-                            lockedDiscountPercent={userSubmission.discount_percent || 15}
-                            isLockedPercent={true}
-                            voucherCode={userSubmission.voucher_code}
-                          />
-                        </div>
+                            {/* Quick Discount Calculator with locked discount pre-set by owner! */}
+                            <div className="mt-1 pt-1 border-t border-white/5">
+                              <DiscountCalculator
+                                initialDiscountPercent={userSubmission.discount_percent || 15}
+                                lockedDiscountPercent={userSubmission.discount_percent || 15}
+                                isLockedPercent={true}
+                                voucherCode={userSubmission.voucher_code}
+                              />
+                            </div>
+                          </>
+                        )}
                       </div>
                     )}
 
@@ -1060,17 +1104,31 @@ const CampaignDetailPage: React.FC = () => {
                     {/* Remove submission if submitted by mistake — only allowed before approval and before voucher is issued */}
                     {!(userSubmission.status === 'verified' || userSubmission.status === 'paid' || Boolean(userSubmission.voucher_code)) && (
                       <div className="pt-2 border-t border-white/5">
-                        <button
-                          type="button"
-                          className="btn btn-outline flex items-center justify-center gap-2 text-xs py-2 px-3 w-full"
-                          style={{ borderColor: 'rgba(255, 69, 58, 0.3)', color: '#ff453a' }}
-                          onClick={handleRemoveSubmission}
-                          disabled={isSubmitting}
-                          title="Remove this video if you submitted the wrong link"
-                        >
-                          <FiTrash2 size={13} />
-                          <span>Remove / Change Video</span>
-                        </button>
+                        {isReviewSubmission(userSubmission) ? (
+                          <button
+                            type="button"
+                            className="btn btn-outline flex items-center justify-center gap-2 text-xs py-2 px-3 w-full"
+                            style={{ borderColor: 'rgba(255, 215, 0, 0.4)', color: '#FFD700', background: 'rgba(255, 215, 0, 0.05)' }}
+                            onClick={handleSubmitAnotherReview}
+                            disabled={isSubmitting}
+                            title="Submit another review for this campaign"
+                          >
+                            <FiRotateCw size={13} />
+                            <span>Submit Another Review</span>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            className="btn btn-outline flex items-center justify-center gap-2 text-xs py-2 px-3 w-full"
+                            style={{ borderColor: 'rgba(255, 69, 58, 0.3)', color: '#ff453a' }}
+                            onClick={handleRemoveSubmission}
+                            disabled={isSubmitting}
+                            title="Remove this video if you submitted the wrong link"
+                          >
+                            <FiTrash2 size={13} />
+                            <span>Remove / Change Video</span>
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>

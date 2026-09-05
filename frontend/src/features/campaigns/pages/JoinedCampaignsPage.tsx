@@ -9,7 +9,7 @@ import { FiArrowLeft, FiClock, FiVideo, FiTrash2, FiCopy } from 'react-icons/fi'
 import { supabase } from '../../../lib/supabase';
 import Badge from '../../../components/ui/Badge';
 import DiscountCalculator from '../../../components/ui/DiscountCalculator';
-import { isDirectDiscountSubmission } from '../../../utils/submissionHelpers';
+import { isDirectDiscountSubmission, isReviewSubmission } from '../../../utils/submissionHelpers';
 import toast from 'react-hot-toast';
 import './JoinedCampaignsPage.css';
 
@@ -179,15 +179,27 @@ const JoinedCampaignsPage: React.FC = () => {
                       </button>
                     </div>
 
-                    {/* Quick Calculator beside voucher with locked percentage! */}
-                    <div className="mt-1">
-                      <DiscountCalculator
-                        initialDiscountPercent={(sub as any).discount_percent || 15}
-                        lockedDiscountPercent={(sub as any).discount_percent || 15}
-                        isLockedPercent={true}
-                        voucherCode={(sub as any).voucher_code}
-                      />
-                    </div>
+                    {/* Show Custom Reward or Quick Calculator */}
+                    {((sub as any).voucher_details?.is_custom_reward || (sub as any).voucher_details?.reward_type === 'custom_message' || (sub as any).voucher_details?.custom_message) ? (
+                      <div className="p-2.5 rounded-lg bg-amber-400/10 border border-amber-400/30 flex items-center gap-2 mt-1">
+                        <span className="text-base">🎁</span>
+                        <div>
+                          <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider block">Your Reward</span>
+                          <span className="text-xs font-bold text-white">
+                            {(sub as any).voucher_details?.custom_message || 'Custom Reward'}
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="mt-1">
+                        <DiscountCalculator
+                          initialDiscountPercent={(sub as any).discount_percent || 15}
+                          lockedDiscountPercent={(sub as any).discount_percent || 15}
+                          isLockedPercent={true}
+                          voucherCode={(sub as any).voucher_code}
+                        />
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -199,14 +211,28 @@ const JoinedCampaignsPage: React.FC = () => {
                   <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                     {/* Only allow removing if not approved and no voucher code issued */}
                     {!(sub.status === 'verified' || sub.status === 'paid' || Boolean((sub as any).voucher_code)) && (
-                      <button 
-                        className="btn btn-outline" 
-                        style={{ padding: '4px 8px', fontSize: '12px', color: '#ff453a', borderColor: 'rgba(255, 69, 58, 0.35)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
-                        onClick={(e) => handleRemoveSubmission(e, sub.id)}
-                        title="Remove submission if made by mistake"
-                      >
-                        <FiTrash2 size={13} /> Remove
-                      </button>
+                      isReviewSubmission(sub) ? (
+                        <button 
+                          className="btn btn-outline" 
+                          style={{ padding: '4px 10px', fontSize: '12px', color: '#ffd54f', borderColor: 'rgba(255, 213, 79, 0.4)', background: 'rgba(255, 179, 0, 0.08)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/campaigns/${sub.campaign_id}`);
+                          }}
+                          title="Submit another review on the campaign page"
+                        >
+                          ⭐ Submit Another Review
+                        </button>
+                      ) : (
+                        <button 
+                          className="btn btn-outline" 
+                          style={{ padding: '4px 8px', fontSize: '12px', color: '#ff453a', borderColor: 'rgba(255, 69, 58, 0.35)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                          onClick={(e) => handleRemoveSubmission(e, sub.id)}
+                          title="Remove submission if made by mistake"
+                        >
+                          <FiTrash2 size={13} /> Remove
+                        </button>
+                      )
                     )}
                     {sub.status === 'rejected' && (
                       <button 
