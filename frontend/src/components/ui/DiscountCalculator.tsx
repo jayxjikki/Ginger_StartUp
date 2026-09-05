@@ -69,22 +69,26 @@ export const DiscountCalculator: React.FC<DiscountCalculatorProps> = ({
 
   const content = (
     <div className="discount-calculator-box">
-      <div className="discount-calc-header">
+      {/* Close button — absolute top-right of card */}
+      <button
+        type="button"
+        className="calc-modal-close-btn"
+        onClick={() => setIsOpen(false)}
+        title="Close calculator"
+        aria-label="Close"
+        style={{ position: 'absolute', top: '12px', right: '12px', zIndex: 2 }}
+      >
+        <FiX size={17} />
+      </button>
+
+      <div className="discount-calc-header" style={{ paddingRight: '36px' }}>
         <div className="calc-title-row">
           <span style={{ fontSize: '1.1rem' }}>🧮</span>
           <h5>{isOwner ? 'Store Bill & Discount' : 'Quick Discount Calculator'}</h5>
-          {voucherCode && <span className="calc-badge">{voucherCode}</span>}
         </div>
-        <button
-          type="button"
-          className="calc-modal-close-btn"
-          onClick={() => setIsOpen(false)}
-          title="Close calculator"
-          aria-label="Close"
-        >
-          <FiX size={17} />
-        </button>
+        {voucherCode && <span className="calc-badge">{voucherCode}</span>}
       </div>
+
 
       <div className="calc-inputs-grid">
         {/* Bill / Item Amount */}
