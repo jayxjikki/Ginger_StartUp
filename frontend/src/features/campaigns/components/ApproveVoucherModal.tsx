@@ -58,6 +58,26 @@ export const ApproveVoucherModal: React.FC<ApproveVoucherModalProps> = ({
     }
   }, [isOpen, submission, campaign]);
 
+  // Lock background scroll when modal is open and add ESC key listener
+  useEffect(() => {
+    if (isOpen) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Escape' && !isSubmitting) {
+          onClose();
+        }
+      };
+      window.addEventListener('keydown', handleKeyDown);
+
+      return () => {
+        document.body.style.overflow = originalOverflow;
+        window.removeEventListener('keydown', handleKeyDown);
+      };
+    }
+  }, [isOpen, isSubmitting, onClose]);
+
   if (!isOpen || !submission) return null;
 
   const creatorName = submission.creator?.full_name || submission.creator?.username || 'Customer';
@@ -99,9 +119,9 @@ export const ApproveVoucherModal: React.FC<ApproveVoucherModalProps> = ({
 
   return (
     <AnimatePresence>
-      <div className="admin-modal-overlay" onClick={onClose} style={{ zIndex: 1150 }}>
+      <div className="admin-modal-overlay approve-voucher-modal-overlay" onClick={onClose} style={{ zIndex: 99999 }}>
         <motion.div
-          className="approve-voucher-modal-card glass-strong"
+          className="approve-voucher-modal-card"
           initial={{ opacity: 0, scale: 0.95, y: 15 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 15 }}
@@ -237,10 +257,10 @@ export const ApproveVoucherModal: React.FC<ApproveVoucherModalProps> = ({
             )}
 
             {/* Modal Actions */}
-            <div className="approve-modal-actions mt-2 flex items-center justify-end gap-2.5 pt-3 border-t border-white/10">
+            <div className="approve-modal-actions">
               <button
                 type="button"
-                className="btn btn-ghost text-xs py-2 px-4 text-white/70 hover:text-white"
+                className="approve-action-cancel-btn"
                 onClick={onClose}
                 disabled={isSubmitting}
               >
@@ -248,11 +268,17 @@ export const ApproveVoucherModal: React.FC<ApproveVoucherModalProps> = ({
               </button>
               <button
                 type="submit"
-                className="btn approve-submit-btn-green text-xs py-2 px-5 flex items-center gap-1.5"
+                className="approve-action-done-btn"
                 disabled={isSubmitting}
               >
-                <FiCheck size={15} />
-                <span>{isSubmitting ? 'Saving...' : 'Done'}</span>
+                <FiCheck size={18} />
+                <span>
+                  {isSubmitting
+                    ? 'Issuing Voucher...'
+                    : mode === 'discount'
+                    ? `Done & Issue ${discountInput || 0}% Voucher`
+                    : 'Done & Issue Reward'}
+                </span>
               </button>
             </div>
           </form>

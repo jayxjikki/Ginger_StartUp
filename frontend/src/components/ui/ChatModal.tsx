@@ -353,17 +353,23 @@ const ChatModal: React.FC<ChatModalProps> = ({
                   }
                 }
 
-                // ── Detect Official System Messages (Voucher / Bill) ──
+                // ── Detect Official System Messages (Voucher / Bill / Campaign Submission) ──
                 const c = msg.content;
                 const isVoucherMsg  = c.startsWith('🎟️ Voucher Issued:');
                 const isBillMsg     = c.startsWith('🧾 Bill Received');
-                const isSystemMsg   = isVoucherMsg || isBillMsg;
+                const isSubmissionMsg = 
+                  c.includes('New Direct Discount Submission') ||
+                  c.includes('New Review / Rating Submission') ||
+                  c.includes('New Video Submission') ||
+                  (c.includes('Submission') && (c.includes('Go review') || c.includes('Go approve')));
+                const isSystemMsg   = isVoucherMsg || isBillMsg || isSubmissionMsg;
 
                 if (isSystemMsg) {
                   const timeStr = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
                   // Parse Voucher message:  "🎟️ Voucher Issued: Your submission on "CampaignName" was approved! Your voucher code is VCH-XXX (20% OFF)."
                   // Parse Bill message:     "🧾 Bill Received from "CampaignName"! Original Bill: ₹999 | Discount: 20% (-₹200) | Final Amount to Pay: ₹799 (note)"
+                  // Parse Submission message: "🏷️ New Direct Discount Submission (Visit us) from @user for "CampaignName"! Go review it now."
                   let parsedVoucherCode = '';
                   let parsedDiscountPct = '';
                   let parsedCampaign    = '';
@@ -371,6 +377,9 @@ const ChatModal: React.FC<ChatModalProps> = ({
                   let parsedDiscount    = '';
                   let parsedFinal       = '';
                   let parsedNote        = '';
+                  let parsedCreatorHandle = '';
+                  let parsedSubmissionType = '';
+                  let parsedReward = '';
 
                   if (isVoucherMsg) {
                     // extract campaign name between first pair of quotes
@@ -402,6 +411,24 @@ const ChatModal: React.FC<ChatModalProps> = ({
                     parsedNote = noteMatch ? noteMatch[1] : '';
                   }
 
+                  if (isSubmissionMsg) {
+                    const campMatch = c.match(/(?:for|on) "([^"]+)"/);
+                    parsedCampaign = campMatch ? campMatch[1] : '';
+                    const handleMatch = c.match(/from (@?[^\s]+)/);
+                    parsedCreatorHandle = handleMatch ? handleMatch[1] : '';
+
+                    if (c.includes('Direct Discount')) {
+                      const tierMatch = c.match(/Submission \(([^)]+)\)/);
+                      parsedSubmissionType = tierMatch ? `Direct Discount (${tierMatch[1]})` : 'Direct Discount';
+                    } else if (c.includes('Review')) {
+                      parsedSubmissionType = 'Review & Rating Submission';
+                      const rwMatch = c.match(/claiming ([^!]+)!/);
+                      if (rwMatch) parsedReward = rwMatch[1];
+                    } else {
+                      parsedSubmissionType = 'Video Submission';
+                    }
+                  }
+
                   return (
                     <div key={msg.id} className="chat-bubble-wrap system-msg">
                       <div className="system-msg-card">
@@ -410,7 +437,7 @@ const ChatModal: React.FC<ChatModalProps> = ({
                           <div className="system-msg-header">
                             <span className="system-msg-official-badge">✦ Official</span>
                             <span className="system-msg-ginger-label">
-                              {isVoucherMsg ? '🎟️ Ginger Voucher' : '🧾 Ginger Bill'}
+                              {isVoucherMsg ? '🎟️ Ginger Voucher' : isBillMsg ? '🧾 Ginger Bill' : '🏷️ Ginger Submission'}
                             </span>
                           </div>
 
@@ -422,7 +449,7 @@ const ChatModal: React.FC<ChatModalProps> = ({
                               <div className="system-msg-line">
                                 <span className="sys-emoji">🏪</span>
                                 <span className="sys-label">Campaign:</span>
-                                <span className="sys-value">{parsedCampaign}</span>
+                                <span className="sys-value accent-gold">{parsedCampaign}</span>
                               </div>
                             )}
 
@@ -474,6 +501,40 @@ const ChatModal: React.FC<ChatModalProps> = ({
                                     <span className="sys-value">{parsedNote}</span>
                                   </div>
                                 )}
+                              </>
+                            )}
+
+                            {isSubmissionMsg && (
+                              <>
+                                {parsedCreatorHandle && (
+                                  <div className="system-msg-line">
+                                    <span className="sys-emoji">👤</span>
+                                    <span className="sys-label">Creator:</span>
+                                    <span className="sys-value accent-green">{parsedCreatorHandle}</span>
+                                  </div>
+                                )}
+                                {parsedSubmissionType && (
+                                  <div className="system-msg-line">
+                                    <span className="sys-emoji">📋</span>
+                                    <span className="sys-label">Type:</span>
+                                    <span className="sys-value">{parsedSubmissionType}</span>
+                                  </div>
+                                )}
+                                {parsedReward && (
+                                  <div className="system-msg-line">
+                                    <span className="sys-emoji">🎁</span>
+                                    <span className="sys-label">Claiming:</span>
+                                    <span className="sys-value accent-gold">{parsedReward}</span>
+                                  </div>
+                                )}
+                                <div className="system-msg-line" style={{ flexDirection: 'column', alignItems: 'flex-start', marginTop: '6px', paddingTop: '6px', borderTop: '1px dashed rgba(255,215,0,0.2)' }}>
+                                  <span style={{ fontSize: '10px', color: '#FFD700', fontWeight: 800, letterSpacing: '0.6px', textTransform: 'uppercase' }}>
+                                    ⚡ Verified Campaign Activity
+                                  </span>
+                                  <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.8)', marginTop: '2px', lineHeight: 1.35 }}>
+                                    A new submission was received for your campaign. Check your Campaign Manager to review and issue voucher.
+                                  </span>
+                                </div>
                               </>
                             )}
                           </div>

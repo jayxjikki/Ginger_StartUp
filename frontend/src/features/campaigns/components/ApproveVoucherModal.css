@@ -1,14 +1,31 @@
 /* ── Approve Voucher Modal Styles ── */
+.approve-voucher-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: rgba(0, 0, 0, 0.84) !important;
+  backdrop-filter: blur(24px) !important;
+  -webkit-backdrop-filter: blur(24px) !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  touch-action: none;
+  overscroll-behavior: contain;
+}
+
 .approve-voucher-modal-card {
   width: 100%;
   max-width: 480px;
-  background: linear-gradient(180deg, #18181b 0%, #111113 100%);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 20px;
+  background: rgba(18, 20, 26, 0.96) !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  border-radius: 22px;
   padding: 1.5rem;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 0 0 30px rgba(255, 215, 0, 0.08);
+  box-shadow: 0 25px 60px -10px rgba(0, 0, 0, 0.9), 0 0 30px rgba(255, 215, 0, 0.08);
   color: #fff;
   position: relative;
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
 }
 
 .approve-modal-header {
@@ -199,44 +216,88 @@
   transform: translateY(0);
 }
 
-/* ── Green Shiny "Done" Button ── */
-.approve-submit-btn-green {
-  position: relative;
-  overflow: hidden;
-  background: linear-gradient(135deg, #10b981 0%, #059669 60%, #047857 100%);
-  color: #ffffff !important;
-  font-weight: 700;
-  font-size: 13px;
-  border: 1px solid rgba(110, 231, 183, 0.55);
-  border-radius: 10px;
-  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.35);
-  cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  display: inline-flex;
+/* ── Action Buttons Layout ── */
+.approve-modal-actions {
+  display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 6px;
+  gap: 12px;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  width: 100%;
 }
 
-.approve-submit-btn-green:hover:not(:disabled) {
+.approve-action-cancel-btn {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #cbd5e1;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+}
+
+.approve-action-cancel-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.25);
+  transform: translateY(-1px);
+}
+
+.approve-action-cancel-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.approve-action-done-btn {
+  flex: 2;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0.75rem 1.25rem;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 60%, #047857 100%);
+  color: #ffffff !important;
+  font-size: 0.9rem;
+  font-weight: 700;
+  border: 1px solid rgba(110, 231, 183, 0.55);
+  box-shadow: 0 4px 18px rgba(16, 185, 129, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  min-height: 44px;
+  text-align: center;
+}
+
+.approve-action-done-btn:hover:not(:disabled) {
   background: linear-gradient(135deg, #34d399 0%, #10b981 60%, #059669 100%);
-  box-shadow: 0 6px 22px rgba(16, 185, 129, 0.6), 0 0 16px rgba(52, 211, 153, 0.45);
+  box-shadow: 0 6px 24px rgba(16, 185, 129, 0.65), 0 0 16px rgba(52, 211, 153, 0.45);
   border-color: #6ee7b7;
   transform: translateY(-1.5px);
 }
 
-.approve-submit-btn-green:active:not(:disabled) {
+.approve-action-done-btn:active:not(:disabled) {
   transform: translateY(0);
 }
 
-.approve-submit-btn-green:disabled {
-  opacity: 0.65;
+.approve-action-done-btn:disabled {
+  opacity: 0.6;
   cursor: not-allowed;
   filter: grayscale(0.2);
+  transform: none;
 }
 
-/* Green Shiny Shimmer Effect */
-.approve-submit-btn-green::after {
+/* Green Shiny Shimmer Effect on Done Button */
+.approve-action-done-btn::after {
   content: '';
   position: absolute;
   top: -50%;

@@ -1052,10 +1052,17 @@ const ProfilePage: React.FC = () => {
               ) : (
                 notifications.map(notification => {
                   const isGingerNotif = notification.type === 'admin' || notification.content.includes('Ginger Notification');
-                  const isCustomReward = !isGingerNotif && (notification.content.includes('🎁') || notification.content.includes('Reward Issued'));
-                  const isBillNotif = !isGingerNotif && (notification.content.includes('🧾') || notification.content.toLowerCase().includes('bill'));
-                  const isVoucherNotif = !isGingerNotif && (notification.content.includes('🎟️') || notification.content.includes('VCH-') || notification.content.toLowerCase().includes('voucher'));
-                  const isApprovedNotif = !isGingerNotif && (notification.content.includes('✅') || notification.content.toLowerCase().includes('approved'));
+                  const isSubmissionNotif = !isGingerNotif && (
+                    notification.content.includes('New Direct Discount Submission') ||
+                    notification.content.includes('New Review / Rating Submission') ||
+                    notification.content.includes('New Video Submission') ||
+                    notification.content.includes('Go review') ||
+                    notification.id.startsWith('owner-sub-')
+                  );
+                  const isCustomReward = !isGingerNotif && !isSubmissionNotif && (notification.content.includes('🎁') || notification.content.includes('Reward Issued'));
+                  const isBillNotif = !isGingerNotif && !isSubmissionNotif && (notification.content.includes('🧾') || notification.content.toLowerCase().includes('bill'));
+                  const isVoucherNotif = !isGingerNotif && !isSubmissionNotif && (notification.content.includes('🎟️') || notification.content.includes('VCH-') || notification.content.toLowerCase().includes('voucher'));
+                  const isApprovedNotif = !isGingerNotif && !isSubmissionNotif && (notification.content.includes('✅') || notification.content.toLowerCase().includes('approved'));
                   const voucherMatch = notification.content.match(/(VCH-[A-Z0-9-]+)/i);
                   const extractedVoucherCode = voucherMatch ? voucherMatch[1].toUpperCase() : '';
 
@@ -1066,6 +1073,8 @@ const ProfilePage: React.FC = () => {
                       style={
                         isGingerNotif
                           ? { borderLeft: '3px solid #ff4d4d', background: 'rgba(255, 77, 77, 0.08)' }
+                          : isSubmissionNotif
+                          ? { borderLeft: '3px solid #FFD700', background: 'rgba(255, 215, 0, 0.08)' }
                           : isCustomReward
                           ? { borderLeft: '3px solid #f59e0b', background: 'rgba(245, 158, 11, 0.06)' }
                           : isBillNotif
@@ -1079,7 +1088,9 @@ const ProfilePage: React.FC = () => {
                       onClick={() => {
                         if (!notification.is_read) markAsRead(notification.id);
                         setShowNotifications(false);
-                        if (notification.entity_id) {
+                        if (isSubmissionNotif && notification.entity_id) {
+                          navigate(`/manage-campaigns/${notification.entity_id}`);
+                        } else if (notification.entity_id) {
                           navigate(`/campaigns/${notification.entity_id}`);
                         } else if (isVoucherNotif || isCustomReward || isBillNotif) {
                           navigate(`/campaigns/joined`);
@@ -1090,7 +1101,7 @@ const ProfilePage: React.FC = () => {
                         <div className="notification-avatar" style={{ border: '1px solid rgba(255, 77, 77, 0.4)', borderRadius: '50%', padding: '2px', background: 'rgba(255, 77, 77, 0.15)', width: '38px', height: '38px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           <img src="/images/brand/logo.png" alt="Ginger Notification" style={{ width: '24px', height: '24px', objectFit: 'contain' }} onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
                         </div>
-                      ) : notification.actor && !isVoucherNotif && !isCustomReward && !isBillNotif && !isApprovedNotif ? (
+                      ) : notification.actor && !isSubmissionNotif && !isVoucherNotif && !isCustomReward && !isBillNotif && !isApprovedNotif ? (
                         <div className="notification-avatar">
                           <img src={notification.actor.avatar_url || 'https://via.placeholder.com/150'} alt={notification.actor.full_name} />
                         </div>
@@ -1098,7 +1109,9 @@ const ProfilePage: React.FC = () => {
                         <div 
                           className="notification-icon-wrap" 
                           style={
-                            isCustomReward
+                            isSubmissionNotif
+                              ? { background: 'linear-gradient(135deg, #FFD700 0%, #d97706 100%)', color: '#000' }
+                              : isCustomReward
                               ? { background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' }
                               : isBillNotif 
                               ? { background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)' } 
@@ -1110,7 +1123,9 @@ const ProfilePage: React.FC = () => {
                           }
                         >
                           <span className="material-symbols-outlined">
-                            {isCustomReward
+                            {isSubmissionNotif
+                              ? (notification.content.includes('Review') ? 'star' : notification.content.includes('Direct Discount') ? 'local_offer' : 'videocam')
+                              : isCustomReward
                               ? 'redeem'
                               : isBillNotif 
                               ? 'receipt_long' 
@@ -1143,7 +1158,21 @@ const ProfilePage: React.FC = () => {
                         )}
 
                         {/* Clean voucher code tag and campaign navigation hint */}
-                        {(isVoucherNotif || isCustomReward || isBillNotif) && (
+                        {isSubmissionNotif ? (
+                          <div className="mt-1.5 flex items-center justify-between flex-wrap gap-1">
+                            <span 
+                              className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded"
+                              style={{ color: '#FFD700', background: 'rgba(255, 215, 0, 0.15)', border: '1px solid rgba(255, 215, 0, 0.3)' }}
+                            >
+                              ⚡ Campaign Submission
+                            </span>
+                            {notification.entity_id && (
+                              <span className="text-[11px] text-amber-300 font-medium">
+                                Review & Issue Voucher →
+                              </span>
+                            )}
+                          </div>
+                        ) : (isVoucherNotif || isCustomReward || isBillNotif) ? (
                           <div className="mt-1.5 flex items-center justify-between flex-wrap gap-1">
                             {extractedVoucherCode && (
                               <span 
@@ -1163,7 +1192,7 @@ const ProfilePage: React.FC = () => {
                               </span>
                             )}
                           </div>
-                        )}
+                        ) : null}
 
                         <div className="notification-time mt-1">
                           {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}

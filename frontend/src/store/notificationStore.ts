@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
-import { normalizeSubmission, isDirectDiscountSubmission, getFallbackUniqueVoucherCode } from '../utils/submissionHelpers';
+import { normalizeSubmission, isDirectDiscountSubmission, isReviewSubmission, getFallbackUniqueVoucherCode } from '../utils/submissionHelpers';
 import toast from 'react-hot-toast';
 
 export interface Notification {
@@ -230,6 +230,115 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
         }
       } catch (syncErr) {
         console.warn('Could not sync approved submission notifications:', syncErr);
+      }
+
+      // ── Auto-sync submissions for campaigns OWNED by this user ──
+      try {
+        const { data: ownedCampaigns, error: campErr } = await supabase
+          .from('campaigns')
+          .select('id, title')
+          .eq('advertiser_id', userId);
+
+        if (!campErr && ownedCampaigns && ownedCampaigns.length > 0) {
+          const ownedCampIds = ownedCampaigns.map((c: any) => c.id);
+          const { data: ownerSubs, error: oSubErr } = await supabase
+            .from('submissions')
+            .select('id, campaign_id, creator_id, video_id, video_url, status, submitted_at')
+            .in('campaign_id', ownedCampIds)
+            .order('submitted_at', { ascending: false })
+            .limit(40);
+
+          if (!oSubErr && ownerSubs && ownerSubs.length > 0) {
+            // Batch-fetch creator profiles
+            const cIds = Array.from(new Set(ownerSubs.map((s: any) => s.creator_id).filter(Boolean)));
+            let profMap: Record<string, any> = {};
+            if (cIds.length > 0) {
+              try {
+                const { data: pData } = await supabase
+                  .from('profiles')
+                  .select('id, username, full_name, avatar_url')
+                  .in('id', cIds);
+                (pData || []).forEach((p: any) => { profMap[p.id] = p; });
+              } catch (pErr) {
+                console.warn('Could not batch load creator profiles for owner notifs:', pErr);
+              }
+            }
+
+            const campMap = new Map(ownedCampaigns.map((c: any) => [c.id, c.title]));
+
+            for (const rawSub of ownerSubs) {
+              const sub = normalizeSubmission(rawSub);
+              const campTitle = campMap.get(sub.campaign_id) || 'Campaign';
+              const creatorObj = profMap[sub.creator_id];
+              const creatorHandle = creatorObj?.username ? `@${creatorObj.username}` : (creatorObj?.full_name || 'A user');
+
+              let ownerNotifMsg = '';
+              if (isReviewSubmission(sub)) {
+                ownerNotifMsg = `⭐ New Review / Rating Submission from ${creatorHandle} for "${campTitle}"! Go approve it now.`;
+              } else if (isDirectDiscountSubmission(sub)) {
+                ownerNotifMsg = `🏷️ New Direct Discount Submission from ${creatorHandle} for "${campTitle}"! Go review it now.`;
+              } else {
+                ownerNotifMsg = `🎬 New Video Submission from ${creatorHandle} on "${campTitle}"! Go review and approve it.`;
+              }
+
+              const ownerNotifId = `owner-sub-${sub.id}`;
+              const exists = rawNotifs.some(n => n.id === ownerNotifId || (n.content && n.content.includes(campTitle) && n.content.includes(creatorHandle)));
+              if (!exists) {
+                const isLocallyRead = readNotifIds.has(ownerNotifId) ||
+                  (allReadAt > 0 && new Date(sub.submitted_at || 0).getTime() <= allReadAt);
+
+                rawNotifs.push({
+                  id: ownerNotifId,
+                  user_id: userId,
+                  actor_id: sub.creator_id,
+                  actor: creatorObj || null,
+                  type: 'system',
+                  entity_id: sub.campaign_id,
+                  content: ownerNotifMsg,
+                  is_read: isLocallyRead,
+                  created_at: sub.submitted_at || new Date().toISOString()
+                });
+              }
+            }
+          }
+        }
+      } catch (ownerSyncErr) {
+        console.warn('Could not sync owner campaign submission notifications:', ownerSyncErr);
+      }
+
+      // ── Also sync any submission notification messages sent to this user ──
+      try {
+        const { data: inboundMsgs } = await supabase
+          .from('messages')
+          .select('id, sender_id, receiver_id, content, created_at')
+          .eq('receiver_id', userId)
+          .or('content.ilike.%New Direct Discount Submission%,content.ilike.%New Review%,content.ilike.%New Video Submission%')
+          .order('created_at', { ascending: false })
+          .limit(30);
+
+        if (inboundMsgs && inboundMsgs.length > 0) {
+          for (const m of inboundMsgs) {
+            const notifId = `msg-notif-${m.id}`;
+            const alreadyIn = rawNotifs.some(n => n.id === notifId || n.content === m.content);
+            if (!alreadyIn) {
+              const isLocallyRead = readNotifIds.has(notifId) ||
+                (allReadAt > 0 && new Date(m.created_at || 0).getTime() <= allReadAt);
+
+              rawNotifs.push({
+                id: notifId,
+                user_id: userId,
+                actor_id: m.sender_id,
+                type: 'system',
+                entity_id: null,
+                content: m.content,
+                is_read: isLocallyRead,
+                created_at: m.created_at || new Date().toISOString()
+              });
+            }
+          }
+        }
+      } catch (msgSyncErr) {
+        console.warn('Could not sync inbound submission messages to notifications:', msgSyncErr);
       }
 
       // Check all rawNotifs against readNotifIds and allReadAt
