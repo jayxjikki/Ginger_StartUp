@@ -873,7 +873,7 @@ const ManageCampaignDetailPage: React.FC = () => {
                                   </span>
                                 </div>
                               ) : (
-                                /* Shining Red Send Bill Button for Direct Discount & Reviews */
+                                /* Shining Red Send Bill Button for Direct Discount & Reviews (becomes View Bill once billed) */
                                 <button
                                   type="button"
                                   className="btn-send-bill-shining"
@@ -881,36 +881,21 @@ const ManageCampaignDetailPage: React.FC = () => {
                                     setSelectedBillSubmission(sub);
                                     setIsSendBillModalOpen(true);
                                   }}
-                                  title="Send bill to customer with pre-set discount"
+                                  title={
+                                    sub.voucher_details?.bill_amount
+                                      ? 'View sent bill details'
+                                      : 'Send bill to customer with pre-set discount'
+                                  }
                                 >
                                   <span className="shimmer-sweep-red" />
                                   <span className="btn-bill-icon">🧾</span>
                                   <span>
-                                    {sub.voucher_details?.bill_amount
-                                      ? `Bill: ₹${Number(sub.voucher_details.final_payable).toLocaleString()}`
-                                      : 'Send Bill'}
+                                    {sub.voucher_details?.bill_amount ? 'View Bill' : 'Send Bill'}
                                   </span>
                                 </button>
                               )}
                             </div>
                           </div>
-
-                          {/* Quick summary of sent bill if already billed (only for discount mode) */}
-                          {!(sub.voucher_details?.is_custom_reward || sub.voucher_details?.reward_type === 'custom_message') && sub.voucher_details?.bill_amount && (
-                            <div className="submission-billed-summary">
-                              <div className="billed-summary-row">
-                                <span className="text-secondary text-xs">
-                                  Original: ₹{Number(sub.voucher_details.bill_amount).toLocaleString()}
-                                </span>
-                                <span className="text-emerald-400 text-xs font-bold">
-                                  -{sub.voucher_details.discount_percent}% Discount (-₹{Number(sub.voucher_details.discount_amount).toLocaleString()})
-                                </span>
-                                <span className="text-white text-xs font-extrabold">
-                                  Payable: ₹{Number(sub.voucher_details.final_payable).toLocaleString()}
-                                </span>
-                              </div>
-                            </div>
-                          )}
                         </div>
                       )}
 

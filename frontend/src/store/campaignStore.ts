@@ -675,18 +675,6 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
         console.warn('Error saving video_id to submissions:', updateErr);
       }
 
-      // Try forward-compatible voucher_details update
-      try {
-        await supabase
-          .from('submissions')
-          .update({
-            voucher_details: updatedVoucherDetails,
-            earned_amount: billData.discount_amount,
-          } as any)
-          .eq('id', submissionId);
-      } catch (e) {
-        // Ignored if column doesn't exist
-      }
 
       const campaignTitle = (sub.campaign as any)?.title || 'Campaign';
       const creatorUsername = (sub.creator as any)?.username || (sub.creator as any)?.full_name || 'creator';
