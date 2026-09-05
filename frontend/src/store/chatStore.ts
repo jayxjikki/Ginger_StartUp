@@ -145,6 +145,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
         .select('id, full_name, avatar_url')
         .in('id', validPartnerIds);
 
+      // Read local persistent read-timestamps for chats
+      let readChatMap: Record<string, number> = {};
+      try {
+        readChatMap = JSON.parse(localStorage.getItem(`ginger_read_chats_${currentUserId}`) || '{}');
+      } catch {}
+
       // 4. Map to InboxChat array
       const inboxChats: InboxChat[] = validPartnerIds.map(partnerId => {
         const msg = partnerMap.get(partnerId)!;
@@ -159,13 +165,17 @@ export const useChatStore = create<ChatState>((set, get) => ({
         const name = isBlockedByThem ? 'Ginger user' : (profile?.full_name || 'Unknown User');
         const avatar = isBlockedByThem ? null : (profile?.avatar_url || null);
         
+        const lastReadTime = readChatMap[partnerId];
+        const isLocallyRead = lastReadTime && new Date(msg.created_at).getTime() <= Number(lastReadTime);
+        const isUnread = !isLocallyRead && (msg.receiver_id === currentUserId && !msg.read);
+
         return {
           userId: partnerId,
           name,
           avatar,
           lastMessage: lastMessageText,
           timestamp: msg.created_at,
-          unread: msg.receiver_id === currentUserId && !msg.read
+          unread: isUnread
         };
       });
 
@@ -215,21 +225,35 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   markMessagesRead: async (currentUserId: string, recipientId: string) => {
     try {
+      // Save locally in readChatMap
+      try {
+        const key = `ginger_read_chats_${currentUserId}`;
+        const readChatMap = JSON.parse(localStorage.getItem(key) || '{}');
+        readChatMap[recipientId] = Date.now();
+        localStorage.setItem(key, JSON.stringify(readChatMap));
+      } catch {}
+
+      // Update local state IMMEDIATELY:
+      // Mark messages as read AND mark this partner's chat unread = false in inboxChats!
+      set((state) => ({
+        messages: state.messages.map(m => 
+          m.receiver_id === currentUserId && m.sender_id === recipientId 
+            ? { ...m, read: true } 
+            : m
+        ),
+        inboxChats: state.inboxChats.map(chat =>
+          chat.userId === recipientId
+            ? { ...chat, unread: false }
+            : chat
+        )
+      }));
+
       await supabase
         .from('messages')
         .update({ read: true })
         .eq('receiver_id', currentUserId)
         .eq('sender_id', recipientId)
         .eq('read', false);
-        
-      // Update local state
-      set((state) => ({
-        messages: state.messages.map(m => 
-          m.receiver_id === currentUserId && m.sender_id === recipientId 
-            ? { ...m, read: true } 
-            : m
-        )
-      }));
     } catch (err) {
       console.error('Failed to mark messages read:', err);
     }

@@ -4,6 +4,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuthStore } from '../../../store/authStore';
 import { useCampaignStore } from '../../../store/campaignStore';
 import { useUgcStore } from '../../../store/ugcStore';
 import { useChatStore } from '../../../store/chatStore';
@@ -20,6 +21,7 @@ const HomeMenuPage: React.FC = () => {
   const [isMapModalOpen, setIsMapModalOpen] = useState(false);
   const navigate = useNavigate();
 
+  const { user } = useAuthStore();
   const {
     filteredCampaigns,
     slideshows,
@@ -32,15 +34,21 @@ const HomeMenuPage: React.FC = () => {
   const { inboxChats } = useChatStore();
   const unreadCount = inboxChats.filter(chat => chat.unread).length;
 
-  const { notifications } = useNotificationStore();
+  const { notifications, markAsRead } = useNotificationStore();
+  const lastViewedJoinedTime = user?.id 
+    ? Number(localStorage.getItem(`ginger_joined_campaigns_last_viewed_${user.id}`) || '0')
+    : 0;
+
   const hasUnreadVoucherNotif = notifications.some(
-    n => !n.is_read && (
-      n.content.includes('🎟️') || 
-      n.content.includes('VCH-') || 
-      n.content.includes('Voucher') || 
-      n.content.includes('🧾') || 
-      n.content.includes('Bill')
-    )
+    n => !n.is_read && 
+      new Date(n.created_at).getTime() > lastViewedJoinedTime && (
+        n.content.includes('🎟️') || 
+        n.content.includes('VCH-') || 
+        n.content.includes('Voucher') || 
+        n.content.includes('🧾') || 
+        n.content.includes('Bill') ||
+        n.content.includes('🎁')
+      )
   );
 
   useEffect(() => {
@@ -178,7 +186,24 @@ const HomeMenuPage: React.FC = () => {
           <button 
             className={`icon-btn ${hasUnreadVoucherNotif ? 'joined-campaigns-btn-glowing' : ''}`} 
             style={{ position: 'relative', width: '40px', height: '40px', background: 'rgba(255,255,255,0.05)', borderRadius: '50%', color: '#e5e2e1' }}
-            onClick={() => navigate('/campaigns/joined')} 
+            onClick={() => {
+              if (user?.id) {
+                localStorage.setItem(`ginger_joined_campaigns_last_viewed_${user.id}`, String(Date.now()));
+                notifications.forEach(n => {
+                  if (!n.is_read && (
+                    n.content.includes('🎟️') || 
+                    n.content.includes('VCH-') || 
+                    n.content.includes('Voucher') || 
+                    n.content.includes('🧾') || 
+                    n.content.includes('Bill') ||
+                    n.content.includes('🎁')
+                  )) {
+                    markAsRead(n.id);
+                  }
+                });
+              }
+              navigate('/campaigns/joined');
+            }} 
             title="Recent Joined Campaigns"
           >
             <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>assignment_turned_in</span>
@@ -199,10 +224,22 @@ const HomeMenuPage: React.FC = () => {
             title="Chats"
           >
             <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>chat</span>
-            {unreadCount > 0 ? (
-              <span className="global-chat-badge">{unreadCount > 9 ? '9+' : unreadCount}</span>
-            ) : (
-              <span style={{ position: 'absolute', top: '8px', right: '8px', width: '8px', height: '8px', background: '#34d399', borderRadius: '50%', border: '2px solid #0C0C0C' }}></span>
+            {unreadCount > 0 && (
+              <span 
+                className="chat-unread-green-dot-glow"
+                style={{ 
+                  position: 'absolute', 
+                  top: '7px', 
+                  right: '7px', 
+                  width: '9px', 
+                  height: '9px', 
+                  background: '#34d399', 
+                  borderRadius: '50%', 
+                  border: '2px solid #0C0C0C', 
+                  boxShadow: '0 0 8px #34d399',
+                  animation: 'green-glow-pulse 1.8s infinite ease-in-out'
+                }} 
+              />
             )}
           </button>
         </div>

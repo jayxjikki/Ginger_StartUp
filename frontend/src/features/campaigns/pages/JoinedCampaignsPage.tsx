@@ -11,6 +11,7 @@ import Badge from '../../../components/ui/Badge';
 import DiscountCalculator from '../../../components/ui/DiscountCalculator';
 import { isDirectDiscountSubmission, isReviewSubmission, getSubmissionReviewUrl, openReviewPage, getFallbackUniqueVoucherCode } from '../../../utils/submissionHelpers';
 
+import { useNotificationStore } from '../../../store/notificationStore';
 import toast from 'react-hot-toast';
 import './JoinedCampaignsPage.css';
 
@@ -23,6 +24,20 @@ const JoinedCampaignsPage: React.FC = () => {
   useEffect(() => {
     if (user?.id) {
       fetchMySubmissions(user.id);
+      localStorage.setItem(`ginger_joined_campaigns_last_viewed_${user.id}`, String(Date.now()));
+      const { notifications, markAsRead } = useNotificationStore.getState();
+      notifications.forEach(n => {
+        if (!n.is_read && (
+          n.content.includes('🎟️') || 
+          n.content.includes('VCH-') || 
+          n.content.includes('Voucher') || 
+          n.content.includes('🧾') || 
+          n.content.includes('Bill') ||
+          n.content.includes('🎁')
+        )) {
+          markAsRead(n.id);
+        }
+      });
     }
   }, [user?.id, fetchMySubmissions]);
 

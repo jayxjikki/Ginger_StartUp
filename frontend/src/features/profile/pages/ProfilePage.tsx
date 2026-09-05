@@ -473,10 +473,23 @@ const ProfilePage: React.FC = () => {
         </div>
         {!isPublicView && (
           <div className="profile-top-actions">
-            <button className="top-action-btn" style={{ position: 'relative' }} onClick={() => navigate('/inbox')}>
+            <button className="top-action-btn" style={{ position: 'relative' }} onClick={() => navigate('/inbox')} title="Messages">
               <span className="material-symbols-outlined">mail</span>
               {unreadChatCount > 0 && (
-                <span className="global-chat-badge">{unreadChatCount > 9 ? '9+' : unreadChatCount}</span>
+                <span 
+                  className="chat-unread-green-dot-glow"
+                  style={{ 
+                    position: 'absolute', 
+                    top: '7px', 
+                    right: '7px', 
+                    width: '9px', 
+                    height: '9px', 
+                    background: '#34d399', 
+                    borderRadius: '50%', 
+                    border: '2px solid #0C0C0C',
+                    boxShadow: '0 0 8px #34d399'
+                  }} 
+                />
               )}
             </button>
             <button 
@@ -485,8 +498,7 @@ const ProfilePage: React.FC = () => {
               onClick={() => {
                 setShowNotifications(true);
                 if (user?.id) {
-                  fetchNotifications(user.id);
-                  if (unreadNotifCount > 0) markAllAsRead(user.id);
+                  markAllAsRead(user.id);
                 }
               }}
               title="Notifications"

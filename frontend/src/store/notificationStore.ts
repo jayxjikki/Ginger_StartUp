@@ -77,6 +77,32 @@ const resolveNotificationActors = async (rawNotifs: any[]): Promise<Notification
   });
 };
 
+const getReadNotifIds = (userId: string): Set<string> => {
+  try {
+    const raw = localStorage.getItem(`ginger_read_notif_ids_${userId}`);
+    return new Set(raw ? JSON.parse(raw) : []);
+  } catch {
+    return new Set();
+  }
+};
+
+const saveReadNotifId = (userId: string, notifId: string) => {
+  try {
+    const set = getReadNotifIds(userId);
+    set.add(notifId);
+    localStorage.setItem(`ginger_read_notif_ids_${userId}`, JSON.stringify(Array.from(set)));
+  } catch {}
+};
+
+const saveAllNotifsRead = (userId: string, notifIds: string[]) => {
+  try {
+    const set = getReadNotifIds(userId);
+    notifIds.forEach(id => set.add(id));
+    localStorage.setItem(`ginger_read_notif_ids_${userId}`, JSON.stringify(Array.from(set)));
+    localStorage.setItem(`ginger_notifs_all_read_at_${userId}`, String(Date.now()));
+  } catch {}
+};
+
 export const useNotificationStore = create<NotificationState>((set, get) => ({
   notifications: [],
   unreadCount: 0,
@@ -85,6 +111,9 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
   fetchNotifications: async (userId: string) => {
     set({ isLoading: true });
     try {
+      const readNotifIds = getReadNotifIds(userId);
+      const allReadAt = Number(localStorage.getItem(`ginger_notifs_all_read_at_${userId}`) || '0');
+
       let rawNotifs: any[] = [];
       try {
         const { data, error } = await supabase
@@ -135,6 +164,9 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
               const billNotifId = `sub-bill-${sub.id}`;
               const exists = rawNotifs.some(n => n.id === billNotifId || (n.content && n.content.includes('🧾') && n.entity_id === sub.campaign_id));
               if (!exists) {
+                const isLocallyRead = readNotifIds.has(billNotifId) || 
+                  (allReadAt > 0 && new Date(sub.voucher_details?.billed_at || sub.verified_at || 0).getTime() <= allReadAt);
+
                 rawNotifs.push({
                   id: billNotifId,
                   user_id: userId,
@@ -142,7 +174,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
                   type: 'system',
                   entity_id: sub.campaign_id,
                   content: billContent,
-                  is_read: false,
+                  is_read: isLocallyRead,
                   created_at: sub.voucher_details?.billed_at || sub.verified_at || new Date().toISOString()
                 });
               }
@@ -165,6 +197,9 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
             );
 
             if (existingIdx === -1) {
+              const isLocallyRead = readNotifIds.has(voucherNotifId) || 
+                (allReadAt > 0 && new Date(sub.verified_at || sub.submitted_at || 0).getTime() <= allReadAt);
+
               rawNotifs.push({
                 id: voucherNotifId,
                 user_id: userId,
@@ -172,7 +207,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
                 type: 'system',
                 entity_id: sub.campaign_id,
                 content: contentText,
-                is_read: false,
+                is_read: isLocallyRead,
                 created_at: sub.verified_at || sub.submitted_at || new Date().toISOString()
               });
             } else {
@@ -186,6 +221,15 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
       } catch (syncErr) {
         console.warn('Could not sync approved submission notifications:', syncErr);
       }
+
+      // Check all rawNotifs against readNotifIds and allReadAt
+      rawNotifs.forEach((n: any) => {
+        if (!n.is_read) {
+          if (readNotifIds.has(n.id) || (allReadAt > 0 && new Date(n.created_at).getTime() <= allReadAt)) {
+            n.is_read = true;
+          }
+        }
+      });
 
       // Sort rawNotifs by created_at descending
       rawNotifs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
@@ -202,6 +246,12 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
 
   markAsRead: async (notificationId: string) => {
     try {
+      const notifObj = get().notifications.find(n => n.id === notificationId);
+      const userId = notifObj?.user_id;
+      if (userId) {
+        saveReadNotifId(userId, notificationId);
+      }
+
       // Optimistic update
       set(state => ({
         notifications: state.notifications.map(n => 
@@ -211,16 +261,14 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
       }));
 
       // Update local storage if present
-      try {
-        const notifObj = get().notifications.find(n => n.id === notificationId);
-        const userId = notifObj?.user_id;
-        if (userId) {
+      if (userId) {
+        try {
           const key = `ginger_local_notifications_${userId}`;
           const list = JSON.parse(localStorage.getItem(key) || '[]');
           const updated = list.map((n: any) => n.id === notificationId ? { ...n, is_read: true } : n);
           localStorage.setItem(key, JSON.stringify(updated));
-        }
-      } catch (_) {}
+        } catch (_) {}
+      }
 
       if (!notificationId.startsWith('local-notif-') && !notificationId.startsWith('sub-')) {
         await supabase
@@ -235,6 +283,9 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
 
   markAllAsRead: async (userId: string) => {
     try {
+      const allIds = get().notifications.map(n => n.id);
+      saveAllNotifsRead(userId, allIds);
+
       // Optimistic update
       set(state => ({
         notifications: state.notifications.map(n => ({ ...n, is_read: true })),
