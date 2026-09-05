@@ -156,6 +156,24 @@ const CampaignDetailPage: React.FC = () => {
 
   const directDiscountTiers = useMemo(() => getCampaignDirectDiscountTiers(campaign), [campaign]);
   const hasDirectDiscountTiers = directDiscountTiers.length > 0;
+  const standardRewardTiers = useMemo(() => {
+    if (!campaign?.payout_tiers || !Array.isArray(campaign.payout_tiers)) return [];
+    return campaign.payout_tiers.filter((tier: any) => {
+      const parsed = parseTierReward(tier);
+      return !parsed.isDirectDiscount;
+    });
+  }, [campaign]);
+  const hasRewardTiers = standardRewardTiers.length > 0 || ((campaign?.prize_pool || 0) > 0);
+  const showAllRewardsOption = hasRewardTiers || !hasDirectDiscountTiers;
+
+  useEffect(() => {
+    if (!hasRewardTiers && hasDirectDiscountTiers) {
+      setSubmissionType('direct_discount');
+    } else if (!hasDirectDiscountTiers) {
+      setSubmissionType('all_rewards');
+    }
+  }, [hasRewardTiers, hasDirectDiscountTiers]);
+
   const activeDirectTier = directDiscountTiers[selectedDirectTierIdx] || directDiscountTiers[0];
 
   const activeTermLower = (activeDirectTier?.term || '').toLowerCase();
@@ -179,7 +197,9 @@ const CampaignDetailPage: React.FC = () => {
     setVisitMediaUrl('');
     setIsReviewVerified(false);
     setSelectedDirectTierIdx(0);
-    if (!hasDirectDiscountTiers) {
+    if (!hasRewardTiers && hasDirectDiscountTiers) {
+      setSubmissionType('direct_discount');
+    } else if (!hasDirectDiscountTiers) {
       setSubmissionType('all_rewards');
     }
     setShowSubmitModal(true);
@@ -1118,29 +1138,28 @@ const CampaignDetailPage: React.FC = () => {
 
               {/* Submission Type Selector */}
               <div className="submission-type-selector mt-4">
-                <label className="text-[11px] font-bold text-secondary uppercase tracking-wider mb-2 block">
-                  Select Submission Type
-                </label>
                 <div className="flex flex-col gap-2">
-                  <div
-                    className={`type-option-card ${submissionType === 'all_rewards' ? 'active' : ''}`}
-                    onClick={() => setSubmissionType('all_rewards')}
-                  >
-                    <div className="type-radio-circle">
-                      {submissionType === 'all_rewards' && <div className="type-radio-inner" />}
-                    </div>
-                    <div className="type-option-text">
-                      <div className="font-bold text-sm text-white flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span>🏆 All Campaign Rewards</span>
-                        </div>
-                        <Badge variant="success" size="sm">Standard</Badge>
+                  {showAllRewardsOption && (
+                    <div
+                      className={`type-option-card ${submissionType === 'all_rewards' ? 'active' : ''}`}
+                      onClick={() => setSubmissionType('all_rewards')}
+                    >
+                      <div className="type-radio-circle">
+                        {submissionType === 'all_rewards' && <div className="type-radio-inner" />}
                       </div>
-                      <p className="text-xs text-secondary mt-0.5">
-                        Eligible for view milestone payouts and all cash & gift prizes.
-                      </p>
+                      <div className="type-option-text">
+                        <div className="font-bold text-sm text-white flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span>🏆 All Campaign Rewards</span>
+                          </div>
+                          <Badge variant="success" size="sm">Standard</Badge>
+                        </div>
+                        <p className="text-xs text-secondary mt-0.5">
+                          Eligible for view milestone payouts and all cash & gift prizes.
+                        </p>
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   {/* Direct Discount Card - ONLY shown if campaign has direct discount tiers */}
                   {hasDirectDiscountTiers && (
@@ -1225,10 +1244,6 @@ const CampaignDetailPage: React.FC = () => {
                       onChange={(e) => setVideoUrl(e.target.value)}
                       id="input-video-url"
                     />
-                    <p className="text-[11px] text-tertiary mt-1.5 flex items-center gap-1.5">
-                      <FiAlertCircle size={12} className="text-accent shrink-0" />
-                      <span>Only YouTube, Instagram, or Facebook video links are accepted.</span>
-                    </p>
                   </div>
                 ) : isVideoAction ? (
                   <div>
