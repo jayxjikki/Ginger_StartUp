@@ -1191,13 +1191,10 @@ const CampaignDetailPage: React.FC = () => {
               {/* If Direct Discount chosen, show the sub-options corresponding to configured direct discount tiers */}
               {submissionType === 'direct_discount' && hasDirectDiscountTiers && (
                 <div className="direct-discount-subtiers-box mt-4">
-                  <label className="text-[11px] font-bold text-amber-300 uppercase tracking-wider mb-2 block flex items-center justify-between">
-                    <span>Choose Direct Discount Perk</span>
-                    <span className="text-[10px] text-amber-400/70 font-normal">
-                      Matches {directDiscountTiers.length} campaign tier{directDiscountTiers.length > 1 ? 's' : ''}
-                    </span>
+                  <label className="text-[11px] font-bold text-amber-300 uppercase tracking-wider mb-2 block">
+                    Choose Direct Discount Perk
                   </label>
-                  <div className="subtiers-options-grid">
+                  <div className={`subtiers-options-grid count-${Math.min(directDiscountTiers.length, 4)}`}>
                     {directDiscountTiers.map((dt, idx) => {
                       const isSelected = selectedDirectTierIdx === idx;
                       const dtTermLower = (dt.term || '').toLowerCase();
@@ -1263,11 +1260,7 @@ const CampaignDetailPage: React.FC = () => {
                   <div className="visit-media-upload-container">
                     <label className="text-xs font-bold text-white mb-2 block flex items-center gap-1.5">
                       <span>📍 Visit Proof (Raw Image or Video File)</span>
-                      <span className="text-[10px] text-red-400 font-semibold">*Raw file required (No Links)</span>
                     </label>
-                    <p className="text-[11px] text-secondary mb-3">
-                      Please upload a raw photo or video proof of your visit. Links are not accepted for store visits.
-                    </p>
 
                     {visitMediaUrl ? (
                       <div className="visit-media-preview-card">
@@ -1313,10 +1306,7 @@ const CampaignDetailPage: React.FC = () => {
                                 <FiUpload size={22} />
                               </div>
                               <div className="text-center">
-                                <span className="text-sm font-bold text-white block">
-                                  Click to Select Raw Image or Video
-                                </span>
-                                <span className="text-[11px] text-secondary mt-0.5 block">
+                                <span className="text-[11px] text-secondary block">
                                   Supports JPG, PNG, MP4, MOV (Max 25MB)
                                 </span>
                               </div>
@@ -1342,14 +1332,9 @@ const CampaignDetailPage: React.FC = () => {
                   </div>
                 ) : isReviewAction ? (
                   <div className="review-action-container">
-                    <div className="review-action-info">
-                      <div className="flex items-center gap-2 text-amber-300 font-bold text-sm">
-                        <span>⭐</span>
-                        <span>Review & Rate Us for {activeDirectTier?.reward}</span>
-                      </div>
-                      <p className="text-xs text-secondary mt-1">
-                        Click the button below to visit the official review page for this business. Once you open the page, your visit is instantly verified with a green tick!
-                      </p>
+                    <div className="flex items-center gap-2 text-amber-300 font-bold text-sm">
+                      <span>⭐</span>
+                      <span>Review & Rate Us for {activeDirectTier?.reward}</span>
                     </div>
 
                     <button
@@ -1361,36 +1346,12 @@ const CampaignDetailPage: React.FC = () => {
                         toast.success('Review page opened! Verified with green tick ✓');
                       }}
                     >
-                      <span className="btn-review-icon">⭐</span>
+                      <span className="btn-review-icon">{isReviewVerified ? '✓' : '⭐'}</span>
                       <span className="btn-review-text">
-                        {isReviewVerified ? 'Review Page Opened (Click again if needed)' : 'Open Review & Rate Us Page'}
+                        {isReviewVerified ? 'Review Page Opened (Verified ✓)' : 'Open Review & Rate Us Page'}
                       </span>
                       <FiExternalLink size={15} />
                     </button>
-
-                    {/* Instant Green Tick Verification Indicator */}
-                    {isReviewVerified ? (
-                      <div className="review-verified-pill-box">
-                        <div className="verified-pill-icon">
-                          <FiCheck size={18} />
-                        </div>
-                        <div className="verified-pill-text">
-                          <div className="font-bold text-sm text-emerald-400">
-                            ✓ Verified & Ready to Submit!
-                          </div>
-                          <p className="text-[11px] text-emerald-300/80 mt-0.5">
-                            You have opened the review link. Click "Submit" below to claim your discount voucher from the owner.
-                          </p>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="review-unverified-hint">
-                        <span className="text-amber-400 text-xs">⚠️</span>
-                        <span className="text-[11px] text-amber-300/80">
-                          Please open the review link above to get the green tick and enable submission.
-                        </span>
-                      </div>
-                    )}
                   </div>
                 ) : (
                   <div>

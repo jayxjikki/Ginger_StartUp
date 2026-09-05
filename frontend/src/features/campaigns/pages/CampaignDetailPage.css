@@ -800,8 +800,42 @@
 
 .subtiers-options-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 8px;
+}
+
+/* 1 option: spans 100% full width horizontally */
+.subtiers-options-grid.count-1 {
+  grid-template-columns: 1fr;
+}
+
+.subtiers-options-grid.count-1 .subtier-option-chip {
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  padding: 11px 14px;
+}
+
+/* 2 options: 2 balanced columns */
+.subtiers-options-grid.count-2 {
+  grid-template-columns: 1fr 1fr;
+}
+
+/* 3 options: 2 columns on top, 3rd tier spans full width bottom */
+.subtiers-options-grid.count-3 {
+  grid-template-columns: 1fr 1fr;
+}
+
+.subtiers-options-grid.count-3 .subtier-option-chip:last-child {
+  grid-column: 1 / -1;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+}
+
+/* 4 options: clean 2x2 grid */
+.subtiers-options-grid.count-4 {
+  grid-template-columns: 1fr 1fr;
 }
 
 .subtier-option-chip {
