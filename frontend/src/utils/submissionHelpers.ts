@@ -210,5 +210,94 @@ export const openReviewPage = (url: string) => {
   }
 };
 
+/**
+ * Resolves the specific direct discount action/tier name
+ * (e.g., "Shoot a Video", "Visit us", "Post Story / Highlight", "Write a Review")
+ */
+export const getDirectDiscountActionLabel = (sub: any, campaign?: any): string => {
+  if (!sub) return 'Direct Discount';
 
+  // 1. Direct from voucher_details.action_term
+  if (sub.voucher_details?.action_term && typeof sub.voucher_details.action_term === 'string') {
+    const t = sub.voucher_details.action_term.trim();
+    if (t) return t;
+  }
 
+  // 2. Direct from voucher_details.reward_text if action_term is not set
+  if (sub.voucher_details?.reward_text && typeof sub.voucher_details.reward_text === 'string') {
+    const rt = sub.voucher_details.reward_text.trim();
+    if (rt && !rt.includes('%') && !rt.toLowerCase().includes('off')) return rt;
+  }
+
+  // 3. Inspect video_id encoding (e.g. direct_discount::visit_us::12345)
+  if (typeof sub.video_id === 'string') {
+    const vid = sub.video_id.toLowerCase();
+    if (vid.includes('visit')) return 'Visit us';
+    if (vid.includes('story') || vid.includes('highlight')) return 'Post Story / Highlight';
+    if (vid.includes('shoot') || vid.includes('video')) return 'Shoot a Video';
+    if (vid.includes('review') || vid.includes('rate')) return 'Write a Review';
+
+    const match = sub.video_id.match(/direct_discount::([^:]+)/);
+    if (match && match[1]) {
+      const raw = match[1].replace(/_/g, ' ');
+      return raw.replace(/\b\w/g, (l: string) => l.toUpperCase());
+    }
+  }
+
+  // 4. Inspect platform and video_url
+  if (sub.platform === 'review' || isReviewSubmission(sub)) {
+    return 'Write a Review';
+  }
+
+  const vUrl = (sub.video_url || '').toLowerCase();
+  if (vUrl.includes('story') || vUrl.includes('stories') || vUrl.includes('highlight')) {
+    return 'Post Story / Highlight';
+  }
+
+  if (
+    vUrl.includes('visit') ||
+    sub.voucher_details?.submitted_media_type === 'image' ||
+    sub.voucher_details?.submitted_media_type === 'video' ||
+    sub.platform === 'image'
+  ) {
+    return 'Visit us';
+  }
+
+  // 5. Match against campaign's configured direct discount tiers
+  let termsObj = campaign?.terms;
+  if (typeof termsObj === 'string') {
+    try { termsObj = JSON.parse(termsObj); } catch {}
+  }
+  const tiers = Array.isArray(termsObj?.direct_discount_tiers) ? termsObj.direct_discount_tiers : [];
+  if (tiers.length === 1 && tiers[0]?.term) {
+    return tiers[0].term;
+  }
+
+  // 6. If video URL is standard video platform (YouTube, TikTok, Instagram Reels)
+  if (vUrl.includes('youtube') || vUrl.includes('youtu.be') || vUrl.includes('tiktok') || vUrl.includes('/reel/')) {
+    return 'Shoot a Video';
+  }
+
+  return 'Direct Discount';
+};
+
+/**
+ * Returns an appropriate emoji icon for the given direct discount action
+ */
+export const getDirectDiscountIcon = (label: string): string => {
+  const l = (label || '').toLowerCase();
+  if (l.includes('visit')) return '📍';
+  if (l.includes('story') || l.includes('highlight')) return '📱';
+  if (l.includes('shoot') || l.includes('video')) return '🎬';
+  if (l.includes('review') || l.includes('rate')) return '⭐';
+  return '🏷️';
+};
+
+/**
+ * Returns formatted badge text with icon: e.g. "📍 Visit us" or "🎬 Shoot a Video"
+ */
+export const getDirectDiscountBadgeText = (sub: any, campaign?: any): string => {
+  const label = getDirectDiscountActionLabel(sub, campaign);
+  const icon = getDirectDiscountIcon(label);
+  return `${icon} ${label}`;
+};

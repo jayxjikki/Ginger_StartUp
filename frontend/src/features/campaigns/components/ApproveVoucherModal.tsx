@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FiX, FiCheck, FiPercent, FiMessageSquare } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import Avatar from '../../../components/ui/Avatar';
+import { getDirectDiscountBadgeText } from '../../../utils/submissionHelpers';
 import './ApproveVoucherModal.css';
 
 interface ApproveVoucherModalProps {
@@ -142,6 +143,16 @@ export const ApproveVoucherModal: React.FC<ApproveVoucherModalProps> = ({
                 <p className="text-xs text-secondary mt-0.5">
                   For <span className="text-amber-300 font-medium">{creatorName}</span> {creatorHandle}
                 </p>
+                <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                  <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-amber-400/15 text-amber-300 border border-amber-400/30">
+                    {getDirectDiscountBadgeText(submission, campaign)}
+                  </span>
+                  {submission.voucher_details?.reward_text && (
+                    <span className="text-[11px] font-semibold text-emerald-400">
+                      Claiming: {submission.voucher_details.reward_text}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
             <button

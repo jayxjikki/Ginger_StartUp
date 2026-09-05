@@ -34,7 +34,7 @@ import VoucherVerifierModal from '../../../components/ui/VoucherVerifierModal';
 import SendBillModal from '../components/SendBillModal';
 import ApproveVoucherModal from '../components/ApproveVoucherModal';
 import CampaignCountdownTimer from '../../../components/ui/CampaignCountdownTimer';
-import { isDirectDiscountSubmission, normalizeSubmission, isReviewSubmission, getFallbackUniqueVoucherCode } from '../../../utils/submissionHelpers';
+import { isDirectDiscountSubmission, normalizeSubmission, isReviewSubmission, getFallbackUniqueVoucherCode, getDirectDiscountBadgeText } from '../../../utils/submissionHelpers';
 import toast from 'react-hot-toast';
 import './ManageCampaignsPage.css';
 
@@ -971,9 +971,20 @@ const ManageCampaignDetailPage: React.FC = () => {
                               </Badge>
                             )}
                           </>
+                        ) : isDirectDiscountSubmission(sub) ? (
+                          <>
+                            <Badge variant="warning" size="sm">
+                              {getDirectDiscountBadgeText(sub, campaign)}
+                            </Badge>
+                            {sub.voucher_details?.reward_text && (
+                              <Badge variant="accent" size="sm">
+                                🎁 {sub.voucher_details.reward_text}
+                              </Badge>
+                            )}
+                          </>
                         ) : (
-                          <Badge variant={isDirectDiscountSubmission(sub) ? 'warning' : 'accent'} size="sm">
-                            {isDirectDiscountSubmission(sub) ? '🏷️ Direct Discount' : '🏆 All Rewards'}
+                          <Badge variant="accent" size="sm">
+                            🏆 All Rewards
                           </Badge>
                         )}
                       </div>

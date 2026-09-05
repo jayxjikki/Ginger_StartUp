@@ -28,7 +28,7 @@ import { formatCurrency, formatCount, formatTimeLeft } from '../../../utils/form
 import { getCampaignImages, parseTierReward, getCampaignDirectDiscountTiers } from '../../../types/campaign.types';
 import { uploadToCloudinary } from '../../../lib/cloudinary';
 import { CampaignImageSlideshow } from '../../../components/ui/CampaignImageSlideshow';
-import { isDirectDiscountSubmission, normalizeSubmission, encodeVideoId, isReviewSubmission, getSubmissionReviewUrl, openReviewPage, getFallbackUniqueVoucherCode } from '../../../utils/submissionHelpers';
+import { isDirectDiscountSubmission, normalizeSubmission, encodeVideoId, isReviewSubmission, getSubmissionReviewUrl, openReviewPage, getFallbackUniqueVoucherCode, getDirectDiscountBadgeText } from '../../../utils/submissionHelpers';
 
 import CampaignShareModal from '../../../components/ui/CampaignShareModal';
 import './CampaignDetailPage.css';
@@ -986,7 +986,7 @@ const CampaignDetailPage: React.FC = () => {
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-secondary">Submission Type</span>
                       <Badge variant={isDirectDiscountSubmission(userSubmission) ? 'warning' : 'accent'} size="sm">
-                        {isDirectDiscountSubmission(userSubmission) ? '🏷️ Direct Discount' : '🏆 All Rewards'}
+                        {isDirectDiscountSubmission(userSubmission) ? getDirectDiscountBadgeText(userSubmission, campaign) : '🏆 All Rewards'}
                       </Badge>
                     </div>
                     {!isDirectDiscountSubmission(userSubmission) && (

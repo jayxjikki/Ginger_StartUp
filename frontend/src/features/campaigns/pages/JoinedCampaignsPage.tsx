@@ -9,7 +9,7 @@ import { FiArrowLeft, FiClock, FiVideo, FiTrash2, FiCopy } from 'react-icons/fi'
 import { supabase } from '../../../lib/supabase';
 import Badge from '../../../components/ui/Badge';
 import DiscountCalculator from '../../../components/ui/DiscountCalculator';
-import { isDirectDiscountSubmission, isReviewSubmission, getSubmissionReviewUrl, openReviewPage, getFallbackUniqueVoucherCode } from '../../../utils/submissionHelpers';
+import { isDirectDiscountSubmission, isReviewSubmission, getSubmissionReviewUrl, openReviewPage, getFallbackUniqueVoucherCode, getDirectDiscountBadgeText } from '../../../utils/submissionHelpers';
 
 import { useNotificationStore } from '../../../store/notificationStore';
 import toast from 'react-hot-toast';
@@ -122,7 +122,7 @@ const JoinedCampaignsPage: React.FC = () => {
                 <div className="submission-card-header">
                   <div className="submission-badges-row">
                     <Badge variant={isDirectDiscountSubmission(sub) ? 'warning' : 'accent'} size="sm">
-                      {isDirectDiscountSubmission(sub) ? '🏷️ Direct Discount' : '🏆 All Rewards'}
+                      {isDirectDiscountSubmission(sub) ? getDirectDiscountBadgeText(sub, sub.campaign) : '🏆 All Rewards'}
                     </Badge>
                     {getStatusBadge(sub.status, isDirectDiscountSubmission(sub))}
                   </div>
