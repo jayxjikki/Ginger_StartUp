@@ -33,6 +33,16 @@ import { isDirectDiscountSubmission, normalizeSubmission } from '../../../utils/
 import toast from 'react-hot-toast';
 import './ManageCampaignsPage.css';
 
+export const isReviewSubmission = (s: any): boolean => {
+  if (!s) return false;
+  if (s.platform === 'review') return true;
+  const term = (s.voucher_details?.action_term || '').toLowerCase();
+  if (term.includes('review') || term.includes('rate')) return true;
+  if (typeof s.video_id === 'string' && s.video_id.toLowerCase().includes('review')) return true;
+  if (typeof s.video_url === 'string' && (s.video_url.includes('google.com/search') || s.video_url.includes('maps') || s.video_url.includes('reviews'))) return true;
+  return false;
+};
+
 type FilterType = 'all' | 'pending' | 'verified' | 'flagged';
 
 const ManageCampaignDetailPage: React.FC = () => {
@@ -52,7 +62,7 @@ const ManageCampaignDetailPage: React.FC = () => {
 
   const [singleCampaign, setSingleCampaign] = useState<any | null>(null);
   const [isFetchingDirect, setIsFetchingDirect] = useState(false);
-  const [submissionMode, setSubmissionMode] = useState<'all_rewards' | 'direct_discount'>('all_rewards');
+  const [submissionMode, setSubmissionMode] = useState<'all_rewards' | 'direct_discount' | 'reviews'>('all_rewards');
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
   const [selectedSubmissionId, setSelectedSubmissionId] = useState<string | null>(null);
   const [isVerifierModalOpen, setIsVerifierModalOpen] = useState(false);
@@ -127,19 +137,24 @@ const ManageCampaignDetailPage: React.FC = () => {
   }, [submissions, selectedSubmissionId]);
 
   // Split submissions by mode using bulletproof helper
-  const rewardSubmissions = useMemo(
-    () => submissions.filter((s: any) => !isDirectDiscountSubmission(s)),
+  const reviewSubmissions = useMemo(
+    () => submissions.filter((s: any) => isReviewSubmission(s)),
     [submissions]
   );
   const discountSubmissions = useMemo(
-    () => submissions.filter((s: any) => isDirectDiscountSubmission(s)),
+    () => submissions.filter((s: any) => isDirectDiscountSubmission(s) && !isReviewSubmission(s)),
+    [submissions]
+  );
+  const rewardSubmissions = useMemo(
+    () => submissions.filter((s: any) => !isDirectDiscountSubmission(s) && !isReviewSubmission(s)),
     [submissions]
   );
 
-  const currentModeSubmissions = useMemo(
-    () => (submissionMode === 'all_rewards' ? rewardSubmissions : discountSubmissions),
-    [submissionMode, rewardSubmissions, discountSubmissions]
-  );
+  const currentModeSubmissions = useMemo(() => {
+    if (submissionMode === 'all_rewards') return rewardSubmissions;
+    if (submissionMode === 'direct_discount') return discountSubmissions;
+    return reviewSubmissions;
+  }, [submissionMode, rewardSubmissions, discountSubmissions, reviewSubmissions]);
 
   // Counts for tabs in current mode
   const pendingCount = useMemo(
@@ -220,9 +235,17 @@ const ManageCampaignDetailPage: React.FC = () => {
   };
 
   const handleApproveDirectDiscount = async (submissionId: string) => {
-    const defaultDiscount = campaign?.payout_tiers?.[0]?.payout_amount || 15;
+    const subObj = submissions.find((s: any) => s.id === submissionId);
+    let defaultDiscount = 15;
+    if (subObj?.voucher_details?.reward_text) {
+      const match = String(subObj.voucher_details.reward_text).match(/(\d+(\.\d+)?)/);
+      if (match) defaultDiscount = parseFloat(match[1]);
+    } else if (campaign?.payout_tiers?.[0]?.payout_amount) {
+      defaultDiscount = campaign.payout_tiers[0].payout_amount;
+    }
+
     const input = prompt(
-      `Approve this direct discount video?\n\nThis will instantly issue a unique voucher code and notify both the creator & you (no admin approval needed).\n\nEnter Discount Percentage (%):`,
+      `Approve this submission?\n\nThis will instantly issue a unique voucher code and notify both the customer & you (no admin approval needed).\n\nEnter Discount Percentage (%):`,
       String(defaultDiscount)
     );
     if (input === null) return;
@@ -388,7 +411,7 @@ const ManageCampaignDetailPage: React.FC = () => {
           </div>
         </motion.div>
 
-        {/* Mode Switcher: All Campaign Rewards vs Direct Discount */}
+        {/* Mode Switcher: All Campaign Rewards vs Direct Discount vs Reviews */}
         <div className="manage-mode-switcher">
           <button
             type="button"
@@ -412,6 +435,19 @@ const ManageCampaignDetailPage: React.FC = () => {
           >
             <span>🏷️ Direct Discount Videos & Vouchers</span>
             <span className="mode-pill-badge discount">{discountSubmissions.length}</span>
+          </button>
+
+          {/* Golden Option Button below / alongside Direct Discount */}
+          <button
+            type="button"
+            className={`mode-switch-btn highlight-reviews-gold ${submissionMode === 'reviews' ? 'active' : ''}`}
+            onClick={() => {
+              setSubmissionMode('reviews');
+              setActiveFilter('all');
+            }}
+          >
+            <span>⭐ Reviews / Rate Us Submissions</span>
+            <span className="mode-pill-badge gold-badge">{reviewSubmissions.length}</span>
           </button>
         </div>
 
@@ -460,12 +496,61 @@ const ManageCampaignDetailPage: React.FC = () => {
           </div>
         )}
 
+        {/* Reviews / Rate Us Top Golden Banner with Verifier & Calculator Shortcuts */}
+        {submissionMode === 'reviews' && (
+          <div className="reviews-gold-banner">
+            <div className="reviews-gold-banner-text">
+              <h4>⭐ Reviews / Rate Us Submissions</h4>
+              <p>
+                Customers who opened and rated using your configured review link. You can review and approve them directly (no admin approval required) to issue discount vouchers and send bills.
+              </p>
+            </div>
+            <div className="direct-discount-banner-actions">
+              <button
+                type="button"
+                className="btn-open-verifier gold-verifier-btn"
+                onClick={() => {
+                  setVerifierInitialCode('');
+                  setIsVerifierModalOpen(true);
+                }}
+              >
+                <FiSearch size={14} />
+                <span>Verify Customer Voucher</span>
+              </button>
+              <button
+                type="button"
+                className={`btn-open-calc ${showTopCalculator ? 'active' : ''}`}
+                onClick={() => setShowTopCalculator(!showTopCalculator)}
+              >
+                <span>🧮</span>
+                <span>{showTopCalculator ? 'Hide Calculator' : 'Discount Calculator'}</span>
+              </button>
+            </div>
+
+            {/* Direct Discount Calculator for Owner right beside Verifier */}
+            {showTopCalculator && (
+              <div className="mt-3 pt-3 border-t border-amber-500/20 w-full">
+                <DiscountCalculator
+                  initialDiscountPercent={campaign?.payout_tiers?.[0]?.payout_amount || 15}
+                  isLockedPercent={false}
+                  inline={true}
+                  isOwner={true}
+                />
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Submissions Section Header & Filter Tabs */}
         <div className="submissions-section-header">
           <div className="submissions-title-row">
             <div className="flex items-center gap-2">
               <h3 className="font-extrabold text-xl text-white">
-                {submissionMode === 'all_rewards' ? 'Campaign Reward Videos' : 'Direct Discount Videos'}
+                {submissionMode === 'all_rewards'
+                  ? 'Campaign Reward Videos'
+                  : submissionMode === 'direct_discount'
+                  ? 'Direct Discount Submissions'
+                  : '⭐ Reviews & Rate Us Submissions'}
               </h3>
               <span className="submissions-total-pill">{currentModeSubmissions.length}</span>
             </div>
@@ -534,6 +619,8 @@ const ManageCampaignDetailPage: React.FC = () => {
                 const thumbnail = getVideoThumbnail(sub.video_url);
                 const platform = (sub.platform || 'video').toLowerCase();
                 const platformIcon = getSocialIcon(platform);
+                const isReview = isReviewSubmission(sub);
+                const isDirectDisc = isDirectDiscountSubmission(sub) || isReview;
 
                 return (
                   <motion.div
@@ -544,13 +631,34 @@ const ManageCampaignDetailPage: React.FC = () => {
                     exit={{ opacity: 0, scale: 0.95 }}
                     transition={{ delay: idx * 0.04 }}
                   >
-                    {/* Video Thumbnail Box with Play Overlay */}
+                    {/* Video Thumbnail Box with Play Overlay / Review Card */}
                     <div
-                      className="submission-thumb-box"
-                      onClick={() => setSelectedSubmissionId(sub.id)}
-                      title="Click to watch video"
+                      className={`submission-thumb-box ${isReview ? 'review-proof-box' : ''}`}
+                      onClick={() => {
+                        if (isReview) {
+                          if (sub.video_url) {
+                            window.open(sub.video_url, '_blank', 'noopener,noreferrer');
+                          }
+                        } else {
+                          setSelectedSubmissionId(sub.id);
+                        }
+                      }}
+                      title={isReview ? 'Click to open verified review link' : 'Click to watch video or view media'}
                     >
-                      {thumbnail ? (
+                      {isReview ? (
+                        <div className="submission-thumb-fallback review-proof-thumb">
+                          <div className="review-star-circle">
+                            <span className="text-3xl">⭐</span>
+                          </div>
+                          <span className="review-target-tag">
+                            REVIEW / RATE US
+                          </span>
+                          <span className="review-click-hint flex items-center gap-1.5 text-xs text-amber-300 font-bold mt-1">
+                            <span>Open Review Page</span>
+                            <FiExternalLink size={12} />
+                          </span>
+                        </div>
+                      ) : thumbnail ? (
                         <img
                           src={thumbnail}
                           alt="Video submission thumbnail"
@@ -578,18 +686,20 @@ const ManageCampaignDetailPage: React.FC = () => {
                             <FiVideo size={32} className="text-accent" />
                           )}
                           <span className="fallback-tag-text">
-                            {platform.toUpperCase()} VIDEO
+                            {platform.toUpperCase()}
                           </span>
                         </div>
                       )}
 
-                      {/* Play Button Overlay */}
-                      <div className="submission-play-overlay">
-                        <div className="play-icon-badge">
-                          <FiPlay size={20} className="text-white ml-0.5" />
+                      {/* Play Button Overlay (only for non-reviews) */}
+                      {!isReview && (
+                        <div className="submission-play-overlay">
+                          <div className="play-icon-badge">
+                            <FiPlay size={20} className="text-white ml-0.5" />
+                          </div>
+                          <span className="play-text-pill">Watch Video / View Media</span>
                         </div>
-                        <span className="play-text-pill">Watch Video</span>
-                      </div>
+                      )}
 
                       {/* Creator Profile & Platform on Top Left of Thumbnail */}
                       <div className="submission-thumb-creator-pill" onClick={(e) => e.stopPropagation()}>
@@ -601,7 +711,7 @@ const ManageCampaignDetailPage: React.FC = () => {
                         <span className="creator-thumb-name" title={sub.creator?.full_name || sub.creator?.username}>
                           @{sub.creator?.username || sub.creator?.full_name || 'creator'}
                         </span>
-                        {platformIcon && (
+                        {platformIcon && !isReview && (
                           <img
                             src={platformIcon}
                             alt={platform}
@@ -615,8 +725,9 @@ const ManageCampaignDetailPage: React.FC = () => {
                         <div className="submission-status-badge-wrap">
                           {getStatusBadge(
                             sub.status,
-                            isDirectDiscountSubmission(sub) ||
+                            isDirectDisc ||
                               submissionMode === 'direct_discount' ||
+                              submissionMode === 'reviews' ||
                               campaign?.type === 'discount'
                           )}
                         </div>
@@ -643,7 +754,7 @@ const ManageCampaignDetailPage: React.FC = () => {
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   navigator.clipboard.writeText(sub.video_url || '');
-                                  toast.success('Video link copied to clipboard!');
+                                  toast.success('Link copied to clipboard!');
                                   setActiveMenuId(null);
                                 }}
                               >
@@ -679,7 +790,7 @@ const ManageCampaignDetailPage: React.FC = () => {
                                     }}
                                   >
                                     <FiFlag size={14} />
-                                    <span>Flag Video</span>
+                                    <span>Flag Submission</span>
                                   </button>
                                 )}
                             </div>
@@ -693,12 +804,14 @@ const ManageCampaignDetailPage: React.FC = () => {
 
                       {/* Metrics strip */}
                       <div className="submission-metrics-row">
-                        <div className="metric-pill">
-                          <FiEye size={14} className="text-accent" />
-                          <span className="text-white font-bold text-xs">
-                            {formatCount(sub.current_views || 0)} views
-                          </span>
-                        </div>
+                        {!isReview && (
+                          <div className="metric-pill">
+                            <FiEye size={14} className="text-accent" />
+                            <span className="text-white font-bold text-xs">
+                              {formatCount(sub.current_views || 0)} views
+                            </span>
+                          </div>
+                        )}
                         <div className="metric-pill">
                           <FiClock size={14} className="text-secondary" />
                           <span className="text-secondary text-xs">
@@ -708,13 +821,26 @@ const ManageCampaignDetailPage: React.FC = () => {
                             })}
                           </span>
                         </div>
-                        <Badge variant={isDirectDiscountSubmission(sub) ? 'warning' : 'accent'} size="sm">
-                          {isDirectDiscountSubmission(sub) ? '🏷️ Direct Discount' : '🏆 All Rewards'}
-                        </Badge>
+                        {isReview ? (
+                          <>
+                            <Badge variant="warning" size="sm">
+                              ⭐ Review / Rate Us
+                            </Badge>
+                            {sub.voucher_details?.reward_text && (
+                              <Badge variant="accent" size="sm">
+                                🏷️ {sub.voucher_details.reward_text}
+                              </Badge>
+                            )}
+                          </>
+                        ) : (
+                          <Badge variant={isDirectDiscountSubmission(sub) ? 'warning' : 'accent'} size="sm">
+                            {isDirectDiscountSubmission(sub) ? '🏷️ Direct Discount' : '🏆 All Rewards'}
+                          </Badge>
+                        )}
                       </div>
 
-                      {/* Direct Discount Voucher Details (Clean & Uncluttered) */}
-                      {isDirectDiscountSubmission(sub) && (sub.status === 'verified' || sub.status === 'paid') && (
+                      {/* Direct Discount / Review Voucher Details (Clean & Uncluttered) */}
+                      {isDirectDisc && (sub.status === 'verified' || sub.status === 'paid') && (
                         <div className="submission-voucher-box">
                           {/* Clean Voucher Code & Status Header */}
                           <div className="voucher-card-header">
@@ -735,7 +861,7 @@ const ManageCampaignDetailPage: React.FC = () => {
                               </button>
                             </div>
                             <div className="voucher-actions-wrapper">
-                              {/* Shining Red Send Bill Button for Direct Discount Videos */}
+                              {/* Shining Red Send Bill Button for Direct Discount & Reviews */}
                               <button
                                 type="button"
                                 className="btn-send-bill-shining"
@@ -782,16 +908,21 @@ const ManageCampaignDetailPage: React.FC = () => {
                             type="button"
                             className="btn btn-primary approve-action-btn w-full"
                             style={
-                              isDirectDiscountSubmission(sub) ||
-                              submissionMode === 'direct_discount' ||
-                              campaign?.type === 'discount'
+                              isReview
+                                ? { background: 'linear-gradient(135deg, #FFD700 0%, #F59E0B 100%)', color: '#1a1300', fontWeight: 800 }
+                                : isDirectDisc ||
+                                  submissionMode === 'direct_discount' ||
+                                  submissionMode === 'reviews' ||
+                                  campaign?.type === 'discount'
                                 ? { background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)' }
                                 : undefined
                             }
                             onClick={() => {
                               if (
-                                isDirectDiscountSubmission(sub) ||
+                                isReview ||
+                                isDirectDisc ||
                                 submissionMode === 'direct_discount' ||
+                                submissionMode === 'reviews' ||
                                 campaign?.type === 'discount'
                               ) {
                                 handleApproveDirectDiscount(sub.id);
@@ -800,8 +931,10 @@ const ManageCampaignDetailPage: React.FC = () => {
                               }
                             }}
                             title={
-                              isDirectDiscountSubmission(sub) ||
+                              isReview ||
+                              isDirectDisc ||
                               submissionMode === 'direct_discount' ||
+                              submissionMode === 'reviews' ||
                               campaign?.type === 'discount'
                                 ? 'Approve and generate voucher code (no admin needed)'
                                 : 'Approve submission (sends to Admin)'
@@ -809,9 +942,12 @@ const ManageCampaignDetailPage: React.FC = () => {
                           >
                             <FiCheck size={15} />
                             <span>
-                              {isDirectDiscountSubmission(sub) ||
-                              submissionMode === 'direct_discount' ||
-                              campaign?.type === 'discount'
+                              {isReview
+                                ? '⭐ Approve & Issue Voucher'
+                                : isDirectDisc ||
+                                  submissionMode === 'direct_discount' ||
+                                  submissionMode === 'reviews' ||
+                                  campaign?.type === 'discount'
                                 ? 'Approve & Issue Voucher'
                                 : 'Approve'}
                             </span>

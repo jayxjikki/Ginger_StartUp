@@ -146,6 +146,52 @@ export type DirectDiscountTerm = (typeof DIRECT_DISCOUNT_TERMS)[number]['label']
 export interface DirectDiscountTierItem {
   term: DirectDiscountTerm | string;
   reward: string;
+  review_url?: string;
+}
+
+/**
+ * Helper to safely extract all configured direct discount tiers from a campaign
+ */
+export function getCampaignDirectDiscountTiers(campaign: any): DirectDiscountTierItem[] {
+  if (!campaign) return [];
+  const result: DirectDiscountTierItem[] = [];
+
+  // 1. From campaign.terms.direct_discount_tiers
+  let termsObj = campaign.terms;
+  if (typeof termsObj === 'string') {
+    try {
+      termsObj = JSON.parse(termsObj);
+    } catch {}
+  }
+  if (termsObj && Array.isArray(termsObj.direct_discount_tiers)) {
+    termsObj.direct_discount_tiers.forEach((dt: any) => {
+      if (dt && dt.term && dt.reward) {
+        result.push({
+          term: dt.term,
+          reward: dt.reward,
+          review_url: dt.review_url,
+        });
+      }
+    });
+  }
+
+  // 2. From payout_tiers if not in terms
+  if (Array.isArray(campaign.payout_tiers)) {
+    campaign.payout_tiers.forEach((tier: any) => {
+      const parsed = parseTierReward(tier);
+      if (parsed.isDirectDiscount && parsed.conditionText && parsed.rewardText) {
+        const alreadyIn = result.some((r) => r.term === parsed.conditionText);
+        if (!alreadyIn) {
+          result.push({
+            term: parsed.conditionText,
+            reward: parsed.rewardText,
+          });
+        }
+      }
+    });
+  }
+
+  return result;
 }
 
 export interface GiftTierItem {

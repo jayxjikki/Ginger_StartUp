@@ -33,6 +33,10 @@ export function extractInstagramCode(url: string): string | null {
 
 export function getVideoThumbnail(url: string, _platform?: string): string | null {
   if (!url) return null;
+  // If it's a direct image file or Cloudinary/Supabase image upload
+  if (/\.(jpg|jpeg|png|webp|gif|svg)(\?.*)?$/i.test(url) || (url.includes('cloudinary.com') && url.includes('/image/upload/'))) {
+    return url;
+  }
   const ytId = extractYouTubeId(url);
   if (ytId) {
     return `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`;
@@ -41,12 +45,20 @@ export function getVideoThumbnail(url: string, _platform?: string): string | nul
 }
 
 export function getEmbedInfo(url: string): {
-  type: 'youtube' | 'direct' | 'instagram' | 'facebook' | 'external';
+  type: 'youtube' | 'direct' | 'instagram' | 'facebook' | 'image' | 'external';
   embedUrl: string;
   youtubeId?: string;
   instagramCode?: string;
 } {
   if (!url) return { type: 'external', embedUrl: '' };
+
+  // Direct image check
+  if (/\.(jpg|jpeg|png|webp|gif|svg)(\?.*)?$/i.test(url) || (url.includes('cloudinary.com') && url.includes('/image/upload/'))) {
+    return {
+      type: 'image',
+      embedUrl: url,
+    };
+  }
 
   const ytId = extractYouTubeId(url);
   if (ytId) {

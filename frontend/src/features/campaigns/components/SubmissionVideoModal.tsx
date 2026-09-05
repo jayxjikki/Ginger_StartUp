@@ -136,6 +136,16 @@ const SubmissionVideoModal: React.FC<SubmissionVideoModalProps> = ({
                 />
               )}
 
+              {embedInfo.type === 'image' && (
+                <div className="flex items-center justify-center p-4 bg-black/40 rounded-xl max-h-[70vh] overflow-hidden">
+                  <img
+                    src={embedInfo.embedUrl}
+                    alt="Submitted proof"
+                    className="max-h-[65vh] max-w-full object-contain rounded-lg shadow-2xl"
+                  />
+                </div>
+              )}
+
               {embedInfo.type === 'direct' && (
                 <video
                   src={embedInfo.embedUrl}

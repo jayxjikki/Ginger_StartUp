@@ -348,7 +348,7 @@ const CreateCampaignPage: React.FC = () => {
 
   const updateDirectDiscountTier = (
     index: number,
-    field: 'term' | 'reward',
+    field: 'term' | 'reward' | 'review_url',
     value: string
   ) => {
     setFormData((prev) => {
@@ -506,6 +506,14 @@ const CreateCampaignPage: React.FC = () => {
       const emptyDirectTier = formData.directDiscountTiers.find((t) => !t.reward?.trim());
       if (emptyDirectTier) {
         toast.error(`Please enter the reward for "${emptyDirectTier.term}" in Direct Discount Tiers.`);
+        return false;
+      }
+
+      const emptyReviewUrlTier = formData.directDiscountTiers.find(
+        (t) => (t.term === 'Review/rate us' || t.term === 'review_rate') && !t.review_url?.trim()
+      );
+      if (emptyReviewUrlTier) {
+        toast.error('Please enter the Review / Rating URL for the "Review/rate us" tier.');
         return false;
       }
 
@@ -1218,6 +1226,22 @@ const CreateCampaignPage: React.FC = () => {
                             />
                           </div>
                         </div>
+
+                        {/* Extra Review Link input if tier is Review/rate us */}
+                        {(tier.term === 'Review/rate us' || tier.term === 'review_rate') && (
+                          <div className="mt-3 pt-3 border-t border-amber-500/20 w-full">
+                            <Input
+                              label="Review / Rate Us Page Link *"
+                              type="url"
+                              value={tier.review_url || ''}
+                              onChange={(e) => updateDirectDiscountTier(idx, 'review_url', e.target.value)}
+                              placeholder="e.g., https://maps.app.goo.gl/... or https://g.page/r/.../review"
+                            />
+                            <p className="text-[11px] text-amber-300/80 mt-1">
+                              When users click this link to rate you, it automatically verifies and sends you their submission for approval.
+                            </p>
+                          </div>
+                        )}
                       </div>
                     ))}
 

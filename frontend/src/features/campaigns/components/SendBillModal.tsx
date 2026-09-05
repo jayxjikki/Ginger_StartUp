@@ -34,6 +34,10 @@ export const SendBillModal: React.FC<SendBillModalProps> = ({
     if (submission?.voucher_details?.discount_percent) {
       return submission.voucher_details.discount_percent;
     }
+    if (submission?.voucher_details?.reward_text) {
+      const match = String(submission.voucher_details.reward_text).match(/(\d+(\.\d+)?)/);
+      if (match) return parseFloat(match[1]);
+    }
     if (campaign?.terms?.direct_discount_tiers && campaign.terms.direct_discount_tiers.length > 0) {
       for (const dt of campaign.terms.direct_discount_tiers) {
         const match = String(dt.reward || '').match(/(\d+(\.\d+)?)/);

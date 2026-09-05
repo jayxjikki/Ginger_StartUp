@@ -9,7 +9,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../../lib/supabase';
 import {
   FiArrowLeft, FiShare2, FiMapPin, FiClock, FiUsers,
-  FiExternalLink, FiCheck, FiAlertCircle, FiTrash2, FiCopy
+  FiExternalLink, FiCheck, FiAlertCircle, FiTrash2, FiCopy,
+  FiX, FiUpload
 } from 'react-icons/fi';
 import DiscountCalculator from '../../../components/ui/DiscountCalculator';
 import { validateAllowedVideoUrl } from '../../../utils/videoHelpers';
@@ -24,7 +25,8 @@ import Badge from '../../../components/ui/Badge';
 import Avatar from '../../../components/ui/Avatar';
 import Input from '../../../components/ui/Input';
 import { formatCurrency, formatCount, formatTimeLeft } from '../../../utils/formatters';
-import { getCampaignImages, parseTierReward } from '../../../types/campaign.types';
+import { getCampaignImages, parseTierReward, getCampaignDirectDiscountTiers } from '../../../types/campaign.types';
+import { uploadToCloudinary } from '../../../lib/cloudinary';
 import { CampaignImageSlideshow } from '../../../components/ui/CampaignImageSlideshow';
 import { isDirectDiscountSubmission, normalizeSubmission, encodeVideoId } from '../../../utils/submissionHelpers';
 import CampaignShareModal from '../../../components/ui/CampaignShareModal';
@@ -145,55 +147,193 @@ const CampaignDetailPage: React.FC = () => {
   const [userSubmission, setUserSubmission] = useState<any | null>(null);
 
   const [submissionType, setSubmissionType] = useState<'all_rewards' | 'direct_discount'>('all_rewards');
+  const [selectedDirectTierIdx, setSelectedDirectTierIdx] = useState(0);
+  const [visitMediaFile, setVisitMediaFile] = useState<File | null>(null);
+  const [visitMediaUrl, setVisitMediaUrl] = useState('');
+  const [isUploadingVisitMedia, setIsUploadingVisitMedia] = useState(false);
+  const [isReviewVerified, setIsReviewVerified] = useState(false);
+  const [storyUrl, setStoryUrl] = useState('');
+
+  const directDiscountTiers = useMemo(() => getCampaignDirectDiscountTiers(campaign), [campaign]);
+  const hasDirectDiscountTiers = directDiscountTiers.length > 0;
+  const activeDirectTier = directDiscountTiers[selectedDirectTierIdx] || directDiscountTiers[0];
+
+  const activeTermLower = (activeDirectTier?.term || '').toLowerCase();
+  const isVideoAction = activeTermLower.includes('video') || activeTermLower.includes('shoot');
+  const isVisitAction = activeTermLower.includes('visit');
+  const isStoryAction = activeTermLower.includes('story') || activeTermLower.includes('highlight');
+  const isReviewAction = activeTermLower.includes('review') || activeTermLower.includes('rate');
+
+  const targetReviewUrl = useMemo(() => {
+    if (activeDirectTier?.review_url?.trim()) {
+      return activeDirectTier.review_url.trim();
+    }
+    const query = encodeURIComponent(`${campaign?.title || 'Business'} ${campaign?.location || ''} reviews`.trim());
+    return `https://www.google.com/search?q=${query}`;
+  }, [activeDirectTier, campaign]);
+
+  const openSubmitModal = () => {
+    setVideoUrl('');
+    setStoryUrl('');
+    setVisitMediaFile(null);
+    setVisitMediaUrl('');
+    setIsReviewVerified(false);
+    setSelectedDirectTierIdx(0);
+    if (!hasDirectDiscountTiers) {
+      setSubmissionType('all_rewards');
+    }
+    setShowSubmitModal(true);
+  };
+
+  const handleVisitFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 25 * 1024 * 1024) {
+      toast.error('File size exceeds 25MB limit. Please select a smaller photo or video.');
+      return;
+    }
+
+    setVisitMediaFile(file);
+    setIsUploadingVisitMedia(true);
+    try {
+      const url = await uploadToCloudinary(file, user?.id);
+      setVisitMediaUrl(url);
+      toast.success('Visit proof uploaded successfully!');
+    } catch (err: any) {
+      console.warn('Cloudinary upload error, using local file URL fallback:', err);
+      const localUrl = URL.createObjectURL(file);
+      setVisitMediaUrl(localUrl);
+      toast.success('Visit proof selected!');
+    } finally {
+      setIsUploadingVisitMedia(false);
+    }
+  };
 
   const handleSubmit = async () => {
     if (!user) {
-      toast.error('You must be logged in to submit a video.');
+      toast.error('You must be logged in to submit.');
       return;
     }
     if (isCampaignOwner) {
-      toast.error('Campaign owners cannot submit videos to their own campaigns.');
-      return;
-    }
-    if (!videoUrl || !videoUrl.trim()) {
-      toast.error('Please enter a video URL.');
+      toast.error('Campaign owners cannot submit to their own campaigns.');
       return;
     }
 
-    // Enforce whitelist: only YouTube, Instagram, or Facebook allowed
-    const validation = validateAllowedVideoUrl(videoUrl);
-    if (!validation.isValid) {
-      toast.error(validation.error || 'Only YouTube, Instagram, or Facebook video links are allowed.');
-      return;
-    }
+    let finalUrl = '';
+    let finalPlatform = 'video';
+    let voucherDetails: any = null;
 
-    const platform = validation.platform;
-
-    if (campaign?.required_platforms && campaign.required_platforms.length > 0) {
-      const requiredLower = campaign.required_platforms.map((p: string) => p.toLowerCase());
-      if (!requiredLower.includes(platform)) {
-        toast.error(`Invalid link. This campaign only accepts: ${campaign.required_platforms.join(', ')}`);
+    if (submissionType === 'all_rewards') {
+      if (!videoUrl || !videoUrl.trim()) {
+        toast.error('Please enter a video URL.');
         return;
       }
+
+      const validation = validateAllowedVideoUrl(videoUrl);
+      if (!validation.isValid) {
+        toast.error(validation.error || 'Only YouTube, Instagram, or Facebook video links are allowed.');
+        return;
+      }
+
+      finalPlatform = validation.platform;
+
+      if (campaign?.required_platforms && campaign.required_platforms.length > 0) {
+        const requiredLower = campaign.required_platforms.map((p: string) => p.toLowerCase());
+        if (!requiredLower.includes(finalPlatform)) {
+          toast.error(`Invalid link. This campaign only accepts: ${campaign.required_platforms.join(', ')}`);
+          return;
+        }
+      }
+
+      finalUrl = videoUrl.trim();
+    } else {
+      // Direct Discount submission
+      if (!activeDirectTier) {
+        toast.error('Please select a valid direct discount option.');
+        return;
+      }
+
+      if (isVideoAction) {
+        if (!videoUrl || !videoUrl.trim()) {
+          toast.error('Please enter your video URL.');
+          return;
+        }
+        const validation = validateAllowedVideoUrl(videoUrl);
+        if (!validation.isValid) {
+          toast.error(validation.error || 'Only YouTube, Instagram, or Facebook video links are allowed.');
+          return;
+        }
+        finalPlatform = validation.platform;
+        finalUrl = videoUrl.trim();
+      } else if (isVisitAction) {
+        if (!visitMediaUrl) {
+          toast.error('Please upload a raw photo or video proof of your store visit.');
+          return;
+        }
+        finalUrl = visitMediaUrl;
+        const isVideo = visitMediaFile?.type.startsWith('video/') || /\.(mp4|webm|mov|avi)$/i.test(finalUrl);
+        finalPlatform = isVideo ? 'video' : 'image';
+      } else if (isStoryAction) {
+        if (!storyUrl || !storyUrl.trim()) {
+          toast.error('Please enter your story or highlight link.');
+          return;
+        }
+        try {
+          new URL(storyUrl.trim());
+        } catch {
+          toast.error('Please enter a valid URL for your story or highlight.');
+          return;
+        }
+        finalUrl = storyUrl.trim();
+        finalPlatform = finalUrl.toLowerCase().includes('instagram') ? 'instagram' : 'facebook';
+      } else if (isReviewAction) {
+        if (!isReviewVerified) {
+          toast.error('Please click the review link to open and rate before submitting.');
+          return;
+        }
+        finalUrl = targetReviewUrl;
+        finalPlatform = 'review';
+      } else {
+        if (!videoUrl || !videoUrl.trim()) {
+          toast.error('Please enter a submission link.');
+          return;
+        }
+        finalUrl = videoUrl.trim();
+        finalPlatform = 'other';
+      }
+
+      voucherDetails = {
+        action_term: activeDirectTier.term,
+        reward_text: activeDirectTier.reward,
+        review_url: activeDirectTier.review_url || (isReviewAction ? targetReviewUrl : undefined),
+        review_verified: isReviewAction ? isReviewVerified : undefined,
+        submitted_media_url: finalUrl,
+        submitted_media_type: isVisitAction ? (finalPlatform === 'video' ? 'video' : 'image') : undefined,
+      };
     }
-    
+
     setIsSubmitting(true);
     try {
-      const cleanUrl = videoUrl.trim();
-      const persistentVideoId = encodeVideoId(submissionType);
+      const persistentVideoId = encodeVideoId(
+        submissionType,
+        `${(activeDirectTier?.term || 'reward').toLowerCase().replace(/\s+/g, '_')}::${Date.now()}`
+      );
       const insertPayload: any = {
         campaign_id: campaign!.id,
         creator_id: user.id,
-        video_url: cleanUrl,
-        platform: platform,
+        video_url: finalUrl,
+        platform: finalPlatform,
         video_id: persistentVideoId,
         submission_type: submissionType,
+        voucher_details: voucherDetails,
       };
 
       let { error } = await supabase.from('submissions').insert(insertPayload);
 
-      // Safe fallback if remote table does not have submission_type column yet
-      if (error && (error.code === '42703' || error.message?.toLowerCase().includes('submission_type'))) {
+      // Safe fallback if remote table does not have submission_type or voucher_details column yet
+      if (error && (error.code === '42703' || error.message?.toLowerCase().includes('submission_type') || error.message?.toLowerCase().includes('voucher_details'))) {
+        delete insertPayload.voucher_details;
         delete insertPayload.submission_type;
         const retryRes = await supabase.from('submissions').insert(insertPayload);
         error = retryRes.error;
@@ -201,15 +341,45 @@ const CampaignDetailPage: React.FC = () => {
 
       if (error) {
         if (error.code === '23505') {
-          throw new Error('You have already submitted a video for this campaign.');
+          throw new Error('You have already submitted for this campaign.');
         }
         throw error;
       }
 
-      toast.success('Video submitted successfully!');
+      // Notify owner
+      if (campaign?.advertiser_id) {
+        const creatorName = user.user_metadata?.full_name || user.user_metadata?.username || 'A customer';
+        const notifMsg = isReviewAction
+          ? `⭐ New Review / Rating Submission from @${creatorName} for "${campaign.title}" claiming ${activeDirectTier?.reward || 'Discount'}!`
+          : submissionType === 'direct_discount'
+            ? `🏷️ New Direct Discount Submission (${activeDirectTier?.term || 'Perk'}) from @${creatorName} for "${campaign.title}"!`
+            : `🎬 New Video Submission from @${creatorName} on "${campaign.title}"!`;
+
+        try {
+          await supabase.from('notifications').insert({
+            user_id: campaign.advertiser_id,
+            actor_id: user.id,
+            type: 'system',
+            entity_id: campaign.id,
+            content: notifMsg,
+          });
+        } catch {
+          // Non-blocking notification error
+        }
+      }
+
+      toast.success(
+        isReviewAction
+          ? 'Review verified and submitted! The campaign owner will issue your discount voucher.'
+          : 'Submitted successfully!'
+      );
       setShowSubmitModal(false);
       setVideoUrl('');
-      
+      setStoryUrl('');
+      setVisitMediaFile(null);
+      setVisitMediaUrl('');
+      setIsReviewVerified(false);
+
       // Update local state to hide button immediately
       setUserSubmission(normalizeSubmission({
         campaign_id: campaign!.id,
@@ -217,15 +387,16 @@ const CampaignDetailPage: React.FC = () => {
         status: 'pending',
         current_views: 0,
         earned_amount: 0,
-        video_url: cleanUrl,
-        platform: platform,
+        video_url: finalUrl,
+        platform: finalPlatform,
         video_id: persistentVideoId,
         submission_type: submissionType,
+        voucher_details: voucherDetails,
         submitted_at: new Date().toISOString(),
       }));
     } catch (err: any) {
       console.error('Submit error:', err);
-      toast.error(err.message || 'Failed to submit video');
+      toast.error(err.message || 'Failed to submit');
     } finally {
       setIsSubmitting(false);
     }
@@ -909,11 +1080,11 @@ const CampaignDetailPage: React.FC = () => {
               variant="primary"
               size="lg"
               fullWidth
-              onClick={() => setShowSubmitModal(true)}
+              onClick={openSubmitModal}
               id="btn-submit-video"
               disabled={isExpired}
             >
-              {isExpired ? 'Campaign Expired' : 'Submit Your Video'}
+              {isExpired ? 'Campaign Expired' : 'Submit to Campaign'}
             </Button>
           )}
         </motion.div>
@@ -922,16 +1093,28 @@ const CampaignDetailPage: React.FC = () => {
         {showSubmitModal && (
           <div className="modal-overlay" onClick={() => setShowSubmitModal(false)}>
             <motion.div
-              className="modal-content"
+              className="modal-content direct-discount-submit-modal"
               onClick={(e) => e.stopPropagation()}
               initial={{ opacity: 0, y: 50, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               transition={{ type: 'spring' as const, stiffness: 300, damping: 30 }}
             >
-              <h3 className="text-lg font-bold text-white">Submit Your Video</h3>
-              <p className="text-xs text-secondary mt-1">
-                Select your reward category and enter your video URL from YouTube, Instagram, or Facebook.
-              </p>
+              <div className="flex items-start justify-between">
+                <div>
+                  <h3 className="text-lg font-bold text-white">Submit to Campaign</h3>
+                  <p className="text-xs text-secondary mt-1">
+                    Select your submission type to claim rewards or instant direct discounts.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="modal-close-icon-btn"
+                  onClick={() => setShowSubmitModal(false)}
+                  aria-label="Close"
+                >
+                  <FiX size={18} />
+                </button>
+              </div>
 
               {/* Submission Type Selector */}
               <div className="submission-type-selector mt-4">
@@ -947,8 +1130,10 @@ const CampaignDetailPage: React.FC = () => {
                       {submissionType === 'all_rewards' && <div className="type-radio-inner" />}
                     </div>
                     <div className="type-option-text">
-                      <div className="font-bold text-sm text-white flex items-center gap-2">
-                        <span>🏆 All Campaign Rewards</span>
+                      <div className="font-bold text-sm text-white flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span>🏆 All Campaign Rewards</span>
+                        </div>
                         <Badge variant="success" size="sm">Standard</Badge>
                       </div>
                       <p className="text-xs text-secondary mt-0.5">
@@ -957,44 +1142,283 @@ const CampaignDetailPage: React.FC = () => {
                     </div>
                   </div>
 
-                  <div
-                    className={`type-option-card ${submissionType === 'direct_discount' ? 'active' : ''}`}
-                    onClick={() => setSubmissionType('direct_discount')}
-                  >
-                    <div className="type-radio-circle">
-                      {submissionType === 'direct_discount' && <div className="type-radio-inner" />}
-                    </div>
-                    <div className="type-option-text">
-                      <div className="font-bold text-sm text-white flex items-center gap-2">
-                        <span>🏷️ Direct Discount Video</span>
-                        <Badge variant="warning" size="sm">Perk</Badge>
+                  {/* Direct Discount Card - ONLY shown if campaign has direct discount tiers */}
+                  {hasDirectDiscountTiers && (
+                    <div
+                      className={`type-option-card gold-card ${submissionType === 'direct_discount' ? 'active' : ''}`}
+                      onClick={() => setSubmissionType('direct_discount')}
+                    >
+                      <div className="gold-card-shine" />
+                      <div className="type-radio-circle">
+                        {submissionType === 'direct_discount' && <div className="type-radio-inner gold-radio-inner" />}
                       </div>
-                      <p className="text-xs text-secondary mt-0.5">
-                        Specific to store visits, coupon codes, and direct discount rewards.
-                      </p>
+                      <div className="type-option-text">
+                        <div className="font-bold text-sm text-white flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span>🏷️ Direct Discount</span>
+                            <span className="gold-pill-shimmer">✨ Shiny Perk</span>
+                          </div>
+                          <Badge variant="warning" size="sm">{directDiscountTiers.length} Options</Badge>
+                        </div>
+                        <p className="text-xs text-amber-200/80 mt-0.5">
+                          Instant store discounts, coupons, and owner-issued vouchers.
+                        </p>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
 
+              {/* If Direct Discount chosen, show the sub-options corresponding to configured direct discount tiers */}
+              {submissionType === 'direct_discount' && hasDirectDiscountTiers && (
+                <div className="direct-discount-subtiers-box mt-4">
+                  <label className="text-[11px] font-bold text-amber-300 uppercase tracking-wider mb-2 block flex items-center justify-between">
+                    <span>Choose Direct Discount Perk</span>
+                    <span className="text-[10px] text-amber-400/70 font-normal">
+                      Matches {directDiscountTiers.length} campaign tier{directDiscountTiers.length > 1 ? 's' : ''}
+                    </span>
+                  </label>
+                  <div className="subtiers-options-grid">
+                    {directDiscountTiers.map((dt, idx) => {
+                      const isSelected = selectedDirectTierIdx === idx;
+                      const dtTermLower = (dt.term || '').toLowerCase();
+                      const icon = dtTermLower.includes('video') || dtTermLower.includes('shoot')
+                        ? '🎥'
+                        : dtTermLower.includes('visit')
+                        ? '📍'
+                        : dtTermLower.includes('story') || dtTermLower.includes('highlight')
+                        ? '📱'
+                        : '⭐';
+
+                      return (
+                        <div
+                          key={idx}
+                          className={`subtier-option-chip ${isSelected ? 'active' : ''}`}
+                          onClick={() => {
+                            setSelectedDirectTierIdx(idx);
+                            setIsReviewVerified(false);
+                            setVisitMediaUrl('');
+                            setVisitMediaFile(null);
+                            setStoryUrl('');
+                          }}
+                        >
+                          <div className="subtier-chip-header">
+                            <span className="subtier-chip-icon">{icon}</span>
+                            <span className="subtier-chip-term">{dt.term}</span>
+                          </div>
+                          <span className="subtier-chip-reward">{dt.reward}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Dynamic Inputs according to chosen submission type and action */}
               <div className="mt-4">
-                <Input
-                  label="Video URL"
-                  placeholder="https://www.youtube.com/watch?v=... or instagram.com/reel/..."
-                  value={videoUrl}
-                  onChange={(e) => setVideoUrl(e.target.value)}
-                  id="input-video-url"
-                />
-                <p className="text-[11px] text-tertiary mt-1.5 flex items-center gap-1.5">
-                  <FiAlertCircle size={12} className="text-accent shrink-0" />
-                  <span>Only YouTube, Instagram, or Facebook video links are accepted.</span>
-                </p>
+                {submissionType === 'all_rewards' ? (
+                  <div>
+                    <Input
+                      label="Video URL (YouTube, Instagram, or Facebook)"
+                      placeholder="https://www.youtube.com/watch?v=... or instagram.com/reel/..."
+                      value={videoUrl}
+                      onChange={(e) => setVideoUrl(e.target.value)}
+                      id="input-video-url"
+                    />
+                    <p className="text-[11px] text-tertiary mt-1.5 flex items-center gap-1.5">
+                      <FiAlertCircle size={12} className="text-accent shrink-0" />
+                      <span>Only YouTube, Instagram, or Facebook video links are accepted.</span>
+                    </p>
+                  </div>
+                ) : isVideoAction ? (
+                  <div>
+                    <Input
+                      label="Video URL (YouTube, Instagram, or Facebook)"
+                      placeholder="https://www.youtube.com/watch?v=... or instagram.com/reel/..."
+                      value={videoUrl}
+                      onChange={(e) => setVideoUrl(e.target.value)}
+                      id="input-direct-video-url"
+                    />
+                    <p className="text-[11px] text-tertiary mt-1.5 flex items-center gap-1.5">
+                      <FiAlertCircle size={12} className="text-amber-400 shrink-0" />
+                      <span>Submit your published video link to receive your {activeDirectTier?.reward} discount.</span>
+                    </p>
+                  </div>
+                ) : isVisitAction ? (
+                  <div className="visit-media-upload-container">
+                    <label className="text-xs font-bold text-white mb-2 block flex items-center gap-1.5">
+                      <span>📍 Visit Proof (Raw Image or Video File)</span>
+                      <span className="text-[10px] text-red-400 font-semibold">*Raw file required (No Links)</span>
+                    </label>
+                    <p className="text-[11px] text-secondary mb-3">
+                      Please upload a raw photo or video proof of your visit. Links are not accepted for store visits.
+                    </p>
+
+                    {visitMediaUrl ? (
+                      <div className="visit-media-preview-card">
+                        {visitMediaFile?.type.startsWith('video/') || /\.(mp4|webm|mov)$/i.test(visitMediaUrl) ? (
+                          <video src={visitMediaUrl} controls className="visit-preview-media" />
+                        ) : (
+                          <img src={visitMediaUrl} alt="Visit proof" className="visit-preview-media" />
+                        )}
+                        <div className="visit-preview-meta">
+                          <span className="text-xs text-emerald-400 font-bold flex items-center gap-1">
+                            <FiCheck size={14} /> Proof Attached ({visitMediaFile?.name || 'File Uploaded'})
+                          </span>
+                          <button
+                            type="button"
+                            className="text-xs text-red-400 hover:text-red-300 font-medium underline cursor-pointer"
+                            onClick={() => {
+                              setVisitMediaUrl('');
+                              setVisitMediaFile(null);
+                            }}
+                          >
+                            Remove & Choose Different File
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <label className="visit-file-dropzone">
+                        <input
+                          type="file"
+                          accept="image/*,video/*"
+                          className="hidden"
+                          onChange={handleVisitFileChange}
+                          disabled={isUploadingVisitMedia}
+                        />
+                        <div className="dropzone-content">
+                          {isUploadingVisitMedia ? (
+                            <div className="flex flex-col items-center gap-2 py-4">
+                              <div className="animate-spin rounded-full h-7 w-7 border-2 border-amber-400 border-t-transparent" />
+                              <span className="text-xs text-amber-300 font-medium">Uploading raw media...</span>
+                            </div>
+                          ) : (
+                            <div className="flex flex-col items-center gap-2 py-4 cursor-pointer">
+                              <div className="w-12 h-12 rounded-full bg-amber-400/10 border border-amber-400/30 flex items-center justify-center text-amber-400">
+                                <FiUpload size={22} />
+                              </div>
+                              <div className="text-center">
+                                <span className="text-sm font-bold text-white block">
+                                  Click to Select Raw Image or Video
+                                </span>
+                                <span className="text-[11px] text-secondary mt-0.5 block">
+                                  Supports JPG, PNG, MP4, MOV (Max 25MB)
+                                </span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </label>
+                    )}
+                  </div>
+                ) : isStoryAction ? (
+                  <div>
+                    <Input
+                      label="Story or Highlight Link"
+                      placeholder="https://instagram.com/stories/... or highlight link"
+                      value={storyUrl}
+                      onChange={(e) => setStoryUrl(e.target.value)}
+                      id="input-story-url"
+                    />
+                    <p className="text-[11px] text-tertiary mt-1.5 flex items-center gap-1.5">
+                      <FiAlertCircle size={12} className="text-amber-400 shrink-0" />
+                      <span>Enter the direct link to your published story or highlight.</span>
+                    </p>
+                  </div>
+                ) : isReviewAction ? (
+                  <div className="review-action-container">
+                    <div className="review-action-info">
+                      <div className="flex items-center gap-2 text-amber-300 font-bold text-sm">
+                        <span>⭐</span>
+                        <span>Review & Rate Us for {activeDirectTier?.reward}</span>
+                      </div>
+                      <p className="text-xs text-secondary mt-1">
+                        Click the button below to visit the official review page for this business. Once you open the page, your visit is instantly verified with a green tick!
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      className={`btn-open-review-link ${isReviewVerified ? 'verified' : ''}`}
+                      onClick={() => {
+                        window.open(targetReviewUrl, '_blank', 'noopener,noreferrer');
+                        setIsReviewVerified(true);
+                        toast.success('Review page opened! Verified with green tick ✓');
+                      }}
+                    >
+                      <span className="btn-review-icon">⭐</span>
+                      <span className="btn-review-text">
+                        {isReviewVerified ? 'Review Page Opened (Click again if needed)' : 'Open Review & Rate Us Page'}
+                      </span>
+                      <FiExternalLink size={15} />
+                    </button>
+
+                    {/* Instant Green Tick Verification Indicator */}
+                    {isReviewVerified ? (
+                      <div className="review-verified-pill-box">
+                        <div className="verified-pill-icon">
+                          <FiCheck size={18} />
+                        </div>
+                        <div className="verified-pill-text">
+                          <div className="font-bold text-sm text-emerald-400">
+                            ✓ Verified & Ready to Submit!
+                          </div>
+                          <p className="text-[11px] text-emerald-300/80 mt-0.5">
+                            You have opened the review link. Click "Submit" below to claim your discount voucher from the owner.
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="review-unverified-hint">
+                        <span className="text-amber-400 text-xs">⚠️</span>
+                        <span className="text-[11px] text-amber-300/80">
+                          Please open the review link above to get the green tick and enable submission.
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div>
+                    <Input
+                      label="Submission URL"
+                      placeholder="https://..."
+                      value={videoUrl}
+                      onChange={(e) => setVideoUrl(e.target.value)}
+                      id="input-other-url"
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="modal-actions mt-6">
-                <Button variant="ghost" onClick={() => setShowSubmitModal(false)} disabled={isSubmitting}>Cancel</Button>
-                <Button variant="primary" onClick={handleSubmit} disabled={isSubmitting} isLoading={isSubmitting}>
-                  Submit Video
+                <Button variant="ghost" onClick={() => setShowSubmitModal(false)} disabled={isSubmitting}>
+                  Cancel
+                </Button>
+                <Button
+                  variant="primary"
+                  onClick={handleSubmit}
+                  disabled={
+                    isSubmitting ||
+                    (submissionType === 'direct_discount' && isReviewAction && !isReviewVerified) ||
+                    (submissionType === 'direct_discount' && isVisitAction && (!visitMediaUrl || isUploadingVisitMedia))
+                  }
+                  isLoading={isSubmitting}
+                  style={
+                    submissionType === 'direct_discount'
+                      ? {
+                          background: 'linear-gradient(135deg, #FFD700 0%, #F59E0B 100%)',
+                          color: '#1a1300',
+                          fontWeight: 800,
+                          border: 'none',
+                        }
+                      : undefined
+                  }
+                >
+                  {isReviewAction && submissionType === 'direct_discount'
+                    ? 'Submit Review Verification'
+                    : submissionType === 'direct_discount'
+                    ? 'Submit Direct Discount'
+                    : 'Submit Video'}
                 </Button>
               </div>
             </motion.div>

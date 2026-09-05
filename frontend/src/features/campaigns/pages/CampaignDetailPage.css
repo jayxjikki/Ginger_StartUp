@@ -692,4 +692,283 @@
   margin: 2px 0 0;
 }
 
+/* ═══════════════════════════════════════════════════════════
+   SHINY GOLD DIRECT DISCOUNT MODAL STYLES
+   ═══════════════════════════════════════════════════════════ */
+
+.direct-discount-submit-modal {
+  max-width: 520px !important;
+  width: 95% !important;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-close-icon-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.modal-close-icon-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.05);
+}
+
+/* Shiny Gold Option Card */
+.type-option-card.gold-card {
+  position: relative;
+  background: 
+    radial-gradient(circle at 10% 20%, rgba(255, 235, 130, 0.14) 0%, transparent 45%),
+    radial-gradient(circle at 90% 80%, rgba(245, 158, 11, 0.12) 0%, transparent 50%),
+    linear-gradient(135deg, #1c180d 0%, #131109 50%, #19140b 100%) !important;
+  border: 1.5px solid rgba(255, 215, 0, 0.45) !important;
+  box-shadow: 
+    0 4px 18px -2px rgba(0, 0, 0, 0.6),
+    0 0 12px rgba(255, 215, 0, 0.12) !important;
+  overflow: hidden;
+}
+
+.type-option-card.gold-card:hover {
+  border-color: rgba(255, 215, 0, 0.75) !important;
+  box-shadow: 
+    0 4px 22px -2px rgba(0, 0, 0, 0.7),
+    0 0 18px rgba(255, 215, 0, 0.25) !important;
+}
+
+.type-option-card.gold-card.active {
+  border-color: #FFD700 !important;
+  background: 
+    radial-gradient(circle at 10% 20%, rgba(255, 235, 130, 0.22) 0%, transparent 45%),
+    radial-gradient(circle at 90% 80%, rgba(245, 158, 11, 0.18) 0%, transparent 50%),
+    linear-gradient(135deg, #241e10 0%, #16130b 50%, #201a0d 100%) !important;
+  box-shadow: 
+    0 4px 25px -2px rgba(0, 0, 0, 0.7),
+    0 0 22px rgba(255, 215, 0, 0.32),
+    inset 0 1px 1px rgba(255, 255, 255, 0.25) !important;
+}
+
+.type-option-card.gold-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1.5px;
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.6) 30%, rgba(255, 215, 0, 0.95) 50%, rgba(255, 255, 255, 0.6) 70%, transparent 100%);
+}
+
+.type-option-card.gold-card .type-radio-circle {
+  border-color: rgba(255, 215, 0, 0.5) !important;
+}
+
+.type-option-card.gold-card.active .type-radio-circle {
+  border-color: #FFD700 !important;
+}
+
+.gold-radio-inner {
+  background: linear-gradient(135deg, #FFF099 0%, #FFD700 100%) !important;
+  box-shadow: 0 0 8px rgba(255, 215, 0, 0.8) !important;
+}
+
+.gold-pill-shimmer {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #1a1300;
+  background: linear-gradient(135deg, #FFF59E 0%, #FFD700 50%, #F59E0B 100%);
+  padding: 2px 7px;
+  border-radius: 4px;
+  box-shadow: 0 1px 4px rgba(245, 158, 11, 0.4);
+}
+
+/* Sub-tiers selector */
+.direct-discount-subtiers-box {
+  background: rgba(255, 215, 0, 0.04);
+  border: 1px solid rgba(255, 215, 0, 0.22);
+  border-radius: 14px;
+  padding: 12px 14px;
+}
+
+.subtiers-options-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 8px;
+}
+
+.subtier-option-chip {
+  padding: 9px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.subtier-option-chip:hover {
+  background: rgba(255, 215, 0, 0.08);
+  border-color: rgba(255, 215, 0, 0.35);
+}
+
+.subtier-option-chip.active {
+  background: 
+    radial-gradient(circle at 10% 20%, rgba(255, 235, 130, 0.15) 0%, transparent 60%),
+    linear-gradient(135deg, #231c0e 0%, #16130b 100%);
+  border-color: #FFD700;
+  box-shadow: 0 0 12px rgba(255, 215, 0, 0.2);
+}
+
+.subtier-chip-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.subtier-chip-icon {
+  font-size: 14px;
+}
+
+.subtier-chip-term {
+  font-size: 12px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.subtier-chip-reward {
+  font-size: 12px;
+  font-weight: 800;
+  color: #FFDF00;
+}
+
+/* Visit media uploader */
+.visit-media-upload-container {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.visit-file-dropzone {
+  display: block;
+  border: 2px dashed rgba(255, 215, 0, 0.35);
+  border-radius: 12px;
+  background: rgba(255, 215, 0, 0.03);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.visit-file-dropzone:hover {
+  border-color: #FFD700;
+  background: rgba(255, 215, 0, 0.07);
+}
+
+.visit-media-preview-card {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  border-radius: 10px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.visit-preview-media {
+  width: 100%;
+  max-height: 180px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.visit-preview-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Review / Rate Us Action Box */
+.review-action-container {
+  background: 
+    radial-gradient(circle at 10% 20%, rgba(255, 235, 130, 0.08) 0%, transparent 60%),
+    rgba(255, 255, 255, 0.02);
+  border: 1.5px solid rgba(255, 215, 0, 0.35);
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.btn-open-review-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 18px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 800;
+  color: #1a1300;
+  background: linear-gradient(135deg, #FFF59E 0%, #FFD700 50%, #F59E0B 100%);
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(245, 158, 11, 0.35);
+  transition: all 0.25s ease;
+}
+
+.btn-open-review-link:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.5);
+}
+
+.btn-open-review-link.verified {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.35);
+}
+
+.review-verified-pill-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+}
+
+.verified-pill-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #10b981;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+}
+
+.review-unverified-hint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+
 

@@ -1525,6 +1525,34 @@
   box-shadow: 0 4px 16px rgba(52, 211, 153, 0.15);
 }
 
+.mode-switch-btn.highlight-reviews-gold {
+  position: relative;
+  background: 
+    radial-gradient(circle at 10% 20%, rgba(255, 235, 130, 0.12) 0%, transparent 50%),
+    linear-gradient(135deg, #1f1a0e 0%, #16130b 50%, #1a160d 100%);
+  border: 1px solid rgba(255, 215, 0, 0.35);
+  color: #ffdf00;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4), 0 0 10px rgba(255, 215, 0, 0.08);
+}
+
+.mode-switch-btn.highlight-reviews-gold:hover {
+  background: 
+    radial-gradient(circle at 10% 20%, rgba(255, 235, 130, 0.18) 0%, transparent 50%),
+    linear-gradient(135deg, #261f10 0%, #1b170c 50%, #201a0e 100%);
+  border-color: rgba(255, 215, 0, 0.65);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5), 0 0 16px rgba(255, 215, 0, 0.2);
+}
+
+.mode-switch-btn.highlight-reviews-gold.active {
+  background: 
+    radial-gradient(circle at 10% 20%, rgba(255, 235, 130, 0.25) 0%, transparent 50%),
+    radial-gradient(circle at 90% 80%, rgba(245, 158, 11, 0.2) 0%, transparent 50%),
+    linear-gradient(135deg, #2a2211 0%, #1a150a 50%, #221b0c 100%);
+  border-color: #ffd700;
+  color: #ffffff;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6), 0 0 18px rgba(255, 215, 0, 0.3);
+}
+
 .mode-pill-badge {
   display: inline-flex;
   align-items: center;
@@ -1545,6 +1573,18 @@
 .mode-switch-btn.highlight-discount.active .mode-pill-badge {
   background: rgba(52, 211, 153, 0.3);
   color: #34d399;
+}
+
+.mode-switch-btn.highlight-reviews-gold .mode-pill-badge.gold-badge {
+  background: rgba(255, 215, 0, 0.18);
+  color: #ffd700;
+  border: 1px solid rgba(255, 215, 0, 0.3);
+}
+
+.mode-switch-btn.highlight-reviews-gold.active .mode-pill-badge.gold-badge {
+  background: linear-gradient(135deg, #ffd700 0%, #f59e0b 100%);
+  color: #1a1300;
+  font-weight: 800;
 }
 
 /* Direct Discount Banner */
@@ -1631,6 +1671,118 @@
   background: rgba(52, 211, 153, 0.22);
   border-color: rgba(52, 211, 153, 0.45);
   color: #34d399;
+}
+
+/* ── Reviews Gold Banner ── */
+.reviews-gold-banner {
+  position: relative;
+  background: 
+    radial-gradient(circle at 10% 20%, rgba(255, 235, 130, 0.12) 0%, transparent 45%),
+    radial-gradient(circle at 90% 80%, rgba(245, 158, 11, 0.1) 0%, transparent 50%),
+    linear-gradient(135deg, #1c180d 0%, #141109 50%, #19140b 100%);
+  border: 1.5px solid rgba(255, 215, 0, 0.4);
+  border-radius: 16px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.5), 0 0 16px rgba(255, 215, 0, 0.12);
+  overflow: hidden;
+}
+
+.reviews-gold-banner::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1.5px;
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.5) 30%, rgba(255, 215, 0, 0.9) 50%, rgba(255, 255, 255, 0.5) 70%, transparent 100%);
+}
+
+.reviews-gold-banner-text h4 {
+  font-size: 15px;
+  font-weight: 800;
+  color: #ffdf00;
+  margin: 0 0 4px 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.reviews-gold-banner-text p {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+  margin: 0;
+  line-height: 1.4;
+  max-width: 560px;
+}
+
+.btn-open-verifier.gold-verifier-btn {
+  background: rgba(255, 215, 0, 0.15);
+  border-color: rgba(255, 215, 0, 0.4);
+  color: #ffd700;
+}
+
+.btn-open-verifier.gold-verifier-btn:hover {
+  background: rgba(255, 215, 0, 0.25);
+  border-color: #ffd700;
+}
+
+/* ── Review Submission Proof Thumbnail ── */
+.submission-thumb-box.review-proof-box {
+  background: 
+    radial-gradient(circle at 10% 20%, rgba(255, 235, 130, 0.12) 0%, transparent 50%),
+    linear-gradient(135deg, #1f1b0e 0%, #15130b 100%) !important;
+  border-bottom: 1.5px solid rgba(255, 215, 0, 0.25) !important;
+  cursor: pointer;
+}
+
+.submission-thumb-fallback.review-proof-thumb {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 16px;
+  gap: 4px;
+}
+
+.review-star-circle {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: rgba(255, 215, 0, 0.12);
+  border: 1.5px solid rgba(255, 215, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4px;
+  box-shadow: 0 0 16px rgba(255, 215, 0, 0.2);
+}
+
+.review-target-tag {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: #ffdf00;
+  text-transform: uppercase;
+}
+
+.review-click-hint {
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: rgba(255, 215, 0, 0.1);
+  border: 1px solid rgba(255, 215, 0, 0.25);
+  transition: all 0.2s ease;
+}
+
+.review-click-hint:hover {
+  background: rgba(255, 215, 0, 0.2);
+  color: #ffffff;
 }
 
 
