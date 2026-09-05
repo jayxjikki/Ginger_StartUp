@@ -6,6 +6,7 @@ import { create } from 'zustand';
 import type { Campaign, CampaignFilters, Submission, SlideshowItem } from '../types/campaign.types';
 import { supabase } from '../lib/supabase';
 import { generateVoucherCode } from '../utils/voucherHelpers';
+import toast from 'react-hot-toast';
 
 interface CampaignState {
   campaigns: Campaign[];
@@ -36,6 +37,13 @@ interface CampaignState {
   flagSubmissionByAdvertiser: (submissionId: string) => Promise<void>;
   approveSubmissionByAdvertiser: (submissionId: string) => Promise<void>;
   approveDirectDiscountSubmission: (submissionId: string, customDiscount?: number) => Promise<string>;
+  sendBillToCreator: (submissionId: string, billData: {
+    bill_amount: number;
+    discount_percent: number;
+    discount_amount: number;
+    final_payable: number;
+    note?: string;
+  }) => Promise<boolean>;
   submitCampaignToAdmin: (campaignId: string) => Promise<void>;
   
   // Realtime Subscriptions
@@ -486,6 +494,123 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
     } catch (error) {
       console.error('Error approving direct discount submission:', error);
       throw error;
+    }
+  },
+
+  sendBillToCreator: async (submissionId: string, billData: {
+    bill_amount: number;
+    discount_percent: number;
+    discount_amount: number;
+    final_payable: number;
+    note?: string;
+  }) => {
+    try {
+      // 1. Fetch submission details
+      const { data: sub, error: subErr } = await supabase
+        .from('submissions')
+        .select(`
+          id,
+          campaign_id,
+          creator_id,
+          voucher_code,
+          discount_percent,
+          voucher_details,
+          creator:profiles!submissions_creator_id_fkey(username, full_name),
+          campaign:campaigns!submissions_campaign_id_fkey(id, title, advertiser_id)
+        `)
+        .eq('id', submissionId)
+        .single();
+
+      if (subErr || !sub) {
+        throw new Error('Submission record not found');
+      }
+
+      const now = new Date().toISOString();
+      const updatedVoucherDetails = {
+        ...(sub.voucher_details || {}),
+        bill_amount: billData.bill_amount,
+        discount_percent: billData.discount_percent,
+        discount_amount: billData.discount_amount,
+        final_payable: billData.final_payable,
+        note: billData.note || null,
+        billed_at: now,
+        status: 'billed',
+      };
+
+      // 2. Update submission in database
+      const { error: updateErr } = await supabase
+        .from('submissions')
+        .update({
+          voucher_details: updatedVoucherDetails,
+          earned_amount: billData.discount_amount,
+        })
+        .eq('id', submissionId);
+
+      if (updateErr) {
+        console.warn('Error saving voucher_details to submissions:', updateErr);
+      }
+
+      const campaignTitle = (sub.campaign as any)?.title || 'Campaign';
+      const creatorUsername = (sub.creator as any)?.username || (sub.creator as any)?.full_name || 'creator';
+      const ownerId = (sub.campaign as any)?.advertiser_id;
+
+      // 3. Send notification to user (creator)
+      if (sub.creator_id) {
+        const creatorContent = `🧾 Bill Received from "${campaignTitle}"! Original Bill: ₹${billData.bill_amount.toLocaleString()} | Discount: ${billData.discount_percent}% (-₹${billData.discount_amount.toLocaleString()}) | Final Amount to Pay: ₹${billData.final_payable.toLocaleString()}${billData.note ? ` (${billData.note})` : ''}`;
+
+        await supabase.from('notifications').insert({
+          user_id: sub.creator_id,
+          actor_id: ownerId || null,
+          type: 'system',
+          entity_id: sub.campaign_id,
+          content: creatorContent,
+        });
+      }
+
+      // 4. Send notification to campaign owner
+      if (ownerId) {
+        const ownerContent = `🧾 Bill Sent to @${creatorUsername} for "${campaignTitle}": Original: ₹${billData.bill_amount.toLocaleString()} | Discount: ${billData.discount_percent}% (-₹${billData.discount_amount.toLocaleString()}) | Final Amount to Pay: ₹${billData.final_payable.toLocaleString()}`;
+
+        await supabase.from('notifications').insert({
+          user_id: ownerId,
+          actor_id: sub.creator_id || null,
+          type: 'system',
+          entity_id: sub.campaign_id,
+          content: ownerContent,
+        });
+      }
+
+      // 5. Update local Zustand state
+      set((state) => ({
+        myCreatedCampaigns: state.myCreatedCampaigns.map((c) => ({
+          ...c,
+          submissions: ((c.submissions as any[]) || []).map((s) =>
+            s.id === submissionId
+              ? {
+                  ...s,
+                  voucher_details: updatedVoucherDetails,
+                  earned_amount: billData.discount_amount,
+                }
+              : s
+          ),
+        })),
+        mySubmissions: state.mySubmissions.map((s) =>
+          s.id === submissionId
+            ? {
+                ...s,
+                voucher_details: updatedVoucherDetails,
+                earned_amount: billData.discount_amount,
+              }
+            : s
+        ),
+      }));
+
+      toast.success(`🧾 Bill sent to @${creatorUsername}! Payable: ₹${billData.final_payable.toLocaleString()}`);
+      return true;
+    } catch (error: any) {
+      console.error('Error sending bill:', error);
+      toast.error(error.message || 'Failed to send bill');
+      return false;
     }
   },
 

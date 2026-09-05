@@ -27,6 +27,7 @@ import { getVideoThumbnail } from '../../../utils/videoHelpers';
 import SubmissionVideoModal from '../components/SubmissionVideoModal';
 import DiscountCalculator from '../../../components/ui/DiscountCalculator';
 import VoucherVerifierModal from '../../../components/ui/VoucherVerifierModal';
+import SendBillModal from '../components/SendBillModal';
 import CampaignCountdownTimer from '../../../components/ui/CampaignCountdownTimer';
 import { isDirectDiscountSubmission, normalizeSubmission } from '../../../utils/submissionHelpers';
 import toast from 'react-hot-toast';
@@ -44,6 +45,7 @@ const ManageCampaignDetailPage: React.FC = () => {
     flagSubmissionByAdvertiser,
     approveSubmissionByAdvertiser,
     approveDirectDiscountSubmission,
+    sendBillToCreator,
     isLoading: storeLoading,
   } = useCampaignStore();
   const { showAlert, showConfirm } = useGlobalModalStore();
@@ -55,6 +57,8 @@ const ManageCampaignDetailPage: React.FC = () => {
   const [selectedSubmissionId, setSelectedSubmissionId] = useState<string | null>(null);
   const [isVerifierModalOpen, setIsVerifierModalOpen] = useState(false);
   const [verifierInitialCode, setVerifierInitialCode] = useState('');
+  const [isSendBillModalOpen, setIsSendBillModalOpen] = useState(false);
+  const [selectedBillSubmission, setSelectedBillSubmission] = useState<any | null>(null);
   const [showTopCalculator, setShowTopCalculator] = useState(false);
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
 
@@ -730,12 +734,44 @@ const ManageCampaignDetailPage: React.FC = () => {
                                 <FiCopy size={13} />
                               </button>
                             </div>
-                            <div className="voucher-status-wrapper">
-                              <Badge variant={sub.voucher_status === 'redeemed' ? 'warning' : 'success'} size="sm">
-                                {sub.voucher_status === 'redeemed' ? 'REDEEMED' : 'ACTIVE'}
-                              </Badge>
+                            <div className="voucher-actions-wrapper">
+                              {/* Shining Red Send Bill Button for Direct Discount Videos */}
+                              <button
+                                type="button"
+                                className="btn-send-bill-shining"
+                                onClick={() => {
+                                  setSelectedBillSubmission(sub);
+                                  setIsSendBillModalOpen(true);
+                                }}
+                                title="Send bill to customer with pre-set discount"
+                              >
+                                <span className="shimmer-sweep-red" />
+                                <span className="btn-bill-icon">🧾</span>
+                                <span>
+                                  {sub.voucher_details?.bill_amount
+                                    ? `Bill: ₹${Number(sub.voucher_details.final_payable).toLocaleString()}`
+                                    : 'Send Bill'}
+                                </span>
+                              </button>
                             </div>
                           </div>
+
+                          {/* Quick summary of sent bill if already billed */}
+                          {sub.voucher_details?.bill_amount && (
+                            <div className="submission-billed-summary">
+                              <div className="billed-summary-row">
+                                <span className="text-secondary text-xs">
+                                  Original: ₹{Number(sub.voucher_details.bill_amount).toLocaleString()}
+                                </span>
+                                <span className="text-emerald-400 text-xs font-bold">
+                                  -{sub.voucher_details.discount_percent}% Discount (-₹{Number(sub.voucher_details.discount_amount).toLocaleString()})
+                                </span>
+                                <span className="text-white text-xs font-extrabold">
+                                  Payable: ₹{Number(sub.voucher_details.final_payable).toLocaleString()}
+                                </span>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       )}
 
@@ -812,6 +848,24 @@ const ManageCampaignDetailPage: React.FC = () => {
         isOpen={isVerifierModalOpen}
         onClose={() => setIsVerifierModalOpen(false)}
         initialCode={verifierInitialCode}
+      />
+
+      {/* Send Bill Modal for Direct Discount Videos */}
+      <SendBillModal
+        isOpen={isSendBillModalOpen}
+        onClose={() => {
+          setIsSendBillModalOpen(false);
+          setSelectedBillSubmission(null);
+        }}
+        submission={selectedBillSubmission}
+        campaign={campaign}
+        onSendBill={async (submissionId, billData) => {
+          const success = await sendBillToCreator(submissionId, billData);
+          if (success) {
+            fetchCampaignData();
+          }
+          return success;
+        }}
       />
     </div>
   );

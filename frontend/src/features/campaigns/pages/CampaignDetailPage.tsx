@@ -795,6 +795,32 @@ const CampaignDetailPage: React.FC = () => {
                           Present this code at the store / checkout to receive your discount or perk!
                         </p>
 
+                        {/* Bill Summary from Owner if issued */}
+                        {userSubmission.voucher_details?.bill_amount && (
+                          <div className="creator-bill-receipt-card">
+                            <div className="receipt-header">
+                              <span className="receipt-title">🧾 Bill Summary from Owner</span>
+                              <span className="receipt-badge">ISSUED</span>
+                            </div>
+                            <div className="receipt-row">
+                              <span className="receipt-label">Original Bill:</span>
+                              <span className="receipt-val">₹{Number(userSubmission.voucher_details.bill_amount).toLocaleString()}</span>
+                            </div>
+                            <div className="receipt-row discount-highlight">
+                              <span className="receipt-label">Discount Applied ({userSubmission.voucher_details.discount_percent}%):</span>
+                              <span className="receipt-val">-₹{Number(userSubmission.voucher_details.discount_amount).toLocaleString()}</span>
+                            </div>
+                            <div className="receipt-divider" />
+                            <div className="receipt-row total-highlight">
+                              <span className="receipt-label-total">Final Amount You Pay:</span>
+                              <span className="receipt-val-total">₹{Number(userSubmission.voucher_details.final_payable).toLocaleString()}</span>
+                            </div>
+                            {userSubmission.voucher_details.note && (
+                              <p className="receipt-note">"{userSubmission.voucher_details.note}"</p>
+                            )}
+                          </div>
+                        )}
+
                         {/* Quick Discount Calculator with locked discount pre-set by owner! */}
                         <div className="mt-1 pt-1 border-t border-white/5">
                           <DiscountCalculator

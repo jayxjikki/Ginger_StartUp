@@ -1737,6 +1737,91 @@
   width: 100%;
 }
 
+/* ── Shining Red Send Bill Button for Owner ── */
+.voucher-actions-wrapper {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.btn-send-bill-shining {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #ffffff;
+  background: linear-gradient(135deg, #ff2e4d 0%, #e11d48 50%, #b91c1c 100%);
+  border: 1.5px solid rgba(255, 170, 185, 0.5);
+  border-radius: 9999px;
+  cursor: pointer;
+  overflow: hidden;
+  box-shadow: 
+    0 0 16px rgba(225, 29, 72, 0.6),
+    0 2px 8px rgba(0, 0, 0, 0.4),
+    inset 0 1px 1px rgba(255, 255, 255, 0.45);
+  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  white-space: nowrap;
+}
+
+.btn-send-bill-shining:hover {
+  transform: translateY(-1px) scale(1.05);
+  background: linear-gradient(135deg, #ff435f 0%, #f43f5e 50%, #be123c 100%);
+  box-shadow: 
+    0 0 24px rgba(244, 63, 94, 0.85),
+    0 4px 14px rgba(0, 0, 0, 0.55),
+    inset 0 1px 2px rgba(255, 255, 255, 0.7);
+  border-color: rgba(255, 220, 230, 0.8);
+}
+
+.btn-send-bill-shining:active {
+  transform: translateY(1px) scale(0.96);
+}
+
+.shimmer-sweep-red {
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.45), transparent);
+  transform: skewX(-20deg);
+  animation: redShimmerSweep 2.2s infinite;
+  pointer-events: none;
+}
+
+@keyframes redShimmerSweep {
+  0% { left: -100%; }
+  40%, 100% { left: 180%; }
+}
+
+.btn-bill-icon {
+  font-size: 13px;
+}
+
+/* ── Submission Billed Summary Box ── */
+.submission-billed-summary {
+  margin-top: 6px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(244, 63, 94, 0.25);
+}
+
+.billed-summary-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+
 
 
 
