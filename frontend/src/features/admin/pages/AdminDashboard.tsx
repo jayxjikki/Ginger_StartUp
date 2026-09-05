@@ -8,7 +8,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FiUsers, FiVideo, FiDollarSign, FiImage, FiTarget, 
   FiTrash2, FiCheckCircle, FiXCircle, FiSlash, FiMenu,
-  FiPlay, FiEye, FiCheck, FiRotateCcw, FiExternalLink
+  FiPlay, FiEye, FiCheck, FiRotateCcw, FiExternalLink,
+  FiSearch
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { useAdminStore } from '../../../store/adminStore';
@@ -52,6 +53,8 @@ const AdminDashboard: React.FC = () => {
   const [isSlideModalOpen, setIsSlideModalOpen] = useState(false);
   const [selectedSubmissionForModal, setSelectedSubmissionForModal] = useState<any | null>(null);
   const [subFilter, setSubFilter] = useState<'all' | 'needs_admin' | 'pending' | 'flagged' | 'paid' | 'rejected'>('all');
+  const [typeFilter, setTypeFilter] = useState<'all' | 'video' | 'review' | 'photo' | 'post_link'>('all');
+  const [searchQuery, setSearchQuery] = useState<string>('');
   const [slideForm, setSlideForm] = useState({
     title: '', subtitle: '', image_url: '', badge_text: '', badge_icon: 'star', theme_color: 'red', link_url: ''
   });
@@ -300,6 +303,30 @@ const AdminDashboard: React.FC = () => {
     </motion.div>
   );
 
+  const getSubmissionTypeCategory = (s: any): 'review' | 'photo' | 'post_link' | 'video' => {
+    if (isReviewSubmission(s)) return 'review';
+    const url = (s.video_url || '').toLowerCase();
+    if (
+      /\.(jpg|jpeg|png|webp|gif|svg)(\?.*)?$/i.test(url) ||
+      (url.includes('cloudinary.com') && url.includes('/image/upload/'))
+    ) {
+      return 'photo';
+    }
+    if (
+      url.includes('instagram.com/p/') ||
+      url.includes('instagram.com/stories/') ||
+      url.includes('instagram.com/reel/') ||
+      url.includes('tiktok.com/@') ||
+      url.includes('twitter.com') ||
+      url.includes('x.com') ||
+      url.includes('facebook.com') ||
+      url.includes('threads.net')
+    ) {
+      return 'post_link';
+    }
+    return 'video';
+  };
+
   const renderSubmissions = () => {
     const counts = {
       all: submissions.length,
@@ -310,93 +337,221 @@ const AdminDashboard: React.FC = () => {
       rejected: submissions.filter(s => s.status === 'rejected').length,
     };
 
+    const typeCounts = {
+      all: submissions.length,
+      video: submissions.filter(s => getSubmissionTypeCategory(s) === 'video').length,
+      review: submissions.filter(s => getSubmissionTypeCategory(s) === 'review').length,
+      photo: submissions.filter(s => getSubmissionTypeCategory(s) === 'photo').length,
+      post_link: submissions.filter(s => getSubmissionTypeCategory(s) === 'post_link').length,
+    };
+
     const filtered = submissions.filter(s => {
-      if (subFilter === 'needs_admin') return s.status === 'verified';
-      if (subFilter === 'pending') return s.status === 'pending';
-      if (subFilter === 'flagged') return s.status === 'flagged';
-      if (subFilter === 'paid') return s.status === 'paid';
-      if (subFilter === 'rejected') return s.status === 'rejected';
+      // 1. Status Filter
+      if (subFilter === 'needs_admin' && s.status !== 'verified') return false;
+      if (subFilter === 'pending' && s.status !== 'pending') return false;
+      if (subFilter === 'flagged' && s.status !== 'flagged') return false;
+      if (subFilter === 'paid' && s.status !== 'paid') return false;
+      if (subFilter === 'rejected' && s.status !== 'rejected') return false;
+
+      // 2. Type Filter
+      const sType = getSubmissionTypeCategory(s);
+      if (typeFilter !== 'all' && sType !== typeFilter) return false;
+
+      // 3. Search Query
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        const creatorName = (s.creator?.full_name || '').toLowerCase();
+        const username = (s.creator?.username || '').toLowerCase();
+        const campaignTitle = (s.campaign?.title || '').toLowerCase();
+        const voucher = (s.voucher_code || '').toLowerCase();
+        const url = (s.video_url || '').toLowerCase();
+        const rewardMsg = (s.voucher_details?.custom_message || s.voucher_details?.reward_text || '').toLowerCase();
+        if (
+          !creatorName.includes(q) &&
+          !username.includes(q) &&
+          !campaignTitle.includes(q) &&
+          !voucher.includes(q) &&
+          !url.includes(q) &&
+          !rewardMsg.includes(q)
+        ) {
+          return false;
+        }
+      }
+
       return true;
     });
 
     return (
       <motion.div variants={listVariants} initial="hidden" animate="show" className="admin-submissions-section">
-        {/* Submissions Filter Pills */}
-        <div className="admin-sub-filters">
-          <button
-            type="button"
-            className={`sub-filter-pill ${subFilter === 'all' ? 'active' : ''}`}
-            onClick={() => setSubFilter('all')}
-          >
-            <span>All Submissions</span>
-            <span className="pill-count">{counts.all}</span>
-          </button>
+        {/* Submissions Control Header */}
+        <div className="admin-submissions-header-bar">
+          <div className="admin-toolbar-top flex items-center justify-between gap-3 flex-wrap">
+            <div>
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                <span>Submissions Management</span>
+                <span className="admin-count-badge">{filtered.length} of {submissions.length}</span>
+              </h2>
+              <p className="text-xs text-secondary mt-0.5">
+                Review, approve, and manage all creator submissions across campaigns. Admin can view and delete any submission.
+              </p>
+            </div>
 
-          <button
-            type="button"
-            className={`sub-filter-pill highlight-needs-admin ${subFilter === 'needs_admin' ? 'active' : ''}`}
-            onClick={() => setSubFilter('needs_admin')}
-          >
-            <span className="pulsing-dot-accent" />
-            <span>Needs Final Call (Owner Approved)</span>
-            <span className="pill-count count-highlight">{counts.needs_admin}</span>
-          </button>
+            {/* Quick Search */}
+            <div className="admin-search-wrapper">
+              <FiSearch className="admin-search-icon" size={15} />
+              <input
+                type="text"
+                className="admin-search-input"
+                placeholder="Search creator, campaign, or voucher..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  className="admin-search-clear"
+                  onClick={() => setSearchQuery('')}
+                  title="Clear search"
+                >
+                  <FiXCircle size={14} />
+                </button>
+              )}
+            </div>
+          </div>
 
-          <button
-            type="button"
-            className={`sub-filter-pill ${subFilter === 'pending' ? 'active' : ''}`}
-            onClick={() => setSubFilter('pending')}
-          >
-            <span>Pending Owner Review</span>
-            <span className="pill-count">{counts.pending}</span>
-          </button>
+          {/* Type Filter Tabs: All, Videos, Reviews, Photos, Posts/Links */}
+          <div className="admin-filter-row">
+            <span className="filter-row-label">TYPE:</span>
+            <div className="admin-type-filters">
+              <button
+                type="button"
+                className={`type-filter-pill ${typeFilter === 'all' ? 'active' : ''}`}
+                onClick={() => setTypeFilter('all')}
+              >
+                <span>All Types</span>
+                <span className="pill-count">{typeCounts.all}</span>
+              </button>
 
-          <button
-            type="button"
-            className={`sub-filter-pill highlight-flagged ${subFilter === 'flagged' ? 'active' : ''}`}
-            onClick={() => setSubFilter('flagged')}
-          >
-            <span>🚩 Flagged by Owner</span>
-            <span className="pill-count">{counts.flagged}</span>
-          </button>
+              <button
+                type="button"
+                className={`type-filter-pill ${typeFilter === 'video' ? 'active' : ''}`}
+                onClick={() => setTypeFilter('video')}
+              >
+                <span>🎬 Videos</span>
+                <span className="pill-count">{typeCounts.video}</span>
+              </button>
 
-          <button
-            type="button"
-            className={`sub-filter-pill ${subFilter === 'paid' ? 'active' : ''}`}
-            onClick={() => setSubFilter('paid')}
-          >
-            <span>Approved & Paid</span>
-            <span className="pill-count">{counts.paid}</span>
-          </button>
+              <button
+                type="button"
+                className={`type-filter-pill highlight-review ${typeFilter === 'review' ? 'active' : ''}`}
+                onClick={() => setTypeFilter('review')}
+              >
+                <span>⭐ Reviews</span>
+                <span className="pill-count">{typeCounts.review}</span>
+              </button>
 
-          <button
-            type="button"
-            className={`sub-filter-pill ${subFilter === 'rejected' ? 'active' : ''}`}
-            onClick={() => setSubFilter('rejected')}
-          >
-            <span>Rejected</span>
-            <span className="pill-count">{counts.rejected}</span>
-          </button>
+              <button
+                type="button"
+                className={`type-filter-pill ${typeFilter === 'photo' ? 'active' : ''}`}
+                onClick={() => setTypeFilter('photo')}
+              >
+                <span>📸 Photos / Proofs</span>
+                <span className="pill-count">{typeCounts.photo}</span>
+              </button>
+
+              <button
+                type="button"
+                className={`type-filter-pill ${typeFilter === 'post_link' ? 'active' : ''}`}
+                onClick={() => setTypeFilter('post_link')}
+              >
+                <span>📱 Posts & Links</span>
+                <span className="pill-count">{typeCounts.post_link}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Status Filter Pills */}
+          <div className="admin-filter-row">
+            <span className="filter-row-label">STATUS:</span>
+            <div className="admin-sub-filters">
+              <button
+                type="button"
+                className={`sub-filter-pill ${subFilter === 'all' ? 'active' : ''}`}
+                onClick={() => setSubFilter('all')}
+              >
+                <span>All Statuses</span>
+                <span className="pill-count">{counts.all}</span>
+              </button>
+
+              <button
+                type="button"
+                className={`sub-filter-pill highlight-needs-admin ${subFilter === 'needs_admin' ? 'active' : ''}`}
+                onClick={() => setSubFilter('needs_admin')}
+              >
+                <span className="pulsing-dot-accent" />
+                <span>Needs Final Call</span>
+                <span className="pill-count count-highlight">{counts.needs_admin}</span>
+              </button>
+
+              <button
+                type="button"
+                className={`sub-filter-pill ${subFilter === 'pending' ? 'active' : ''}`}
+                onClick={() => setSubFilter('pending')}
+              >
+                <span>Pending Review</span>
+                <span className="pill-count">{counts.pending}</span>
+              </button>
+
+              <button
+                type="button"
+                className={`sub-filter-pill highlight-flagged ${subFilter === 'flagged' ? 'active' : ''}`}
+                onClick={() => setSubFilter('flagged')}
+              >
+                <span>🚩 Flagged</span>
+                <span className="pill-count">{counts.flagged}</span>
+              </button>
+
+              <button
+                type="button"
+                className={`sub-filter-pill ${subFilter === 'paid' ? 'active' : ''}`}
+                onClick={() => setSubFilter('paid')}
+              >
+                <span>Approved & Paid</span>
+                <span className="pill-count">{counts.paid}</span>
+              </button>
+
+              <button
+                type="button"
+                className={`sub-filter-pill ${subFilter === 'rejected' ? 'active' : ''}`}
+                onClick={() => setSubFilter('rejected')}
+              >
+                <span>Rejected</span>
+                <span className="pill-count">{counts.rejected}</span>
+              </button>
+            </div>
+          </div>
         </div>
 
-        {/* Table Container */}
+        {/* Table Container with Sticky Actions */}
         <div className="admin-table-container">
           <table className="admin-table">
             <thead>
               <tr>
-                <th>Content / Media</th>
-                <th>Creator</th>
-                <th>Campaign</th>
-                <th>Type & Perk</th>
-                <th>Views & Earned</th>
-                <th>Status</th>
-                <th>Actions</th>
+                <th style={{ width: '80px' }}>Media</th>
+                <th style={{ width: '160px' }}>Creator</th>
+                <th style={{ width: '180px' }}>Campaign</th>
+                <th style={{ width: '170px' }}>Type & Reward</th>
+                <th style={{ width: '110px' }}>Views & Earned</th>
+                <th style={{ width: '160px' }}>Status</th>
+                <th className="admin-sticky-actions-header" style={{ width: '220px', minWidth: '220px' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {filtered.map(s => {
-                const isReview = isReviewSubmission(s);
-                const isImage = !isReview && (/\.(jpg|jpeg|png|webp|gif|svg)(\?.*)?$/i.test(s.video_url || '') || (s.video_url?.includes('cloudinary.com') && s.video_url?.includes('/image/upload/')));
+                const sType = getSubmissionTypeCategory(s);
+                const isReview = sType === 'review';
+                const isPhoto = sType === 'photo';
+                const isPostLink = sType === 'post_link';
                 const platform = s.platform || 'video';
                 const platformIcon = getSocialIcon(platform);
                 const thumbUrl = getVideoThumbnail(s.video_url, platform);
@@ -416,29 +571,20 @@ const AdminDashboard: React.FC = () => {
                               setSelectedSubmissionForModal(s);
                             }
                           }}
-                          title="Click to view review page"
-                          style={{
-                            background: 'linear-gradient(135deg, rgba(255, 215, 0, 0.15) 0%, rgba(245, 158, 11, 0.25) 100%)',
-                            borderColor: 'rgba(255, 215, 0, 0.35)',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '2px'
-                          }}
+                          title="Click to open review"
                         >
-                          <span style={{ fontSize: '18px', lineHeight: 1 }}>⭐</span>
+                          <span style={{ fontSize: '16px', lineHeight: 1 }}>⭐</span>
                           <span style={{ fontSize: '9px', fontWeight: 800, color: '#ffd700', textTransform: 'uppercase' }}>Review</span>
                         </div>
-                      ) : isImage ? (
+                      ) : isPhoto ? (
                         <div 
                           className="admin-video-thumb-box"
                           onClick={() => setSelectedSubmissionForModal(s)}
-                          title="Click to view full image proof"
+                          title="Click to view image proof"
                         >
                           <img 
                             src={s.video_url} 
-                            alt="Submitted image proof" 
+                            alt="Photo proof" 
                             className="admin-thumb-img"
                             onError={(e) => {
                               (e.target as HTMLImageElement).src = '/images/brand/logo.png';
@@ -452,7 +598,7 @@ const AdminDashboard: React.FC = () => {
                         <div 
                           className="admin-video-thumb-box"
                           onClick={() => setSelectedSubmissionForModal(s)}
-                          title="Click to view / play submission"
+                          title="Click to view video / post"
                         >
                           <img 
                             src={thumbUrl || '/images/brand/logo.png'} 
@@ -463,14 +609,14 @@ const AdminDashboard: React.FC = () => {
                             }}
                           />
                           <div className="admin-thumb-play-overlay">
-                            <FiPlay size={14} />
+                            {isPostLink ? <FiExternalLink size={14} /> : <FiPlay size={14} />}
                           </div>
                           {platformIcon && (
                             <div className="admin-thumb-platform-tag">
                               <img 
                                 src={platformIcon} 
                                 alt={platform} 
-                                style={{ width: 12, height: 12, minWidth: 12, maxWidth: 12, objectFit: 'contain' }} 
+                                style={{ width: 11, height: 11, objectFit: 'contain' }} 
                               />
                             </div>
                           )}
@@ -505,18 +651,20 @@ const AdminDashboard: React.FC = () => {
 
                     {/* Submission Type & Perk */}
                     <td>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', alignItems: 'flex-start' }}>
                         {isReview ? (
                           <Badge variant="warning" size="sm">⭐ Review / Rate Us</Badge>
+                        ) : isPhoto ? (
+                          <Badge variant="accent" size="sm">📸 Photo Proof</Badge>
+                        ) : isPostLink ? (
+                          <Badge variant="default" size="sm">📱 Post / Story</Badge>
                         ) : isDirectDiscountSubmission(s) ? (
                           <Badge variant="warning" size="sm">🏷️ Direct Discount</Badge>
-                        ) : isImage ? (
-                          <Badge variant="accent" size="sm">📸 Visit / Raw Media</Badge>
                         ) : (
-                          <Badge variant="accent" size="sm">🏆 All Rewards</Badge>
+                          <Badge variant="accent" size="sm">🏆 Video Reward</Badge>
                         )}
                         {s.voucher_details?.reward_text ? (
-                          <span style={{ fontSize: '11px', color: 'rgba(255, 255, 255, 0.7)', fontWeight: 600 }}>
+                          <span style={{ fontSize: '11px', color: 'rgba(255, 255, 255, 0.75)', fontWeight: 600 }}>
                             🎁 {s.voucher_details.reward_text}
                           </span>
                         ) : s.voucher_details?.custom_message ? (
@@ -550,14 +698,14 @@ const AdminDashboard: React.FC = () => {
                     <td>
                       {s.status === 'verified' ? (
                         <Badge variant="success" size="sm">
-                          <span className="pulsing-dot-inline" /> Owner Approved (Needs Admin)
+                          <span className="pulsing-dot-inline" /> Owner Approved
                         </Badge>
                       ) : s.status === 'paid' ? (
                         <Badge variant="accent" size="sm">Admin Approved & Paid</Badge>
                       ) : s.status === 'pending' ? (
-                        <Badge variant="warning" size="sm">Pending Owner Review</Badge>
+                        <Badge variant="warning" size="sm">Pending Owner</Badge>
                       ) : s.status === 'flagged' ? (
-                        <Badge variant="error" size="sm">🚩 Flagged by Owner</Badge>
+                        <Badge variant="error" size="sm">🚩 Flagged</Badge>
                       ) : s.status === 'rejected' ? (
                         <Badge variant="error" size="sm">Rejected</Badge>
                       ) : (
@@ -565,9 +713,10 @@ const AdminDashboard: React.FC = () => {
                       )}
                     </td>
 
-                    {/* Actions */}
-                    <td>
-                      <div className="action-buttons admin-submission-actions">
+                    {/* Sticky Actions Column */}
+                    <td className="admin-sticky-actions-cell">
+                      <div className="admin-submission-actions">
+                        {/* 1. Preview / Open button */}
                         <button 
                           className="btn-admin-preview"
                           onClick={() => {
@@ -577,51 +726,55 @@ const AdminDashboard: React.FC = () => {
                               setSelectedSubmissionForModal(s);
                             }
                           }}
-                          title={isReview ? 'Open Review Link' : isImage ? 'View Proof Image' : 'Watch Video'}
+                          title={isReview ? 'Open Review Link' : isPhoto ? 'View Proof Image' : 'Watch Video'}
                         >
-                          {isReview ? <FiExternalLink size={12} /> : isImage ? <FiEye size={12} /> : <FiPlay size={12} />}
-                          <span>{isReview ? 'Review' : isImage ? 'Proof' : 'Watch'}</span>
+                          {isReview ? <FiExternalLink size={12} /> : isPhoto ? <FiEye size={12} /> : <FiPlay size={12} />}
+                          <span>{isReview ? 'Review' : isPhoto ? 'Proof' : 'Watch'}</span>
                         </button>
 
+                        {/* 2. Approve (Final Call) button */}
                         {s.status !== 'paid' && (
                           <button 
                             className="btn-admin-approve"
                             onClick={() => handleApproveSubmission(s)}
                             title="Approve as Final Call"
                           >
-                            <FiCheck size={13} />
-                            <span>Approve (Final Call)</span>
+                            <FiCheck size={12} />
+                            <span>Approve</span>
                           </button>
                         )}
 
+                        {/* 3. Unflag button */}
                         {s.status === 'flagged' && (
                           <button
-                            className="icon-btn"
-                            style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24' }}
+                            className="icon-btn unflag"
+                            style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24', border: '1px solid rgba(245, 158, 11, 0.3)' }}
                             onClick={() => handleUnflagSubmission(s.id)}
                             title="Unflag submission (Restore to Pending)"
                           >
-                            <FiRotateCcw size={14} />
+                            <FiRotateCcw size={13} />
                           </button>
                         )}
 
+                        {/* 4. Reject button */}
                         {s.status !== 'rejected' && (
                           <button 
                             className="icon-btn reject"
                             onClick={() => handleRejectSubmission(s.id)}
                             title="Reject Submission"
                           >
-                            <FiXCircle size={15} />
+                            <FiXCircle size={14} />
                           </button>
                         )}
 
+                        {/* 5. Delete button for ANY submission */}
                         <button 
-                          className="icon-btn reject"
-                          style={{ background: 'rgba(239, 68, 68, 0.2)', color: '#ef4444' }}
+                          className="btn-admin-delete"
                           onClick={() => handleDeleteSubmission(s.id)}
                           title="Permanently Delete Submission from Database"
                         >
-                          <FiTrash2 size={14} />
+                          <FiTrash2 size={12} />
+                          <span>Delete</span>
                         </button>
                       </div>
                     </td>
@@ -632,7 +785,7 @@ const AdminDashboard: React.FC = () => {
               {filtered.length === 0 && (
                 <tr>
                   <td colSpan={7} className="empty-state">
-                    No submissions found in this category.
+                    No submissions found matching the selected filters.
                   </td>
                 </tr>
               )}
@@ -807,11 +960,11 @@ const AdminDashboard: React.FC = () => {
 
   const tabs = [
     { id: 'overview', label: 'Overview', icon: FiTarget },
-    { id: 'users', label: 'Users', icon: FiUsers },
-    { id: 'campaigns', label: 'Campaigns', icon: FiTarget },
-    { id: 'submissions', label: 'Submissions', icon: FiVideo },
-    { id: 'withdrawals', label: 'Payouts', icon: FiDollarSign },
-    { id: 'slideshows', label: 'Slideshows', icon: FiImage },
+    { id: 'users', label: 'Users', icon: FiUsers, badge: users.length },
+    { id: 'campaigns', label: 'Campaigns', icon: FiTarget, badge: campaigns.length, alert: campaigns.filter(c => c.status === 'paused').length },
+    { id: 'submissions', label: 'Submissions', icon: FiVideo, badge: submissions.length, alert: submissions.filter(s => s.status === 'verified').length },
+    { id: 'withdrawals', label: 'Payouts', icon: FiDollarSign, badge: withdrawals.filter(w => w.status === 'pending').length, alert: withdrawals.filter(w => w.status === 'pending').length },
+    { id: 'slideshows', label: 'Slideshows', icon: FiImage, badge: slideshows.length },
   ];
 
   return (
@@ -843,8 +996,15 @@ const AdminDashboard: React.FC = () => {
                 setIsMobileMenuOpen(false);
               }}
             >
-              <tab.icon className="tab-icon" />
-              <span>{tab.label}</span>
+              <div className="flex items-center gap-3">
+                <tab.icon className="tab-icon" />
+                <span>{tab.label}</span>
+              </div>
+              {tab.badge !== undefined && tab.badge > 0 && (
+                <span className={`admin-tab-badge ${tab.alert ? 'alert' : ''}`}>
+                  {tab.badge}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -911,6 +1071,7 @@ const AdminDashboard: React.FC = () => {
         onClose={() => setSelectedSubmissionForModal(null)}
         onApprove={() => handleApproveSubmission(selectedSubmissionForModal)}
         onReject={(id) => handleRejectSubmission(id)}
+        onDelete={(id) => handleDeleteSubmission(id)}
         isAdmin={true}
       />
     </div>

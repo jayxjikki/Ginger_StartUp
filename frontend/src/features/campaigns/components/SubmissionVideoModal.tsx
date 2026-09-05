@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiX, FiExternalLink, FiCheck, FiFlag, FiRotateCcw } from 'react-icons/fi';
+import { FiX, FiExternalLink, FiCheck, FiFlag, FiRotateCcw, FiTrash2 } from 'react-icons/fi';
 import Avatar from '../../../components/ui/Avatar';
 import { getSocialIcon } from '../../../utils/socialHelpers';
 import { getEmbedInfo, getVideoThumbnail } from '../../../utils/videoHelpers';
@@ -14,6 +14,7 @@ interface SubmissionVideoModalProps {
   onFlag?: (id: string) => void;
   onUnflag?: (id: string) => void;
   onReject?: (id: string) => void;
+  onDelete?: (id: string) => void;
   campaignStatus?: string;
   isAdmin?: boolean;
 }
@@ -26,6 +27,7 @@ const SubmissionVideoModal: React.FC<SubmissionVideoModalProps> = ({
   onFlag,
   onUnflag,
   onReject,
+  onDelete,
   campaignStatus = 'active',
   isAdmin = false,
 }) => {
@@ -213,6 +215,18 @@ const SubmissionVideoModal: React.FC<SubmissionVideoModalProps> = ({
                       >
                         <FiX size={16} />
                         <span>Reject Video</span>
+                      </button>
+                    )}
+
+                    {onDelete && (
+                      <button
+                        type="button"
+                        className="btn btn-outline flag-btn flex-1 flex items-center justify-center gap-2"
+                        style={{ borderColor: 'rgba(239, 68, 68, 0.6)', color: '#ef4444', background: 'rgba(239, 68, 68, 0.12)' }}
+                        onClick={() => onDelete(submission.id)}
+                      >
+                        <FiTrash2 size={16} />
+                        <span>Delete Submission</span>
                       </button>
                     )}
                   </>
