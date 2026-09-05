@@ -445,8 +445,8 @@
 }
 
 .tier-delete-btn {
-  background: none;
-  border: none;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.2);
   color: var(--error-400, #f87171);
   cursor: pointer;
   padding: 6px;
@@ -455,12 +455,20 @@
   align-items: center;
   justify-content: center;
   transition: all 0.15s ease;
-  opacity: 0.75;
+  opacity: 0.85;
+  flex-shrink: 0;
 }
 
 .tier-delete-btn:hover {
   opacity: 1;
-  background: rgba(239, 68, 68, 0.12);
+  background: rgba(239, 68, 68, 0.18);
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+.tier-mode-toggle-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
 }
 
 .tier-inputs-grid {

@@ -315,6 +315,11 @@ const CreateCampaignPage: React.FC = () => {
       }
     })();
 
+  // Check whether Cash Payout Tiers are used anywhere (determines if prize pool amount is compulsory)
+  const hasCashPayoutTiers = formData.cashTiers.some(
+    (t) => Boolean(t.minViews?.trim()) && Boolean(t.amount?.trim())
+  );
+
   // Direct Discount Tiers Handlers (1st Tier in Every Campaign, Max 4, non-repeating terms)
   const addDirectDiscountTier = () => {
     if (formData.directDiscountTiers.length >= 4) {
@@ -504,10 +509,20 @@ const CreateCampaignPage: React.FC = () => {
         return false;
       }
 
-      if (formData.type === 'pool') {
+      // Check for partially filled cash tiers
+      const partialCashTier = formData.cashTiers.find(
+        (t) => (t.minViews?.trim() && !t.amount?.trim()) || (!t.minViews?.trim() && t.amount?.trim())
+      );
+      if (partialCashTier) {
+        toast.error('Please fill both Min. Views and Payout for all cash tiers.');
+        return false;
+      }
+
+      // Only compulsory to fill prize pool amount if cash payout tier is used anywhere
+      if (hasCashPayoutTiers) {
         const poolVal = Number(formData.prizePool);
         if (!formData.prizePool || isNaN(poolVal) || poolVal <= 0) {
-          toast.error('Prize pool amount is compulsory for Prize Pool campaigns.');
+          toast.error('Prize pool amount is compulsory when cash payout tiers are used.');
           return false;
         }
       }
@@ -1094,13 +1109,13 @@ const CreateCampaignPage: React.FC = () => {
               <div className="form-fields">
                 {(formData.type === 'pool' || formData.type === 'hybrid') && (
                   <Input
-                    label={formData.type === 'hybrid' ? 'Prize Pool Amount (₹) (Optional)' : 'Prize Pool Amount (₹) *'}
+                    label={hasCashPayoutTiers ? 'Prize Pool Amount (₹) *' : 'Prize Pool Amount (₹) (Optional)'}
                     type="number"
                     min="0"
                     value={formData.prizePool}
                     onChange={(e) => updateField('prizePool', e.target.value)}
-                    placeholder={formData.type === 'hybrid' ? 'e.g., 50000 (Optional for hybrid)' : 'e.g., 100000'}
-                    required={formData.type === 'pool'}
+                    placeholder={hasCashPayoutTiers ? 'e.g., 50000 (Compulsory for cash payouts)' : 'e.g., 50000 (Optional)'}
+                    required={hasCashPayoutTiers}
                   />
                 )}
 
@@ -1150,12 +1165,9 @@ const CreateCampaignPage: React.FC = () => {
                     {formData.directDiscountTiers.map((tier, idx) => (
                       <div key={idx} className="tier-card gold-tier-card">
                         <div className="tier-card-header gold-tier-card-header">
-                          <div className="gold-card-title-group">
-                            <span className="tier-badge gold-tier-badge">
-                              ✨ Direct Discount Tier {idx + 1}
-                            </span>
-                            <span className="gold-instant-tag">Instant Action Perk</span>
-                          </div>
+                          <span className="tier-badge gold-tier-badge">
+                            ✨ Direct Discount Tier {idx + 1}
+                          </span>
                           <button
                             type="button"
                             className="tier-delete-btn gold-tier-delete-btn"
@@ -1481,25 +1493,7 @@ const CreateCampaignPage: React.FC = () => {
                           return (
                             <div key={idx} className="tier-card">
                               <div className="tier-card-header">
-                                <div className="tier-header-left">
-                                  <span className="tier-badge">Gift Tier {idx + 1}</span>
-                                  <div className="tier-mode-toggle">
-                                    <button
-                                      type="button"
-                                      className={`tier-mode-btn ${!isTextTier ? 'active' : ''}`}
-                                      onClick={() => updateGiftTier(idx, 'type', 'views')}
-                                    >
-                                      👁️ Views Milestone
-                                    </button>
-                                    <button
-                                      type="button"
-                                      className={`tier-mode-btn ${isTextTier ? 'active' : ''}`}
-                                      onClick={() => updateGiftTier(idx, 'type', 'text')}
-                                    >
-                                      📝 Custom Task (Text-Text)
-                                    </button>
-                                  </div>
-                                </div>
+                                <span className="tier-badge">Gift Tier {idx + 1}</span>
                                 <button
                                   type="button"
                                   className="tier-delete-btn"
@@ -1509,6 +1503,24 @@ const CreateCampaignPage: React.FC = () => {
                                 >
                                   <FiTrash2 size={15} />
                                 </button>
+                              </div>
+                              <div className="tier-mode-toggle-row">
+                                <div className="tier-mode-toggle">
+                                  <button
+                                    type="button"
+                                    className={`tier-mode-btn ${!isTextTier ? 'active' : ''}`}
+                                    onClick={() => updateGiftTier(idx, 'type', 'views')}
+                                  >
+                                    👁️ Views Milestone
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className={`tier-mode-btn ${isTextTier ? 'active' : ''}`}
+                                    onClick={() => updateGiftTier(idx, 'type', 'text')}
+                                  >
+                                    📝 Custom Task (Text-Text)
+                                  </button>
+                                </div>
                               </div>
                               <div className="tier-inputs-grid">
                                 {!isTextTier ? (
