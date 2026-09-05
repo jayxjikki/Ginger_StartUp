@@ -1122,9 +1122,6 @@ const CampaignDetailPage: React.FC = () => {
               <div className="flex items-start justify-between">
                 <div>
                   <h3 className="text-lg font-bold text-white">Submit to Campaign</h3>
-                  <p className="text-xs text-secondary mt-1">
-                    Select your submission type to claim rewards or instant direct discounts.
-                  </p>
                 </div>
                 <button
                   type="button"
@@ -1175,7 +1172,6 @@ const CampaignDetailPage: React.FC = () => {
                         <div className="font-bold text-sm text-white flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <span>🏷️ Direct Discount</span>
-                            <span className="gold-pill-shimmer">✨ Shiny Perk</span>
                           </div>
                           <Badge variant="warning" size="sm">{directDiscountTiers.length} Options</Badge>
                         </div>
@@ -1251,10 +1247,6 @@ const CampaignDetailPage: React.FC = () => {
                       onChange={(e) => setVideoUrl(e.target.value)}
                       id="input-direct-video-url"
                     />
-                    <p className="text-[11px] text-tertiary mt-1.5 flex items-center gap-1.5">
-                      <FiAlertCircle size={12} className="text-amber-400 shrink-0" />
-                      <span>Submit your published video link to receive your {activeDirectTier?.reward} discount.</span>
-                    </p>
                   </div>
                 ) : isVisitAction ? (
                   <div className="visit-media-upload-container">
@@ -1325,10 +1317,6 @@ const CampaignDetailPage: React.FC = () => {
                       onChange={(e) => setStoryUrl(e.target.value)}
                       id="input-story-url"
                     />
-                    <p className="text-[11px] text-tertiary mt-1.5 flex items-center gap-1.5">
-                      <FiAlertCircle size={12} className="text-amber-400 shrink-0" />
-                      <span>Enter the direct link to your published story or highlight.</span>
-                    </p>
                   </div>
                 ) : isReviewAction ? (
                   <div className="review-action-container">
