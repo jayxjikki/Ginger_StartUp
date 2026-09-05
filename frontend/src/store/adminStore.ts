@@ -40,6 +40,11 @@ export interface AdminState {
   approveSubmissionAsAdmin: (submissionId: string, payoutAmount?: number) => Promise<void>;
   verifySubmissionAsAdmin: (submissionId: string) => Promise<void>;
   approveAndPayCampaign: (campaignId: string, payoutPerCreator: number) => Promise<void>;
+  fetchUserNotifications: (userId: string) => Promise<any[]>;
+  deleteUserNotification: (notifId: string) => Promise<void>;
+  fetchUserMessages: (userId: string) => Promise<{ messages: any[]; conversations: any[] }>;
+  deleteUserMessage: (messageId: string) => Promise<void>;
+  sendGingerNotification: (targetUserId: string, title: string, message: string, adminUserId?: string) => Promise<void>;
 }
 
 export const useAdminStore = create<AdminState>((set, get) => ({
@@ -481,6 +486,134 @@ export const useAdminStore = create<AdminState>((set, get) => ({
       set({ slideshows: get().slideshows.map(s => s.id === slideId ? updatedSlide : s) });
     } catch (error: any) {
       throw error;
+    }
+  },
+
+  fetchUserNotifications: async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    } catch (err: any) {
+      console.error('Error fetching user notifications:', err);
+      return [];
+    }
+  },
+
+  deleteUserNotification: async (notifId: string) => {
+    const { error } = await supabase.from('notifications').delete().eq('id', notifId);
+    if (error) throw error;
+  },
+
+  fetchUserMessages: async (userId: string) => {
+    try {
+      const { data: msgs, error } = await supabase
+        .from('messages')
+        .select('*')
+        .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+
+      const allMsgs = msgs || [];
+      const partnerIds = Array.from(
+        new Set(allMsgs.map(m => m.sender_id === userId ? m.receiver_id : m.sender_id))
+      ).filter(Boolean);
+
+      let partnerMap: Record<string, any> = {};
+      if (partnerIds.length > 0) {
+        const { data: profs } = await supabase
+          .from('profiles')
+          .select('id, full_name, username, avatar_url')
+          .in('id', partnerIds);
+        if (profs) {
+          profs.forEach(p => { partnerMap[p.id] = p; });
+        }
+      }
+
+      const convMap: Record<string, { partner: any; messages: any[]; lastMessage: any }> = {};
+      allMsgs.forEach(m => {
+        const partnerId = m.sender_id === userId ? m.receiver_id : m.sender_id;
+        if (!convMap[partnerId]) {
+          convMap[partnerId] = {
+            partner: partnerMap[partnerId] || { id: partnerId, full_name: 'User', username: 'user' },
+            messages: [],
+            lastMessage: m
+          };
+        }
+        convMap[partnerId].messages.push(m);
+        convMap[partnerId].lastMessage = m;
+      });
+
+      const conversations = Object.values(convMap).sort((a, b) =>
+        new Date(b.lastMessage.created_at).getTime() - new Date(a.lastMessage.created_at).getTime()
+      );
+
+      return { messages: allMsgs, conversations };
+    } catch (err: any) {
+      console.error('Error fetching user messages:', err);
+      return { messages: [], conversations: [] };
+    }
+  },
+
+  deleteUserMessage: async (messageId: string) => {
+    const { error } = await supabase.from('messages').delete().eq('id', messageId);
+    if (error) throw error;
+  },
+
+  sendGingerNotification: async (targetUserId: string, title: string, message: string, adminUserId?: string) => {
+    const formattedContent = title.trim()
+      ? `📢 Ginger Notification: ${title.trim()} — ${message.trim()}`
+      : `📢 Ginger Notification: ${message.trim()}`;
+
+    // 1. Insert into notifications table with type 'admin'
+    const { error: notifErr } = await supabase.from('notifications').insert({
+      user_id: targetUserId,
+      actor_id: adminUserId || null,
+      type: 'admin',
+      content: formattedContent,
+      is_read: false
+    });
+    if (notifErr) {
+      console.warn('Direct notification insert notice:', notifErr);
+    }
+
+    // 2. Also save to user local notifications queue if in same client / fallback
+    try {
+      const key = `ginger_local_notifications_${targetUserId}`;
+      const existing = JSON.parse(localStorage.getItem(key) || '[]');
+      const newNotif = {
+        id: `gn-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+        user_id: targetUserId,
+        actor_id: adminUserId || null,
+        type: 'admin',
+        content: formattedContent,
+        is_read: false,
+        created_at: new Date().toISOString(),
+        actor: {
+          full_name: 'Ginger Notification',
+          username: 'ginger',
+          avatar_url: '/images/brand/logo.png'
+        }
+      };
+      existing.unshift(newNotif);
+      localStorage.setItem(key, JSON.stringify(existing.slice(0, 50)));
+    } catch (_) {}
+
+    // 3. Insert into messages table from admin to target user so it also appears in their direct chats
+    if (adminUserId) {
+      try {
+        await supabase.from('messages').insert({
+          sender_id: adminUserId,
+          receiver_id: targetUserId,
+          content: `📢 [Ginger Notification]\n${title ? `**${title.trim()}**\n\n` : ''}${message.trim()}`
+        });
+      } catch (msgErr) {
+        console.warn('Direct message insert notice:', msgErr);
+      }
     }
   }
 }));

@@ -68,6 +68,16 @@ const resolveNotificationActors = async (rawNotifs: any[]): Promise<Notification
   }
 
   return rawNotifs.map((n) => {
+    if (n.type === 'admin' || (typeof n.content === 'string' && n.content.includes('Ginger Notification'))) {
+      return {
+        ...n,
+        actor: {
+          full_name: 'Ginger Notification',
+          username: 'ginger',
+          avatar_url: '/images/brand/logo.png',
+        },
+      } as Notification;
+    }
     const joinedActor = n.actor && typeof n.actor === 'object' && n.actor.full_name ? n.actor : undefined;
     const resolvedActor = n.actor_id ? profilesMap[n.actor_id] || joinedActor : undefined;
     return {

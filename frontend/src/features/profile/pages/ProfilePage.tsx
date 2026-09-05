@@ -1051,10 +1051,11 @@ const ProfilePage: React.FC = () => {
                 </div>
               ) : (
                 notifications.map(notification => {
-                  const isCustomReward = notification.content.includes('🎁') || notification.content.includes('Reward Issued');
-                  const isBillNotif = notification.content.includes('🧾') || notification.content.toLowerCase().includes('bill');
-                  const isVoucherNotif = notification.content.includes('🎟️') || notification.content.includes('VCH-') || notification.content.toLowerCase().includes('voucher');
-                  const isApprovedNotif = notification.content.includes('✅') || notification.content.toLowerCase().includes('approved');
+                  const isGingerNotif = notification.type === 'admin' || notification.content.includes('Ginger Notification');
+                  const isCustomReward = !isGingerNotif && (notification.content.includes('🎁') || notification.content.includes('Reward Issued'));
+                  const isBillNotif = !isGingerNotif && (notification.content.includes('🧾') || notification.content.toLowerCase().includes('bill'));
+                  const isVoucherNotif = !isGingerNotif && (notification.content.includes('🎟️') || notification.content.includes('VCH-') || notification.content.toLowerCase().includes('voucher'));
+                  const isApprovedNotif = !isGingerNotif && (notification.content.includes('✅') || notification.content.toLowerCase().includes('approved'));
                   const voucherMatch = notification.content.match(/(VCH-[A-Z0-9-]+)/i);
                   const extractedVoucherCode = voucherMatch ? voucherMatch[1].toUpperCase() : '';
 
@@ -1063,7 +1064,9 @@ const ProfilePage: React.FC = () => {
                       key={notification.id} 
                       className={`notification-item ${!notification.is_read ? 'unread' : ''}`}
                       style={
-                        isCustomReward
+                        isGingerNotif
+                          ? { borderLeft: '3px solid #ff4d4d', background: 'rgba(255, 77, 77, 0.08)' }
+                          : isCustomReward
                           ? { borderLeft: '3px solid #f59e0b', background: 'rgba(245, 158, 11, 0.06)' }
                           : isBillNotif
                           ? { borderLeft: '3px solid #10b981', background: 'rgba(16, 185, 129, 0.05)' }
@@ -1083,7 +1086,11 @@ const ProfilePage: React.FC = () => {
                         }
                       }}
                     >
-                      {notification.actor && !isVoucherNotif && !isCustomReward && !isBillNotif && !isApprovedNotif ? (
+                      {isGingerNotif ? (
+                        <div className="notification-avatar" style={{ border: '1px solid rgba(255, 77, 77, 0.4)', borderRadius: '50%', padding: '2px', background: 'rgba(255, 77, 77, 0.15)', width: '38px', height: '38px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <img src="/images/brand/logo.png" alt="Ginger Notification" style={{ width: '24px', height: '24px', objectFit: 'contain' }} onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
+                        </div>
+                      ) : notification.actor && !isVoucherNotif && !isCustomReward && !isBillNotif && !isApprovedNotif ? (
                         <div className="notification-avatar">
                           <img src={notification.actor.avatar_url || 'https://via.placeholder.com/150'} alt={notification.actor.full_name} />
                         </div>
@@ -1117,7 +1124,19 @@ const ProfilePage: React.FC = () => {
                       )}
                       
                       <div className="notification-text" style={{ width: '100%' }}>
-                        {notification.actor && !notification.content.startsWith('🎁') && !notification.content.startsWith('🧾') && !notification.content.startsWith('🎟️') && !notification.content.startsWith('✅') ? (
+                        {isGingerNotif ? (
+                          <>
+                            <div className="flex items-center gap-1.5 mb-0.5">
+                              <span style={{ background: 'linear-gradient(135deg, #ff4d4d 0%, #f97316 100%)', color: '#fff', fontSize: '9px', fontWeight: 800, padding: '1px 5px', borderRadius: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                Official Ginger
+                              </span>
+                              <strong style={{ color: '#ff6b6b', fontSize: '12px' }}>Ginger Notification</strong>
+                            </div>
+                            <div style={{ color: 'var(--text-primary)', fontSize: '13px', lineHeight: 1.4 }}>
+                              {notification.content.replace(/^📢\s*Ginger Notification:\s*/, '')}
+                            </div>
+                          </>
+                        ) : notification.actor && !notification.content.startsWith('🎁') && !notification.content.startsWith('🧾') && !notification.content.startsWith('🎟️') && !notification.content.startsWith('✅') ? (
                           <><strong>{notification.actor.full_name}</strong> {notification.content}</>
                         ) : (
                           <>{notification.content}</>
