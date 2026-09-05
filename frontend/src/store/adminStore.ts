@@ -33,8 +33,9 @@ export interface AdminState {
   processWithdrawal: (txId: string) => Promise<void>;
   deleteSlideshow: (slideId: string) => Promise<void>;
   createSlideshow: (data: any) => Promise<void>;
-  updateSlideshow: (slideId: string, data: any) => Promise<void>;
   deleteSubmission: (submissionId: string) => Promise<void>;
+  deleteUser: (userId: string) => Promise<void>;
+  deleteWithdrawal: (withdrawalId: string) => Promise<void>;
   unflagSubmissionAsAdmin: (submissionId: string) => Promise<void>;
   approveSubmissionAsAdmin: (submissionId: string, payoutAmount?: number) => Promise<void>;
   verifySubmissionAsAdmin: (submissionId: string) => Promise<void>;
@@ -149,19 +150,95 @@ export const useAdminStore = create<AdminState>((set, get) => ({
   },
 
   deleteCampaign: async (campaignId: string) => {
+    // 1. Delete associated reports
+    try {
+      await supabase.from('reports').delete().eq('reported_item_id', campaignId);
+    } catch (_) {}
+    // 2. Delete associated notifications
+    try {
+      await supabase.from('notifications').delete().eq('entity_id', campaignId);
+    } catch (_) {}
+    // 3. Delete associated submissions
+    try {
+      await supabase.from('submissions').delete().eq('campaign_id', campaignId);
+    } catch (_) {}
+    // 4. Delete campaign record
     const { error } = await supabase.from('campaigns').delete().eq('id', campaignId);
     if (error) throw error;
-    set((state) => ({ campaigns: state.campaigns.filter(c => c.id !== campaignId) }));
+    set((state) => ({ 
+      campaigns: state.campaigns.filter(c => c.id !== campaignId),
+      submissions: state.submissions.filter(s => s.campaign_id !== campaignId)
+    }));
   },
 
   deleteSubmission: async (submissionId: string) => {
-    // Delete any associated reports first to avoid FK issues
+    // 1. Delete associated reports
     try {
       await supabase.from('reports').delete().eq('reported_item_id', submissionId);
     } catch (_) {}
+    // 2. Purge associated notifications
+    try {
+      const { data: sub } = await supabase
+        .from('submissions')
+        .select('id, campaign_id, creator_id')
+        .eq('id', submissionId)
+        .maybeSingle();
+
+      if (sub?.campaign_id && sub?.creator_id) {
+        await supabase
+          .from('notifications')
+          .delete()
+          .eq('entity_id', sub.campaign_id)
+          .eq('user_id', sub.creator_id);
+      }
+    } catch (_) {}
+    // 3. Delete submission record
     const { error } = await supabase.from('submissions').delete().eq('id', submissionId);
     if (error) throw error;
     set((state) => ({ submissions: state.submissions.filter(s => s.id !== submissionId) }));
+  },
+
+  deleteUser: async (userId: string) => {
+    // Purge everything related to this user completely (saving no record anywhere)
+    try {
+      await supabase.from('reports').delete().or(`reporter_id.eq.${userId},reported_item_id.eq.${userId}`);
+    } catch (_) {}
+    try {
+      await supabase.from('notifications').delete().or(`user_id.eq.${userId},actor_id.eq.${userId}`);
+    } catch (_) {}
+    try {
+      await supabase.from('messages').delete().or(`sender_id.eq.${userId},receiver_id.eq.${userId}`);
+    } catch (_) {}
+    try {
+      await supabase.from('wallet_transactions').delete().eq('user_id', userId);
+    } catch (_) {}
+    try {
+      await supabase.from('withdrawals').delete().eq('user_id', userId);
+    } catch (_) {}
+    try {
+      await supabase.from('submissions').delete().eq('creator_id', userId);
+    } catch (_) {}
+    try {
+      await supabase.from('campaigns').delete().eq('advertiser_id', userId);
+    } catch (_) {}
+    const { error } = await supabase.from('profiles').delete().eq('id', userId);
+    if (error) throw error;
+    set((state) => ({
+      users: state.users.filter(u => u.id !== userId),
+      submissions: state.submissions.filter(s => s.creator_id !== userId),
+      campaigns: state.campaigns.filter(c => c.advertiser_id !== userId),
+      withdrawals: state.withdrawals.filter(w => w.user_id !== userId)
+    }));
+  },
+
+  deleteWithdrawal: async (withdrawalId: string) => {
+    try {
+      await supabase.from('wallet_transactions').delete().eq('id', withdrawalId);
+    } catch (_) {}
+    try {
+      await supabase.from('withdrawals').delete().eq('id', withdrawalId);
+    } catch (_) {}
+    set((state) => ({ withdrawals: state.withdrawals.filter(w => w.id !== withdrawalId) }));
   },
 
   unflagSubmissionAsAdmin: async (submissionId: string) => {

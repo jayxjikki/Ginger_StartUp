@@ -3,13 +3,13 @@
 // Premium Global administration panel
 // ═══════════════════════════════════════════════════════════
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FiUsers, FiVideo, FiDollarSign, FiImage, FiTarget, 
   FiTrash2, FiCheckCircle, FiXCircle, FiSlash, FiMenu,
   FiPlay, FiEye, FiCheck, FiRotateCcw, FiExternalLink,
-  FiSearch
+  FiSearch, FiChevronLeft, FiChevronRight
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { useAdminStore } from '../../../store/adminStore';
@@ -41,10 +41,21 @@ const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { profile } = useAuthStore();
+  const tableContainerRef = useRef<HTMLDivElement>(null);
+
+  const handleScrollTable = (direction: 'left' | 'right') => {
+    if (tableContainerRef.current) {
+      tableContainerRef.current.scrollBy({
+        left: direction === 'left' ? -350 : 350,
+        behavior: 'smooth'
+      });
+    }
+  };
   
   const { 
     users, campaigns, submissions, withdrawals, slideshows, isLoading,
     fetchAllData, toggleUserBan, rejectSubmission, deleteSubmission,
+    deleteUser, deleteWithdrawal,
     unflagSubmissionAsAdmin,
     approveSubmissionAsAdmin,
     processWithdrawal, deleteSlideshow, createSlideshow, deleteCampaign, approveAndPayCampaign 
@@ -172,13 +183,41 @@ const AdminDashboard: React.FC = () => {
   };
 
   const handleDeleteCampaign = async (id: string) => {
-    const confirmed = await useGlobalModalStore.getState().showConfirm('Delete this campaign completely? This action cannot be undone.');
+    const confirmed = await useGlobalModalStore.getState().showConfirm('Delete this campaign completely? This action cannot be undone and will purge all its submissions, reports, and records.');
     if (!confirmed) return;
     try {
       await deleteCampaign(id);
-      toast.success('Campaign deleted permanently');
+      toast.success('Campaign and all its records deleted permanently');
     } catch (err: any) {
       toast.error(err.message);
+    }
+  };
+
+  const handleDeleteUser = async (userId: string, name: string) => {
+    const confirmed = await useGlobalModalStore.getState().showConfirm(
+      `Permanently delete user "${name}"? This action cannot be undone and will completely wipe all their submissions, campaigns, and records.`,
+      'Delete User'
+    );
+    if (!confirmed) return;
+    try {
+      await deleteUser(userId);
+      toast.success('User and all associated records permanently deleted');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to delete user');
+    }
+  };
+
+  const handleDeleteWithdrawal = async (txId: string) => {
+    const confirmed = await useGlobalModalStore.getState().showConfirm(
+      'Permanently delete this payout request record? This cannot be undone.',
+      'Delete Payout'
+    );
+    if (!confirmed) return;
+    try {
+      await deleteWithdrawal(txId);
+      toast.success('Payout record permanently deleted');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to delete payout');
     }
   };
 
@@ -250,56 +289,76 @@ const AdminDashboard: React.FC = () => {
   );
 
   const renderUsers = () => (
-    <motion.div variants={listVariants} initial="hidden" animate="show" className="admin-table-container">
-      <table className="admin-table">
-        <thead>
-          <tr>
-            <th>User</th>
-            <th>Role</th>
-            <th>Joined</th>
-            <th>Status</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {users.map(u => (
-            <motion.tr variants={itemVariants} key={u.id} className="admin-table-row">
-              <td className="user-cell">
-                <Avatar src={u.avatar_url} name={u.full_name || 'U'} size="md" />
-                <div className="user-cell-info">
-                  <span className="user-cell-name">{u.full_name}</span>
-                  <span className="user-cell-handle">@{u.username}</span>
-                </div>
-              </td>
-              <td>
-                <Badge variant={u.role === 'admin' ? 'accent' : 'default'}>{(u.role || "user").toUpperCase()}</Badge>
-              </td>
-              <td>{formatDate(u.created_at)}</td>
-              <td>
-                <Badge variant={u.is_banned ? 'error' : 'success'}>
-                  {u.is_banned ? 'Banned' : 'Active'}
-                </Badge>
-              </td>
-              <td>
-                <div className="action-buttons">
-                  <button 
-                    className={`icon-btn ${u.is_banned ? 'unban' : 'ban'}`}
-                    onClick={() => handleBan(u.id, u.is_banned ?? false)}
-                    title={u.is_banned ? "Unban User" : "Ban User"}
-                  >
-                    {u.is_banned ? <FiCheckCircle /> : <FiSlash />}
-                  </button>
-                </div>
-              </td>
-            </motion.tr>
-          ))}
-          {users.length === 0 && (
+    <motion.div variants={listVariants} initial="hidden" animate="show">
+      <div className="table-scroll-banner">
+        <span className="scroll-hint-text">↔️ Scroll horizontally to see all columns & actions</span>
+        <div className="table-scroll-btn-group">
+          <button type="button" className="table-scroll-btn" onClick={() => handleScrollTable('left')} title="Scroll Left">
+            <FiChevronLeft size={14} /> <span>Left</span>
+          </button>
+          <button type="button" className="table-scroll-btn" onClick={() => handleScrollTable('right')} title="Scroll Right">
+            <span>Right</span> <FiChevronRight size={14} />
+          </button>
+        </div>
+      </div>
+      <div className="admin-table-container" ref={tableContainerRef}>
+        <table className="admin-table">
+          <thead>
             <tr>
-              <td colSpan={5} className="empty-state">No users found.</td>
+              <th style={{ minWidth: '220px' }}>User</th>
+              <th style={{ minWidth: '130px' }}>Role</th>
+              <th style={{ minWidth: '140px' }}>Joined</th>
+              <th style={{ minWidth: '120px' }}>Status</th>
+              <th className="admin-sticky-actions-header" style={{ width: '140px', minWidth: '140px' }}>Actions</th>
             </tr>
-          )}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {users.map(u => (
+              <motion.tr variants={itemVariants} key={u.id} className="admin-table-row">
+                <td className="user-cell">
+                  <Avatar src={u.avatar_url} name={u.full_name || 'U'} size="md" />
+                  <div className="user-cell-info">
+                    <span className="user-cell-name">{u.full_name}</span>
+                    <span className="user-cell-handle">@{u.username}</span>
+                  </div>
+                </td>
+                <td>
+                  <Badge variant={u.role === 'admin' ? 'accent' : 'default'}>{(u.role || "user").toUpperCase()}</Badge>
+                </td>
+                <td>{formatDate(u.created_at)}</td>
+                <td>
+                  <Badge variant={u.is_banned ? 'error' : 'success'}>
+                    {u.is_banned ? 'Banned' : 'Active'}
+                  </Badge>
+                </td>
+                <td className="admin-sticky-actions-cell">
+                  <div className="action-buttons">
+                    <button 
+                      className={`icon-btn ${u.is_banned ? 'unban' : 'ban'}`}
+                      onClick={() => handleBan(u.id, u.is_banned ?? false)}
+                      title={u.is_banned ? "Unban User" : "Ban User"}
+                    >
+                      {u.is_banned ? <FiCheckCircle /> : <FiSlash />}
+                    </button>
+                    <button 
+                      className="icon-btn reject" 
+                      onClick={() => handleDeleteUser(u.id, u.full_name || u.username || 'User')}
+                      title="Permanently Delete User & All Their Records"
+                    >
+                      <FiTrash2 />
+                    </button>
+                  </div>
+                </td>
+              </motion.tr>
+            ))}
+            {users.length === 0 && (
+              <tr>
+                <td colSpan={5} className="empty-state">No users found.</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </motion.div>
   );
 
@@ -532,8 +591,21 @@ const AdminDashboard: React.FC = () => {
           </div>
         </div>
 
+        {/* Horizontal Scroll Bar Helper & Controls */}
+        <div className="table-scroll-banner">
+          <span className="scroll-hint-text">↔️ Scroll horizontally to see all columns & actions</span>
+          <div className="table-scroll-btn-group">
+            <button type="button" className="table-scroll-btn" onClick={() => handleScrollTable('left')} title="Scroll Left">
+              <FiChevronLeft size={14} /> <span>Left</span>
+            </button>
+            <button type="button" className="table-scroll-btn" onClick={() => handleScrollTable('right')} title="Scroll Right">
+              <span>Right</span> <FiChevronRight size={14} />
+            </button>
+          </div>
+        </div>
+
         {/* Table Container with Sticky Actions */}
-        <div className="admin-table-container">
+        <div className="admin-table-container" ref={tableContainerRef}>
           <table className="admin-table">
             <thead>
               <tr>
@@ -805,156 +877,218 @@ const AdminDashboard: React.FC = () => {
     });
     
     return (
-      <motion.div variants={listVariants} initial="hidden" animate="show" className="admin-table-container">
+      <motion.div variants={listVariants} initial="hidden" animate="show">
+        {/* Horizontal Scroll Bar Helper & Controls */}
+        <div className="table-scroll-banner">
+          <span className="scroll-hint-text">↔️ Scroll horizontally to see all columns & actions</span>
+          <div className="table-scroll-btn-group">
+            <button type="button" className="table-scroll-btn" onClick={() => handleScrollTable('left')} title="Scroll Left">
+              <FiChevronLeft size={14} /> <span>Left</span>
+            </button>
+            <button type="button" className="table-scroll-btn" onClick={() => handleScrollTable('right')} title="Scroll Right">
+              <span>Right</span> <FiChevronRight size={14} />
+            </button>
+          </div>
+        </div>
+
+        <div className="admin-table-container" ref={tableContainerRef}>
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th style={{ minWidth: '220px' }}>Campaign</th>
+                <th style={{ minWidth: '180px' }}>Advertiser</th>
+                <th style={{ minWidth: '130px' }}>Total Budget</th>
+                <th style={{ minWidth: '110px' }}>Platform</th>
+                <th style={{ minWidth: '140px' }}>Status</th>
+                <th className="admin-sticky-actions-header" style={{ width: '160px', minWidth: '160px' }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sortedCampaigns.map(c => (
+                <motion.tr variants={itemVariants} key={c.id} className="admin-table-row">
+                  <td>
+                    <div className="admin-camp-cell">
+                      <span className="admin-camp-title font-bold text-white">{c.title}</span>
+                      {(c as any).brand_name && <span className="admin-camp-adv text-xs text-secondary">{(c as any).brand_name}</span>}
+                    </div>
+                  </td>
+                  <td className="user-cell">
+                    <Avatar 
+                      src={Array.isArray(c.advertiser) ? c.advertiser[0]?.avatar_url : c.advertiser?.avatar_url} 
+                      name={Array.isArray(c.advertiser) ? (c.advertiser[0]?.full_name || '?') : (c.advertiser?.full_name || '?')} 
+                      size="sm" 
+                    />
+                    <span className="user-cell-name">
+                      {Array.isArray(c.advertiser) ? c.advertiser[0]?.full_name : c.advertiser?.full_name}
+                    </span>
+                  </td>
+                  <td className="text-accent font-bold">{formatCurrency(c.prize_pool || 0)}</td>
+                  <td><Badge variant="default">{(c.platform || 'all').toUpperCase()}</Badge></td>
+                  <td>
+                    <Badge variant={c.status === 'active' ? 'success' : c.status === 'paused' ? 'warning' : 'default'}>
+                      {c.status === 'paused' ? 'NEEDS PAYMENT' : c.status.toUpperCase()}
+                    </Badge>
+                  </td>
+                  <td className="admin-sticky-actions-cell">
+                    <div className="action-buttons">
+                      {c.status === 'paused' && (
+                        <button 
+                          className="btn btn-primary" 
+                          style={{ padding: '4px 8px', fontSize: '12px', background: '#34c759', borderColor: '#34c759' }}
+                          onClick={(e) => { e.stopPropagation(); handleApproveAndPayCampaign(c.id); }} 
+                          title="Approve & Pay All"
+                        >
+                          Approve & Pay
+                        </button>
+                      )}
+                      <button className="icon-btn reject" onClick={(e) => { e.stopPropagation(); handleDeleteCampaign(c.id); }} title="Delete Campaign Permanently">
+                        <FiTrash2 />
+                      </button>
+                    </div>
+                  </td>
+                </motion.tr>
+              ))}
+              {campaigns.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="empty-state">No campaigns found.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </motion.div>
+    );
+  };
+
+  const renderWithdrawals = () => (
+    <motion.div variants={listVariants} initial="hidden" animate="show">
+      {/* Horizontal Scroll Bar Helper & Controls */}
+      <div className="table-scroll-banner">
+        <span className="scroll-hint-text">↔️ Scroll horizontally to see all columns & actions</span>
+        <div className="table-scroll-btn-group">
+          <button type="button" className="table-scroll-btn" onClick={() => handleScrollTable('left')} title="Scroll Left">
+            <FiChevronLeft size={14} /> <span>Left</span>
+          </button>
+          <button type="button" className="table-scroll-btn" onClick={() => handleScrollTable('right')} title="Scroll Right">
+            <span>Right</span> <FiChevronRight size={14} />
+          </button>
+        </div>
+      </div>
+
+      <div className="admin-table-container" ref={tableContainerRef}>
         <table className="admin-table">
           <thead>
             <tr>
-              <th>Advertiser</th>
-              <th>Total Budget</th>
-              <th>Platform</th>
-              <th>Status</th>
-              <th>Actions</th>
+              <th style={{ minWidth: '200px' }}>User</th>
+              <th style={{ minWidth: '130px' }}>Amount</th>
+              <th style={{ minWidth: '110px' }}>Type</th>
+              <th style={{ minWidth: '140px' }}>Date</th>
+              <th style={{ minWidth: '130px' }}>Status</th>
+              <th className="admin-sticky-actions-header" style={{ width: '140px', minWidth: '140px' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {sortedCampaigns.map(c => (
-              <motion.tr variants={itemVariants} key={c.id} className="admin-table-row">
-                <td className="user-cell">
-                  <Avatar 
-                    src={Array.isArray(c.advertiser) ? c.advertiser[0]?.avatar_url : c.advertiser?.avatar_url} 
-                    name={Array.isArray(c.advertiser) ? (c.advertiser[0]?.full_name || '?') : (c.advertiser?.full_name || '?')} 
-                    size="sm" 
-                  />
-                  <span className="user-cell-name">
-                    {Array.isArray(c.advertiser) ? c.advertiser[0]?.full_name : c.advertiser?.full_name}
-                  </span>
-                </td>
-                <td className="text-accent font-bold">{formatCurrency(c.prize_pool || 0)}</td>
-                <td><Badge variant="default">{(c.platform || 'all').toUpperCase()}</Badge></td>
-                <td>
-                  <Badge variant={c.status === 'active' ? 'success' : c.status === 'paused' ? 'warning' : 'default'}>
-                    {c.status === 'paused' ? 'NEEDS PAYMENT' : c.status.toUpperCase()}
-                  </Badge>
-                </td>
-                <td>
-                  <div className="action-buttons">
-                    {c.status === 'paused' && (
+            {withdrawals.map(w => {
+              const userProfile = (w as any).user || (w as any).profiles;
+              return (
+                <motion.tr variants={itemVariants} key={w.id} className="admin-table-row">
+                  <td className="user-cell">
+                    <Avatar src={userProfile?.avatar_url} name={userProfile?.full_name || '?'} size="sm" />
+                    <span className="user-cell-name">{userProfile?.full_name || 'User'}</span>
+                  </td>
+                  <td className="text-accent font-bold">{formatCurrency(w.amount)}</td>
+                  <td><Badge variant="default">{w.type.toUpperCase()}</Badge></td>
+                  <td>{formatDate(w.created_at)}</td>
+                  <td>
+                    <Badge variant={w.status === 'completed' ? 'success' : 'warning'}>
+                      {w.status.toUpperCase()}
+                    </Badge>
+                  </td>
+                  <td className="admin-sticky-actions-cell">
+                    <div className="action-buttons">
+                      {w.status === 'pending' && (
+                        <button className="icon-btn approve" onClick={() => handleProcessWithdrawal(w.id)} title="Mark Paid">
+                          <FiCheckCircle />
+                        </button>
+                      )}
                       <button 
-                        className="btn btn-primary" 
-                        style={{ padding: '4px 8px', fontSize: '12px', background: '#34c759', borderColor: '#34c759' }}
-                        onClick={(e) => { e.stopPropagation(); handleApproveAndPayCampaign(c.id); }} 
-                        title="Approve & Pay All"
+                        className="icon-btn reject" 
+                        onClick={() => handleDeleteWithdrawal(w.id)} 
+                        title="Permanently Delete Payout Record"
                       >
-                        Approve & Pay
+                        <FiTrash2 />
                       </button>
-                    )}
-                    <button className="icon-btn reject" onClick={(e) => { e.stopPropagation(); handleDeleteCampaign(c.id); }} title="Delete Campaign">
+                    </div>
+                  </td>
+                </motion.tr>
+              );
+            })}
+            {withdrawals.length === 0 && (
+              <tr>
+                <td colSpan={6} className="empty-state">No withdrawal requests.</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </motion.div>
+  );
+
+  const renderSlideshows = () => (
+    <motion.div variants={listVariants} initial="hidden" animate="show">
+      <div className="admin-table-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+        <h3 className="text-xl font-bold">Slideshows</h3>
+        <Button variant="primary" size="sm" onClick={() => setIsSlideModalOpen(true)}>Add New Slide</Button>
+      </div>
+
+      {/* Horizontal Scroll Bar Helper & Controls */}
+      <div className="table-scroll-banner">
+        <span className="scroll-hint-text">↔️ Scroll horizontally to see all columns & actions</span>
+        <div className="table-scroll-btn-group">
+          <button type="button" className="table-scroll-btn" onClick={() => handleScrollTable('left')} title="Scroll Left">
+            <FiChevronLeft size={14} /> <span>Left</span>
+          </button>
+          <button type="button" className="table-scroll-btn" onClick={() => handleScrollTable('right')} title="Scroll Right">
+            <span>Right</span> <FiChevronRight size={14} />
+          </button>
+        </div>
+      </div>
+
+      <div className="admin-table-container" ref={tableContainerRef}>
+        <table className="admin-table">
+          <thead>
+            <tr>
+              <th style={{ minWidth: '120px' }}>Image</th>
+              <th style={{ minWidth: '220px' }}>Title</th>
+              <th style={{ minWidth: '220px' }}>Redirect Link</th>
+              <th className="admin-sticky-actions-header" style={{ width: '120px', minWidth: '120px' }}>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {slideshows.map(s => (
+              <motion.tr variants={itemVariants} key={s.id} className="admin-table-row">
+                <td className="user-cell">
+                  <img src={s.image_url} alt="slide" className="w-16 h-10 object-cover rounded" />
+                </td>
+                <td className="font-bold">{s.title}</td>
+                <td>{s.link_url ? <a href={s.link_url} target="_blank" rel="noreferrer" className="text-accent underline text-sm">{s.link_url}</a> : '-'}</td>
+                <td className="admin-sticky-actions-cell">
+                  <div className="action-buttons">
+                    <button className="icon-btn reject" onClick={() => handleDeleteSlide(s.id)} title="Delete Slide Permanently">
                       <FiTrash2 />
                     </button>
                   </div>
                 </td>
               </motion.tr>
             ))}
-            {campaigns.length === 0 && (
+            {slideshows.length === 0 && (
               <tr>
-                <td colSpan={5} className="empty-state">No campaigns found.</td>
+                <td colSpan={4} className="empty-state">No slideshows found.</td>
               </tr>
             )}
           </tbody>
         </table>
-      </motion.div>
-    );
-  };
-
-  const renderWithdrawals = () => (
-    <motion.div variants={listVariants} initial="hidden" animate="show" className="admin-table-container">
-      <table className="admin-table">
-        <thead>
-          <tr>
-            <th>User</th>
-            <th>Amount</th>
-            <th>Type</th>
-            <th>Date</th>
-            <th>Status</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {withdrawals.map(w => (
-            <motion.tr variants={itemVariants} key={w.id} className="admin-table-row">
-              <td className="user-cell">
-                <Avatar src={w.profiles?.avatar_url} name={w.profiles?.full_name || '?'} size="sm" />
-                <span className="user-cell-name">{w.profiles?.full_name}</span>
-              </td>
-              <td className="text-accent font-bold">{formatCurrency(w.amount)}</td>
-              <td><Badge variant="default">{w.type.toUpperCase()}</Badge></td>
-              <td>{formatDate(w.created_at)}</td>
-              <td>
-                <Badge variant={w.status === 'completed' ? 'success' : 'warning'}>
-                  {w.status.toUpperCase()}
-                </Badge>
-              </td>
-              <td>
-                {w.status === 'pending' && (
-                  <div className="action-buttons">
-                    <button className="icon-btn approve" onClick={() => handleProcessWithdrawal(w.id)} title="Mark Paid">
-                      <FiCheckCircle />
-                    </button>
-                  </div>
-                )}
-              </td>
-            </motion.tr>
-          ))}
-          {withdrawals.length === 0 && (
-            <tr>
-              <td colSpan={6} className="empty-state">No withdrawal requests.</td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-    </motion.div>
-  );
-
-  const renderSlideshows = () => (
-    <motion.div variants={listVariants} initial="hidden" animate="show" className="admin-table-container">
-      <div className="admin-table-header">
-        <h3 className="text-xl font-bold">Slideshows</h3>
-        <Button variant="primary" size="sm" onClick={() => setIsSlideModalOpen(true)}>Add New Slide</Button>
       </div>
-
-      <table className="admin-table">
-        <thead>
-          <tr>
-            <th>Image</th>
-            <th>Title</th>
-            <th>Redirect Link</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {slideshows.map(s => (
-            <motion.tr variants={itemVariants} key={s.id} className="admin-table-row">
-              <td className="user-cell">
-                <img src={s.image_url} alt="slide" className="w-16 h-10 object-cover rounded" />
-              </td>
-              <td className="font-bold">{s.title}</td>
-              <td>{s.link_url ? <a href={s.link_url} target="_blank" className="text-accent underline text-sm">{s.link_url}</a> : '-'}</td>
-              <td>
-                <div className="action-buttons">
-                  <button className="icon-btn reject" onClick={() => handleDeleteSlide(s.id)} title="Delete Slide">
-                    <FiTrash2 />
-                  </button>
-                </div>
-              </td>
-            </motion.tr>
-          ))}
-          {slideshows.length === 0 && (
-            <tr>
-              <td colSpan={4} className="empty-state">No slideshows found.</td>
-            </tr>
-          )}
-        </tbody>
-      </table>
     </motion.div>
   );
 
