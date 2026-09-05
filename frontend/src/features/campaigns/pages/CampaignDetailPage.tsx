@@ -368,38 +368,56 @@ const CampaignDetailPage: React.FC = () => {
       }
 
       // Notify owner — both notification badge AND inbox message
-      if (campaign?.advertiser_id) {
-        const creatorName = user.user_metadata?.full_name || user.user_metadata?.username || 'A customer';
-        const creatorHandle = user.user_metadata?.username ? `@${user.user_metadata.username}` : creatorName;
+      const ownerId = campaign?.advertiser_id || (campaign as any)?.advertiser?.id;
+      if (ownerId) {
+        // Resolve creator name from profile (more reliable than user_metadata)
+        let creatorHandle = user.user_metadata?.username
+          ? `@${user.user_metadata.username}`
+          : user.user_metadata?.full_name || 'A creator';
+        try {
+          const { data: prof } = await supabase
+            .from('profiles')
+            .select('username, full_name')
+            .eq('id', user.id)
+            .single();
+          if (prof) {
+            creatorHandle = prof.username ? `@${prof.username}` : (prof.full_name || creatorHandle);
+          }
+        } catch { /* best-effort */ }
+
         const notifMsg = isReviewAction
-          ? `⭐ New Review / Rating Submission from ${creatorHandle} for "${campaign.title}" claiming ${activeDirectTier?.reward || 'Discount'}! Go approve it now.`
+          ? `⭐ New Review / Rating Submission from ${creatorHandle} for "${campaign!.title}" claiming ${activeDirectTier?.reward || 'Discount'}! Go approve it now.`
           : submissionType === 'direct_discount'
-            ? `🏷️ New Direct Discount Submission (${activeDirectTier?.term || 'Perk'}) from ${creatorHandle} for "${campaign.title}"! Go review it now.`
-            : `🎬 New Video Submission from ${creatorHandle} on "${campaign.title}"! Go review and approve it.`;
+            ? `🏷️ New Direct Discount Submission (${activeDirectTier?.term || 'Perk'}) from ${creatorHandle} for "${campaign!.title}"! Go review it now.`
+            : `🎬 New Video Submission from ${creatorHandle} on "${campaign!.title}"! Go review and approve it.`;
 
         // 1. Notification icon badge
         try {
-          await supabase.from('notifications').insert({
-            user_id: campaign.advertiser_id,
+          const { error: nErr } = await supabase.from('notifications').insert({
+            user_id: ownerId,
             actor_id: user.id,
             type: 'system',
-            entity_id: campaign.id,
+            entity_id: campaign!.id,
             content: notifMsg,
           });
-        } catch {
-          // Non-blocking
+          if (nErr) console.error('[Owner Notify] notification insert error:', nErr);
+        } catch (e) {
+          console.error('[Owner Notify] notification exception:', e);
         }
 
-        // 2. DM in messages inbox so owner sees the green dot and the full message
+        // 2. DM in messages inbox so owner sees the green dot
         try {
-          await supabase.from('messages').insert({
+          const { error: mErr } = await supabase.from('messages').insert({
             sender_id: user.id,
-            receiver_id: campaign.advertiser_id,
+            receiver_id: ownerId,
             content: notifMsg,
           });
-        } catch {
-          // Non-blocking
+          if (mErr) console.error('[Owner Notify] message insert error:', mErr);
+        } catch (e) {
+          console.error('[Owner Notify] message exception:', e);
         }
+      } else {
+        console.warn('[Owner Notify] Could not resolve owner ID for campaign', campaign?.id);
       }
 
       toast.success(
