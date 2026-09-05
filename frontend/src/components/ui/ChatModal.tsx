@@ -353,6 +353,141 @@ const ChatModal: React.FC<ChatModalProps> = ({
                   }
                 }
 
+                // ── Detect Official System Messages (Voucher / Bill) ──
+                const c = msg.content;
+                const isVoucherMsg  = c.startsWith('🎟️ Voucher Issued:');
+                const isBillMsg     = c.startsWith('🧾 Bill Received');
+                const isSystemMsg   = isVoucherMsg || isBillMsg;
+
+                if (isSystemMsg) {
+                  const timeStr = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+                  // Parse Voucher message:  "🎟️ Voucher Issued: Your submission on "CampaignName" was approved! Your voucher code is VCH-XXX (20% OFF)."
+                  // Parse Bill message:     "🧾 Bill Received from "CampaignName"! Original Bill: ₹999 | Discount: 20% (-₹200) | Final Amount to Pay: ₹799 (note)"
+                  let parsedVoucherCode = '';
+                  let parsedDiscountPct = '';
+                  let parsedCampaign    = '';
+                  let parsedOriginal    = '';
+                  let parsedDiscount    = '';
+                  let parsedFinal       = '';
+                  let parsedNote        = '';
+
+                  if (isVoucherMsg) {
+                    // extract campaign name between first pair of quotes
+                    const campMatch = c.match(/on "([^"]+)"/);
+                    parsedCampaign = campMatch ? campMatch[1] : '';
+                    // extract voucher code and discount
+                    const codeMatch = c.match(/voucher code is ([A-Z0-9\-]+)\s*\((\d+)%/);
+                    if (codeMatch) {
+                      parsedVoucherCode = codeMatch[1];
+                      parsedDiscountPct = codeMatch[2];
+                    }
+                    // custom reward: everything after "Reward: " until ")"
+                    if (!parsedVoucherCode) {
+                      const rwMatch = c.match(/code is ([A-Z0-9\-]+)/);
+                      if (rwMatch) parsedVoucherCode = rwMatch[1];
+                    }
+                  }
+
+                  if (isBillMsg) {
+                    const campMatch = c.match(/from "([^"]+)"/);
+                    parsedCampaign = campMatch ? campMatch[1] : '';
+                    const origMatch = c.match(/Original Bill: ₹([\d,]+)/);
+                    parsedOriginal = origMatch ? origMatch[1] : '';
+                    const discMatch = c.match(/Discount: (\d+)%\s*\([-−]₹([\d,]+)\)/);
+                    if (discMatch) { parsedDiscountPct = discMatch[1]; parsedDiscount = discMatch[2]; }
+                    const finalMatch = c.match(/Final Amount to Pay: ₹([\d,]+)/);
+                    parsedFinal = finalMatch ? finalMatch[1] : '';
+                    const noteMatch = c.match(/₹[\d,]+\s*\(([^)]+)\)\s*$/);
+                    parsedNote = noteMatch ? noteMatch[1] : '';
+                  }
+
+                  return (
+                    <div key={msg.id} className="chat-bubble-wrap system-msg">
+                      <div className="system-msg-card">
+                        <div className="system-msg-inner">
+                          {/* Header */}
+                          <div className="system-msg-header">
+                            <span className="system-msg-official-badge">✦ Official</span>
+                            <span className="system-msg-ginger-label">
+                              {isVoucherMsg ? '🎟️ Ginger Voucher' : '🧾 Ginger Bill'}
+                            </span>
+                          </div>
+
+                          <div className="system-msg-divider" />
+
+                          {/* Body */}
+                          <div className="system-msg-body">
+                            {parsedCampaign && (
+                              <div className="system-msg-line">
+                                <span className="sys-emoji">🏪</span>
+                                <span className="sys-label">Campaign:</span>
+                                <span className="sys-value">{parsedCampaign}</span>
+                              </div>
+                            )}
+
+                            {isVoucherMsg && (
+                              <>
+                                {parsedDiscountPct && (
+                                  <div className="system-msg-line">
+                                    <span className="sys-emoji">🏷️</span>
+                                    <span className="sys-label">Discount:</span>
+                                    <span className="sys-value accent-green">{parsedDiscountPct}% OFF</span>
+                                  </div>
+                                )}
+                                {parsedVoucherCode && (
+                                  <div className="system-msg-line" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
+                                    <span style={{ fontSize: '10px', color: 'rgba(255,215,0,0.6)', fontWeight: 600 }}>YOUR VOUCHER CODE</span>
+                                    <span className="system-msg-voucher-code">🎟️ {parsedVoucherCode}</span>
+                                  </div>
+                                )}
+                              </>
+                            )}
+
+                            {isBillMsg && (
+                              <>
+                                {parsedOriginal && (
+                                  <div className="system-msg-line">
+                                    <span className="sys-emoji">💰</span>
+                                    <span className="sys-label">Original:</span>
+                                    <span className="sys-value">₹{parsedOriginal}</span>
+                                  </div>
+                                )}
+                                {parsedDiscount && (
+                                  <div className="system-msg-line">
+                                    <span className="sys-emoji">🏷️</span>
+                                    <span className="sys-label">Discount ({parsedDiscountPct}%):</span>
+                                    <span className="sys-value accent-red">−₹{parsedDiscount}</span>
+                                  </div>
+                                )}
+                                {parsedFinal && (
+                                  <div className="system-msg-line">
+                                    <span className="sys-emoji">✅</span>
+                                    <span className="sys-label">You Pay:</span>
+                                    <span className="sys-value accent-gold">₹{parsedFinal}</span>
+                                  </div>
+                                )}
+                                {parsedNote && (
+                                  <div className="system-msg-line">
+                                    <span className="sys-emoji">📝</span>
+                                    <span className="sys-label">Note:</span>
+                                    <span className="sys-value">{parsedNote}</span>
+                                  </div>
+                                )}
+                              </>
+                            )}
+                          </div>
+
+                          {/* Footer timestamp */}
+                          <div className="system-msg-footer">
+                            <span className="system-msg-time">{timeStr}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+
                 // Regular, Image, or Video message
                 const isImage = msg.content.startsWith('[IMAGE]') && msg.content.endsWith('[/IMAGE]');
                 const isVideo = msg.content.startsWith('[VIDEO]') && msg.content.endsWith('[/VIDEO]');
@@ -408,6 +543,7 @@ const ChatModal: React.FC<ChatModalProps> = ({
                   </div>
                 );
               })
+
             )}
 
             {/* Realtime Partner Typing Bubble */}

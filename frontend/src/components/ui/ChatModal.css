@@ -977,3 +977,189 @@
     background-color: #34d399;
   }
 }
+
+/* ══════════════════════════════════════════════════════
+   OFFICIAL SYSTEM MESSAGE — Golden Voucher / Bill Card
+   ══════════════════════════════════════════════════════ */
+
+.chat-bubble-wrap.system-msg {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  padding: 6px 12px;
+  margin: 4px 0;
+}
+
+.system-msg-card {
+  position: relative;
+  width: 100%;
+  max-width: 340px;
+  border-radius: 16px;
+  overflow: hidden;
+  background: linear-gradient(145deg, #1a1200 0%, #2a1d00 50%, #1a1200 100%);
+  border: 1.5px solid rgba(255, 215, 0, 0.45);
+  box-shadow:
+    0 0 0 1px rgba(255, 195, 0, 0.12),
+    0 4px 24px rgba(255, 180, 0, 0.18),
+    inset 0 1px 0 rgba(255, 230, 100, 0.12);
+}
+
+/* Shimmering gold top bar */
+.system-msg-card::before {
+  content: '';
+  display: block;
+  height: 3px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    #c8960c 20%,
+    #ffd700 50%,
+    #f5a623 80%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: gold-shimmer 2.8s ease-in-out infinite;
+}
+
+@keyframes gold-shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+/* Subtle diagonal texture overlay */
+.system-msg-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: repeating-linear-gradient(
+    135deg,
+    rgba(255, 215, 0, 0.03) 0px,
+    rgba(255, 215, 0, 0.03) 1px,
+    transparent 1px,
+    transparent 8px
+  );
+  border-radius: inherit;
+}
+
+.system-msg-inner {
+  padding: 12px 14px 10px;
+  position: relative;
+  z-index: 1;
+}
+
+/* Header row: badge + label */
+.system-msg-header {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 8px;
+}
+
+.system-msg-official-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: linear-gradient(135deg, #c8960c 0%, #ffd700 50%, #f5a623 100%);
+  color: #1a1200;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.system-msg-ginger-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #ffd700;
+  letter-spacing: 0.03em;
+  text-shadow: 0 0 8px rgba(255, 215, 0, 0.4);
+}
+
+/* Divider */
+.system-msg-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 215, 0, 0.25) 50%, transparent 100%);
+  margin-bottom: 10px;
+}
+
+/* Content lines */
+.system-msg-body {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.system-msg-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 12.5px;
+  color: #e8d5a0;
+  line-height: 1.4;
+}
+
+.system-msg-line .sys-emoji {
+  font-size: 14px;
+  flex-shrink: 0;
+  line-height: 1.3;
+}
+
+.system-msg-line .sys-label {
+  color: rgba(255, 215, 0, 0.65);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.system-msg-line .sys-value {
+  font-weight: 600;
+  color: #fff8e1;
+  word-break: break-word;
+}
+
+.system-msg-line .sys-value.accent-green {
+  color: #4ade80;
+}
+
+.system-msg-line .sys-value.accent-red {
+  color: #f87171;
+}
+
+.system-msg-line .sys-value.accent-gold {
+  color: #ffd700;
+  text-shadow: 0 0 8px rgba(255, 215, 0, 0.35);
+}
+
+/* Voucher code highlight box */
+.system-msg-voucher-code {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(255, 215, 0, 0.1);
+  border: 1px solid rgba(255, 215, 0, 0.35);
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  font-weight: 800;
+  color: #ffd700;
+  letter-spacing: 0.08em;
+  margin-top: 4px;
+}
+
+/* Timestamp row */
+.system-msg-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+.system-msg-time {
+  font-size: 10px;
+  color: rgba(255, 215, 0, 0.45);
+  font-weight: 500;
+}
