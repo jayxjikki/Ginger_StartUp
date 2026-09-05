@@ -363,6 +363,16 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
 
   flagSubmissionByAdvertiser: async (submissionId: string) => {
     try {
+      const { data: currentSub } = await supabase
+        .from('submissions')
+        .select('status')
+        .eq('id', submissionId)
+        .maybeSingle();
+
+      if (currentSub && (currentSub.status === 'verified' || currentSub.status === 'paid')) {
+        throw new Error('Approved submissions cannot be flagged.');
+      }
+
       const { error } = await supabase
         .from('submissions')
         .update({ status: 'flagged' })

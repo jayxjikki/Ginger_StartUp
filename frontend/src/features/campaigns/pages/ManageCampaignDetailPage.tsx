@@ -276,6 +276,12 @@ const ManageCampaignDetailPage: React.FC = () => {
   }, [currentModeSubmissions, activeFilter]);
 
   const handleFlagSubmission = async (submissionId: string) => {
+    const sub = (campaign?.submissions || []).find((s: any) => s.id === submissionId);
+    if (sub && (sub.status === 'verified' || sub.status === 'paid')) {
+      toast.error('Approved submissions cannot be flagged.');
+      return;
+    }
+
     const confirmed = await showConfirm(
       'Are you sure you want to flag this submission? Admin will review it and decide whether to reject it permanently.',
       'Flag Video'
@@ -897,23 +903,20 @@ const ManageCampaignDetailPage: React.FC = () => {
                                 <span>Open in New Tab</span>
                               </a>
 
-                              {(sub.status === 'pending' ||
-                                sub.status === 'verified' ||
-                                sub.status === 'paid') &&
-                                campaign.status === 'active' && (
-                                  <button
-                                    type="button"
-                                    className="submission-dropdown-item text-danger"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setActiveMenuId(null);
-                                      handleFlagSubmission(sub.id);
-                                    }}
-                                  >
-                                    <FiFlag size={14} />
-                                    <span>Flag Submission</span>
-                                  </button>
-                                )}
+                              {sub.status === 'pending' && campaign.status === 'active' && (
+                                <button
+                                  type="button"
+                                  className="submission-dropdown-item text-danger"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActiveMenuId(null);
+                                    handleFlagSubmission(sub.id);
+                                  }}
+                                >
+                                  <FiFlag size={14} />
+                                  <span>Flag Submission</span>
+                                </button>
+                              )}
 
                               {sub.status === 'flagged' && campaign.status === 'active' && (
                                 <button
