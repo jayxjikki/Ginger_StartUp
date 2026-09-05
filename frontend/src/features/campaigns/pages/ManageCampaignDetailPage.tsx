@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FiArrowLeft,
@@ -44,6 +44,8 @@ type FilterType = 'all' | 'pending' | 'verified' | 'flagged';
 
 const ManageCampaignDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
+  const initialModeParam = searchParams.get('mode');
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const {
@@ -60,7 +62,19 @@ const ManageCampaignDetailPage: React.FC = () => {
 
   const [singleCampaign, setSingleCampaign] = useState<any | null>(null);
   const [isFetchingDirect, setIsFetchingDirect] = useState(false);
-  const [submissionMode, setSubmissionMode] = useState<'all_rewards' | 'direct_discount' | 'reviews'>('all_rewards');
+  const [submissionMode, setSubmissionMode] = useState<'all_rewards' | 'direct_discount' | 'reviews'>(
+    initialModeParam === 'direct_discount' || initialModeParam === 'reviews' || initialModeParam === 'all_rewards'
+      ? initialModeParam
+      : 'all_rewards'
+  );
+
+  // Synchronize mode from URL search params whenever it changes
+  useEffect(() => {
+    const modeParam = searchParams.get('mode');
+    if (modeParam === 'direct_discount' || modeParam === 'reviews' || modeParam === 'all_rewards') {
+      setSubmissionMode(modeParam);
+    }
+  }, [searchParams]);
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
   const [selectedSubmissionId, setSelectedSubmissionId] = useState<string | null>(null);
   const [isVerifierModalOpen, setIsVerifierModalOpen] = useState(false);
@@ -225,14 +239,28 @@ const ManageCampaignDetailPage: React.FC = () => {
   // Direct discount mode is ONLY visible if the owner set direct discount tiers (or has existing discount submissions)
   const showDiscountMode = hasDirectDiscountOption || discountSubmissions.length > 0;
 
-  // Auto-switch mode if current mode becomes unavailable
+  // Auto-switch mode if current mode becomes unavailable (only once campaign data has loaded)
   useEffect(() => {
+    if (isFetchingDirect || (!campaign && !singleCampaign)) return;
     if (submissionMode === 'reviews' && !showReviewMode) {
       setSubmissionMode(showDiscountMode ? 'direct_discount' : 'all_rewards');
     } else if (submissionMode === 'direct_discount' && !showDiscountMode) {
       setSubmissionMode('all_rewards');
     }
-  }, [submissionMode, showReviewMode, showDiscountMode]);
+  }, [submissionMode, showReviewMode, showDiscountMode, isFetchingDirect, campaign, singleCampaign]);
+
+  // Smooth scroll to submissions when navigating directly with a specific mode param
+  useEffect(() => {
+    if (searchParams.get('mode') && !isFetchingDirect && (singleCampaign || campaign)) {
+      const timer = setTimeout(() => {
+        const targetEl = document.querySelector('.submissions-section-header') || document.querySelector('.manage-mode-switcher');
+        if (targetEl) {
+          targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 350);
+      return () => clearTimeout(timer);
+    }
+  }, [searchParams, isFetchingDirect, singleCampaign, campaign]);
 
   const currentModeSubmissions = useMemo(() => {
     if (submissionMode === 'all_rewards') return rewardSubmissions;

@@ -233,6 +233,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
       }
 
       // ── Auto-sync submissions for campaigns OWNED by this user ──
+      let ownedCampaignList: any[] = [];
       try {
         const { data: ownedCampaigns, error: campErr } = await supabase
           .from('campaigns')
@@ -240,6 +241,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
           .eq('advertiser_id', userId);
 
         if (!campErr && ownedCampaigns && ownedCampaigns.length > 0) {
+          ownedCampaignList = ownedCampaigns;
           const ownedCampIds = ownedCampaigns.map((c: any) => c.id);
           const { data: ownerSubs, error: oSubErr } = await supabase
             .from('submissions')
@@ -324,12 +326,33 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
               const isLocallyRead = readNotifIds.has(notifId) ||
                 (allReadAt > 0 && new Date(m.created_at || 0).getTime() <= allReadAt);
 
+              // Extract campaign title and resolve campaign ID for direct routing
+              let resolvedCampId: string | null = null;
+              const titleMatch = m.content.match(/(?:for|on)\s+"([^"]+)"/i);
+              if (titleMatch && titleMatch[1]) {
+                const campTitle = titleMatch[1].trim();
+                const matched = ownedCampaignList.find((c: any) => c.title?.toLowerCase() === campTitle.toLowerCase());
+                if (matched) {
+                  resolvedCampId = matched.id;
+                } else {
+                  try {
+                    const { data: cData } = await supabase
+                      .from('campaigns')
+                      .select('id')
+                      .ilike('title', campTitle)
+                      .limit(1)
+                      .maybeSingle();
+                    if (cData?.id) resolvedCampId = cData.id;
+                  } catch {}
+                }
+              }
+
               rawNotifs.push({
                 id: notifId,
                 user_id: userId,
                 actor_id: m.sender_id,
                 type: 'system',
-                entity_id: null,
+                entity_id: resolvedCampId,
                 content: m.content,
                 is_read: isLocallyRead,
                 created_at: m.created_at || new Date().toISOString()
@@ -339,6 +362,20 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
         }
       } catch (msgSyncErr) {
         console.warn('Could not sync inbound submission messages to notifications:', msgSyncErr);
+      }
+
+      // Resolve entity_id for any rawNotifs still missing it
+      for (const n of rawNotifs) {
+        if (!n.entity_id && (n.content?.includes('Submission') || n.id?.startsWith('owner-sub-') || n.id?.startsWith('msg-notif-'))) {
+          const titleMatch = n.content?.match(/(?:for|on)\s+"([^"]+)"/i);
+          if (titleMatch && titleMatch[1]) {
+            const campTitle = titleMatch[1].trim();
+            const matched = ownedCampaignList.find((c: any) => c.title?.toLowerCase() === campTitle.toLowerCase());
+            if (matched) {
+              n.entity_id = matched.id;
+            }
+          }
+        }
       }
 
       // Check all rawNotifs against readNotifIds and allReadAt

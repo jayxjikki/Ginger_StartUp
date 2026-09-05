@@ -11,6 +11,7 @@ import { useUgcStore } from '../../../store/ugcStore';
 import { useProfileStore } from '../../../store/profileStore';
 import { useChatStore } from '../../../store/chatStore';
 import { useNotificationStore } from '../../../store/notificationStore';
+import { supabase } from '../../../lib/supabase';
 import { formatDistanceToNow } from 'date-fns';
 import ProfileFeedViewer from '../components/ProfileFeedViewer';
 import ImageUpload from '../../../components/ui/ImageUpload';
@@ -1085,12 +1086,57 @@ const ProfilePage: React.FC = () => {
                           ? { borderLeft: '3px solid #10b981', background: 'rgba(16, 185, 129, 0.04)' }
                           : undefined
                       }
-                      onClick={() => {
+                      onClick={async () => {
                         if (!notification.is_read) markAsRead(notification.id);
                         setShowNotifications(false);
-                        if (isSubmissionNotif && notification.entity_id) {
-                          navigate(`/manage-campaigns/${notification.entity_id}`);
-                        } else if (notification.entity_id) {
+                        if (isSubmissionNotif) {
+                          let targetMode = 'all_rewards';
+                          const contentLower = notification.content.toLowerCase();
+                          if (
+                            contentLower.includes('review') ||
+                            contentLower.includes('rating') ||
+                            contentLower.includes('rate us')
+                          ) {
+                            targetMode = 'reviews';
+                          } else if (
+                            contentLower.includes('direct discount') ||
+                            contentLower.includes('visit') ||
+                            contentLower.includes('perk') ||
+                            contentLower.includes('discount')
+                          ) {
+                            targetMode = 'direct_discount';
+                          }
+
+                          let targetCampId = notification.entity_id;
+                          if (!targetCampId) {
+                            const match = notification.content.match(/(?:for|on)\s+"([^"]+)"/i);
+                            if (match && match[1]) {
+                              const extractedTitle = match[1].trim();
+                              try {
+                                const { data: cData } = await supabase
+                                  .from('campaigns')
+                                  .select('id')
+                                  .ilike('title', extractedTitle)
+                                  .limit(1)
+                                  .maybeSingle();
+                                if (cData?.id) {
+                                  targetCampId = cData.id;
+                                }
+                              } catch (e) {
+                                console.warn('Could not resolve campaign id by title:', e);
+                              }
+                            }
+                          }
+
+                          if (targetCampId) {
+                            navigate(`/manage-campaigns/${targetCampId}?mode=${targetMode}`);
+                          } else {
+                            navigate('/manage-campaigns');
+                          }
+                          return;
+                        }
+
+                        if (notification.entity_id) {
                           navigate(`/campaigns/${notification.entity_id}`);
                         } else if (isVoucherNotif || isCustomReward || isBillNotif) {
                           navigate(`/campaigns/joined`);
@@ -1166,11 +1212,9 @@ const ProfilePage: React.FC = () => {
                             >
                               ⚡ Campaign Submission
                             </span>
-                            {notification.entity_id && (
-                              <span className="text-[11px] text-amber-300 font-medium">
-                                Review & Issue Voucher →
-                              </span>
-                            )}
+                            <span className="text-[11px] text-amber-300 font-medium flex items-center gap-0.5">
+                              Review Submission →
+                            </span>
                           </div>
                         ) : (isVoucherNotif || isCustomReward || isBillNotif) ? (
                           <div className="mt-1.5 flex items-center justify-between flex-wrap gap-1">

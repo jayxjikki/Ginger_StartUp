@@ -8,6 +8,7 @@ import { useAuthStore } from '../../store/authStore';
 import { useChatStore, type Message } from '../../store/chatStore';
 import { useUgcStore } from '../../store/ugcStore';
 import { useGlobalModalStore } from '../../store/globalModalStore';
+import { supabase } from '../../lib/supabase';
 import { uploadToCloudinary } from '../../lib/cloudinary';
 import './ChatModal.css';
 
@@ -534,6 +535,52 @@ const ChatModal: React.FC<ChatModalProps> = ({
                                   <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.8)', marginTop: '2px', lineHeight: 1.35 }}>
                                     A new submission was received for your campaign. Check your Campaign Manager to review and issue voucher.
                                   </span>
+                                  <button
+                                    type="button"
+                                    onClick={async () => {
+                                      onClose();
+                                      let targetCampId = '';
+                                      if (parsedCampaign) {
+                                        try {
+                                          const { data: cData } = await supabase
+                                            .from('campaigns')
+                                            .select('id')
+                                            .ilike('title', parsedCampaign)
+                                            .limit(1)
+                                            .maybeSingle();
+                                          if (cData?.id) targetCampId = cData.id;
+                                        } catch {}
+                                      }
+                                      const mode = parsedSubmissionType.includes('Review')
+                                        ? 'reviews'
+                                        : parsedSubmissionType.includes('Direct Discount')
+                                        ? 'direct_discount'
+                                        : 'all_rewards';
+                                      if (targetCampId) {
+                                        navigate(`/manage-campaigns/${targetCampId}?mode=${mode}`);
+                                      } else {
+                                        navigate('/manage-campaigns');
+                                      }
+                                    }}
+                                    style={{
+                                      marginTop: '8px',
+                                      width: '100%',
+                                      padding: '7px 12px',
+                                      background: 'linear-gradient(135deg, rgba(255,215,0,0.2) 0%, rgba(217,119,6,0.15) 100%)',
+                                      border: '1px solid rgba(255,215,0,0.4)',
+                                      borderRadius: '8px',
+                                      color: '#FFD700',
+                                      fontSize: '12px',
+                                      fontWeight: 700,
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      gap: '6px',
+                                      cursor: 'pointer',
+                                    }}
+                                  >
+                                    <span>⚡ Review Submission in Campaign Manager →</span>
+                                  </button>
                                 </div>
                               </>
                             )}
