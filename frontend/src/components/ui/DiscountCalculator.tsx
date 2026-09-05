@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { FiChevronDown, FiChevronUp, FiLock, FiSend } from 'react-icons/fi';
+import React, { useState, useEffect } from 'react';
+import { FiLock, FiSend, FiX } from 'react-icons/fi';
 import { formatCurrency } from '../../utils/formatters';
 import './DiscountCalculator.css';
 
@@ -31,16 +31,15 @@ export const DiscountCalculator: React.FC<DiscountCalculatorProps> = ({
   const [billAmount, setBillAmount] = useState<string>('1000');
   const [isSendingBill, setIsSendingBill] = useState(false);
 
-  // If locked, percent is fixed to lockedDiscountPercent or initialDiscountPercent
-  const effectiveFixedRate = lockedDiscountPercent !== undefined 
-    ? lockedDiscountPercent 
+  const effectiveFixedRate = lockedDiscountPercent !== undefined
+    ? lockedDiscountPercent
     : (initialDiscountPercent > 0 ? initialDiscountPercent : 15);
 
   const [discountPercent, setDiscountPercent] = useState<string>(String(effectiveFixedRate));
 
   const parsedAmount = Math.max(0, parseFloat(billAmount) || 0);
-  const parsedRate = isLockedPercent 
-    ? effectiveFixedRate 
+  const parsedRate = isLockedPercent
+    ? effectiveFixedRate
     : Math.min(100, Math.max(0, parseFloat(discountPercent) || 0));
 
   const savings = (parsedAmount * parsedRate) / 100;
@@ -58,6 +57,16 @@ export const DiscountCalculator: React.FC<DiscountCalculatorProps> = ({
     }
   };
 
+  // Prevent body scroll when modal open
+  useEffect(() => {
+    if (isOpen && !inline) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [isOpen, inline]);
+
   const content = (
     <div className="discount-calculator-box">
       <div className="discount-calc-header">
@@ -66,17 +75,15 @@ export const DiscountCalculator: React.FC<DiscountCalculatorProps> = ({
           <h5>{isOwner ? 'Store Bill & Discount' : 'Quick Discount Calculator'}</h5>
           {voucherCode && <span className="calc-badge">{voucherCode}</span>}
         </div>
-        {!inline && (
-          <button
-            type="button"
-            className="icon-btn"
-            style={{ width: 24, height: 24, fontSize: '0.8rem' }}
-            onClick={() => setIsOpen(false)}
-            title="Close calculator"
-          >
-            ✕
-          </button>
-        )}
+        <button
+          type="button"
+          className="calc-modal-close-btn"
+          onClick={() => setIsOpen(false)}
+          title="Close calculator"
+          aria-label="Close"
+        >
+          <FiX size={17} />
+        </button>
       </div>
 
       <div className="calc-inputs-grid">
@@ -93,6 +100,7 @@ export const DiscountCalculator: React.FC<DiscountCalculatorProps> = ({
               value={billAmount}
               onChange={(e) => setBillAmount(e.target.value)}
               placeholder="e.g. 1000"
+              autoFocus
             />
           </div>
         </div>
@@ -171,8 +179,8 @@ export const DiscountCalculator: React.FC<DiscountCalculatorProps> = ({
           >
             <FiSend size={14} />
             <span>
-              {isSendingBill 
-                ? 'Sending Bill...' 
+              {isSendingBill
+                ? 'Sending Bill...'
                 : `Send Bill Receipt (₹${finalPrice.toLocaleString('en-IN')})`}
             </span>
           </button>
@@ -189,21 +197,35 @@ export const DiscountCalculator: React.FC<DiscountCalculatorProps> = ({
   }
 
   return (
-    <div className="inline-flex flex-col w-full">
+    <>
+      {/* Trigger Button */}
       <button
         type="button"
-        className={`calc-toggle-btn ${isOpen ? 'active' : ''}`}
-        onClick={() => setIsOpen(!isOpen)}
+        className="calc-toggle-btn"
+        onClick={() => setIsOpen(true)}
         title="Open quick discount calculator"
       >
         <span>🧮</span>
-        <span>{isOpen ? 'Hide Calculator' : 'Discount Calculator'}</span>
-        {isOpen ? <FiChevronUp size={13} /> : <FiChevronDown size={13} />}
+        <span>Discount Calculator</span>
       </button>
 
-      {isOpen && content}
-    </div>
+      {/* Full-screen Modal Overlay */}
+      {isOpen && (
+        <div
+          className="calc-modal-overlay"
+          onClick={(e) => { if (e.target === e.currentTarget) setIsOpen(false); }}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Discount Calculator"
+        >
+          <div className="calc-modal-sheet">
+            {content}
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 
 export default DiscountCalculator;
+
