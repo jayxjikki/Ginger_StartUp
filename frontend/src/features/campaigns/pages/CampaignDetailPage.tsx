@@ -28,7 +28,8 @@ import { formatCurrency, formatCount, formatTimeLeft } from '../../../utils/form
 import { getCampaignImages, parseTierReward, getCampaignDirectDiscountTiers } from '../../../types/campaign.types';
 import { uploadToCloudinary } from '../../../lib/cloudinary';
 import { CampaignImageSlideshow } from '../../../components/ui/CampaignImageSlideshow';
-import { isDirectDiscountSubmission, normalizeSubmission, encodeVideoId, isReviewSubmission } from '../../../utils/submissionHelpers';
+import { isDirectDiscountSubmission, normalizeSubmission, encodeVideoId, isReviewSubmission, getSubmissionReviewUrl, openReviewPage } from '../../../utils/submissionHelpers';
+
 import CampaignShareModal from '../../../components/ui/CampaignShareModal';
 import './CampaignDetailPage.css';
 
@@ -186,9 +187,9 @@ const CampaignDetailPage: React.FC = () => {
     if (activeDirectTier?.review_url?.trim()) {
       return activeDirectTier.review_url.trim();
     }
-    const query = encodeURIComponent(`${campaign?.title || 'Business'} ${campaign?.location || ''} reviews`.trim());
-    return `https://www.google.com/search?q=${query}`;
-  }, [activeDirectTier, campaign]);
+    return getSubmissionReviewUrl(userSubmission, campaign);
+  }, [activeDirectTier, campaign, userSubmission]);
+
 
   const openSubmitModal = () => {
     setVideoUrl('');
@@ -422,32 +423,13 @@ const CampaignDetailPage: React.FC = () => {
     }
   };
 
-  const handleSubmitAnotherReview = async () => {
-    if (!userSubmission || !user) return;
-    const confirmed = await showConfirm(
-      'Would you like to submit another review? Your previous review submission will be replaced.',
-      'Submit Another Review'
-    );
-    if (!confirmed) return;
-
-    setIsSubmitting(true);
-    try {
-      const { error } = await supabase
-        .from('submissions')
-        .delete()
-        .eq('campaign_id', campaign!.id)
-        .eq('creator_id', user.id);
-
-      if (error) throw error;
-
-      setUserSubmission(null);
-      toast.success('Ready to submit another review!');
-      openSubmitModal();
-    } catch (err: any) {
-      console.error('Error preparing new review submission:', err);
-      toast.error(err.message || 'Failed to submit another review.');
-    } finally {
-      setIsSubmitting(false);
+  const handleSubmitAnotherReview = () => {
+    const reviewUrl = getSubmissionReviewUrl(userSubmission, campaign);
+    if (reviewUrl) {
+      toast.success('Opening review page! ⭐');
+      openReviewPage(reviewUrl);
+    } else {
+      toast.error('Review link not found.');
     }
   };
 
@@ -1101,22 +1083,24 @@ const CampaignDetailPage: React.FC = () => {
                       </a>
                     )}
 
-                    {/* Remove submission if submitted by mistake — only allowed before approval and before voucher is issued */}
-                    {!(userSubmission.status === 'verified' || userSubmission.status === 'paid' || Boolean(userSubmission.voucher_code)) && (
+                    {/* For review submissions: direct one-click button to open review page set by owner */}
+                    {isReviewSubmission(userSubmission) ? (
                       <div className="pt-2 border-t border-white/5">
-                        {isReviewSubmission(userSubmission) ? (
-                          <button
-                            type="button"
-                            className="btn btn-outline flex items-center justify-center gap-2 text-xs py-2 px-3 w-full"
-                            style={{ borderColor: 'rgba(255, 215, 0, 0.4)', color: '#FFD700', background: 'rgba(255, 215, 0, 0.05)' }}
-                            onClick={handleSubmitAnotherReview}
-                            disabled={isSubmitting}
-                            title="Submit another review for this campaign"
-                          >
-                            <FiRotateCw size={13} />
-                            <span>Submit Another Review</span>
-                          </button>
-                        ) : (
+                        <button
+                          type="button"
+                          className="btn btn-outline flex items-center justify-center gap-2 text-xs py-2 px-3 w-full"
+                          style={{ borderColor: 'rgba(255, 215, 0, 0.4)', color: '#FFD700', background: 'rgba(255, 215, 0, 0.05)' }}
+                          onClick={handleSubmitAnotherReview}
+                          title="Directly open the review page set by the owner"
+                        >
+                          <FiRotateCw size={13} />
+                          <span>Submit Another Review</span>
+                        </button>
+                      </div>
+                    ) : (
+                      /* Remove submission if submitted by mistake — only allowed before approval and before voucher is issued */
+                      !(userSubmission.status === 'verified' || userSubmission.status === 'paid' || Boolean(userSubmission.voucher_code)) && (
+                        <div className="pt-2 border-t border-white/5">
                           <button
                             type="button"
                             className="btn btn-outline flex items-center justify-center gap-2 text-xs py-2 px-3 w-full"
@@ -1128,8 +1112,8 @@ const CampaignDetailPage: React.FC = () => {
                             <FiTrash2 size={13} />
                             <span>Remove / Change Video</span>
                           </button>
-                        )}
-                      </div>
+                        </div>
+                      )
                     )}
                   </div>
                 </Card>

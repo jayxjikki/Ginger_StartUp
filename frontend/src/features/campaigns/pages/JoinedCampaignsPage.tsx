@@ -9,7 +9,8 @@ import { FiArrowLeft, FiClock, FiVideo, FiTrash2, FiCopy } from 'react-icons/fi'
 import { supabase } from '../../../lib/supabase';
 import Badge from '../../../components/ui/Badge';
 import DiscountCalculator from '../../../components/ui/DiscountCalculator';
-import { isDirectDiscountSubmission, isReviewSubmission } from '../../../utils/submissionHelpers';
+import { isDirectDiscountSubmission, isReviewSubmission, getSubmissionReviewUrl, openReviewPage } from '../../../utils/submissionHelpers';
+
 import toast from 'react-hot-toast';
 import './JoinedCampaignsPage.css';
 
@@ -209,21 +210,28 @@ const JoinedCampaignsPage: React.FC = () => {
                     <span>Submitted {new Date(sub.submitted_at).toLocaleDateString()}</span>
                   </div>
                   <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                    {/* Only allow removing if not approved and no voucher code issued */}
-                    {!(sub.status === 'verified' || sub.status === 'paid' || Boolean((sub as any).voucher_code)) && (
-                      isReviewSubmission(sub) ? (
-                        <button 
-                          className="btn btn-outline" 
-                          style={{ padding: '4px 10px', fontSize: '12px', color: '#ffd54f', borderColor: 'rgba(255, 213, 79, 0.4)', background: 'rgba(255, 179, 0, 0.08)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(`/campaigns/${sub.campaign_id}`);
-                          }}
-                          title="Submit another review on the campaign page"
-                        >
-                          ⭐ Submit Another Review
-                        </button>
-                      ) : (
+                    {/* For review submissions: always allow directly opening the owner's review page */}
+                    {isReviewSubmission(sub) ? (
+                      <button 
+                        className="btn btn-outline" 
+                        style={{ padding: '4px 10px', fontSize: '12px', color: '#ffd54f', borderColor: 'rgba(255, 213, 79, 0.4)', background: 'rgba(255, 179, 0, 0.08)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const reviewUrl = getSubmissionReviewUrl(sub, sub.campaign);
+                          if (reviewUrl) {
+                            toast.success('Opening review page! ⭐');
+                            openReviewPage(reviewUrl);
+                          } else {
+                            toast.error('Review link not found.');
+                          }
+                        }}
+                        title="Directly open the review page set by the owner"
+                      >
+                        ⭐ Submit Another Review
+                      </button>
+                    ) : (
+                      /* Only allow removing if not approved and no voucher code issued */
+                      !(sub.status === 'verified' || sub.status === 'paid' || Boolean((sub as any).voucher_code)) && (
                         <button 
                           className="btn btn-outline" 
                           style={{ padding: '4px 8px', fontSize: '12px', color: '#ff453a', borderColor: 'rgba(255, 69, 58, 0.35)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}

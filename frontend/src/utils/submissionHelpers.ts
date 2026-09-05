@@ -121,4 +121,71 @@ export const isReviewSubmission = (s: any): boolean => {
   return false;
 };
 
+/**
+ * Ensures a URL starts with http:// or https:// so window.open doesn't treat it as relative path
+ */
+export const ensureHttpUrl = (url: string): string => {
+  const trimmed = (url || '').trim();
+  if (!trimmed) return '';
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return `https://${trimmed}`;
+};
+
+/**
+ * Resolves the direct review URL for a campaign/submission set by the owner
+ */
+export const getSubmissionReviewUrl = (submission?: any, campaign?: any): string => {
+  // 1. From submission voucher details
+  const voucherUrl = submission?.voucher_details?.review_url;
+  if (voucherUrl && typeof voucherUrl === 'string' && voucherUrl.trim()) {
+    return ensureHttpUrl(voucherUrl);
+  }
+
+  // 2. From submission video_url if it is an external URL (stored on review submissions)
+  const videoUrl = submission?.video_url;
+  if (videoUrl && typeof videoUrl === 'string' && (videoUrl.startsWith('http://') || videoUrl.startsWith('https://') || videoUrl.includes('google.') || videoUrl.includes('maps.'))) {
+    return ensureHttpUrl(videoUrl);
+  }
+
+  // 3. From campaign terms.direct_discount_tiers
+  let termsObj = campaign?.terms;
+  if (typeof termsObj === 'string') {
+    try {
+      termsObj = JSON.parse(termsObj);
+    } catch {}
+  }
+  const tiers = Array.isArray(termsObj?.direct_discount_tiers) ? termsObj.direct_discount_tiers : [];
+  const reviewTier = tiers.find((t: any) => {
+    const term = (t?.term || '').toLowerCase();
+    return (term.includes('review') || term.includes('rate')) && t?.review_url?.trim();
+  });
+  if (reviewTier?.review_url?.trim()) {
+    return ensureHttpUrl(reviewTier.review_url);
+  }
+
+  // 4. From campaign payout_tiers or top-level review_url
+  if (campaign?.review_url && typeof campaign.review_url === 'string' && campaign.review_url.trim()) {
+    return ensureHttpUrl(campaign.review_url);
+  }
+
+  // 5. Fallback: Google Maps / Search query for the business
+  const businessName = campaign?.title || 'Business';
+  const location = campaign?.location && campaign.location !== 'None' ? ` ${campaign.location}` : '';
+  const query = encodeURIComponent(`${businessName}${location} reviews`.trim());
+  return `https://www.google.com/search?q=${query}`;
+};
+
+/**
+ * Opens an external review page safely in a new tab with fallback for strict mobile popup blockers
+ */
+export const openReviewPage = (url: string) => {
+  const targetUrl = ensureHttpUrl(url);
+  if (!targetUrl) return;
+  const newWin = window.open(targetUrl, '_blank', 'noopener,noreferrer');
+  if (!newWin || newWin.closed || typeof newWin.closed === 'undefined') {
+    window.location.href = targetUrl;
+  }
+};
+
+
 
