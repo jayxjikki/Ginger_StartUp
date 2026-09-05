@@ -114,7 +114,13 @@ const ProfilePage: React.FC = () => {
   const { inboxChats } = useChatStore();
   const unreadChatCount = inboxChats.filter(chat => chat.unread).length;
 
-  const { notifications, unreadCount: unreadNotifCount, markAllAsRead, markAsRead } = useNotificationStore();
+  const { notifications, unreadCount: unreadNotifCount, markAllAsRead, markAsRead, fetchNotifications } = useNotificationStore();
+
+  useEffect(() => {
+    if (user?.id) {
+      fetchNotifications(user.id);
+    }
+  }, [user?.id, fetchNotifications]);
 
   const [title, setTitle] = useState('');
   const [desc, setDesc] = useState('');
@@ -478,7 +484,10 @@ const ProfilePage: React.FC = () => {
               style={{ position: 'relative' }} 
               onClick={() => {
                 setShowNotifications(true);
-                if (unreadNotifCount > 0 && user) markAllAsRead(user.id);
+                if (user?.id) {
+                  fetchNotifications(user.id);
+                  if (unreadNotifCount > 0) markAllAsRead(user.id);
+                }
               }}
               title="Notifications"
             >
@@ -1030,8 +1039,10 @@ const ProfilePage: React.FC = () => {
                 </div>
               ) : (
                 notifications.map(notification => {
+                  const isCustomReward = notification.content.includes('🎁') || notification.content.includes('Reward Issued');
+                  const isBillNotif = notification.content.includes('🧾') || notification.content.toLowerCase().includes('bill');
                   const isVoucherNotif = notification.content.includes('🎟️') || notification.content.includes('VCH-') || notification.content.toLowerCase().includes('voucher');
-                  const isBillNotif = notification.content.includes('🧾') || notification.content.includes('Bill Receipt');
+                  const isApprovedNotif = notification.content.includes('✅') || notification.content.toLowerCase().includes('approved');
                   const voucherMatch = notification.content.match(/(VCH-[A-Z0-9-]+)/i);
                   const extractedVoucherCode = voucherMatch ? voucherMatch[1].toUpperCase() : '';
 
@@ -1040,10 +1051,14 @@ const ProfilePage: React.FC = () => {
                       key={notification.id} 
                       className={`notification-item ${!notification.is_read ? 'unread' : ''}`}
                       style={
-                        isBillNotif
+                        isCustomReward
+                          ? { borderLeft: '3px solid #f59e0b', background: 'rgba(245, 158, 11, 0.06)' }
+                          : isBillNotif
                           ? { borderLeft: '3px solid #10b981', background: 'rgba(16, 185, 129, 0.05)' }
                           : isVoucherNotif 
                           ? { borderLeft: '3px solid #34d399', background: 'rgba(52, 211, 153, 0.04)' } 
+                          : isApprovedNotif
+                          ? { borderLeft: '3px solid #10b981', background: 'rgba(16, 185, 129, 0.04)' }
                           : undefined
                       }
                       onClick={() => {
@@ -1051,12 +1066,12 @@ const ProfilePage: React.FC = () => {
                         setShowNotifications(false);
                         if (notification.entity_id) {
                           navigate(`/campaigns/${notification.entity_id}`);
-                        } else if (isVoucherNotif) {
+                        } else if (isVoucherNotif || isCustomReward || isBillNotif) {
                           navigate(`/campaigns/joined`);
                         }
                       }}
                     >
-                      {notification.actor && !isVoucherNotif ? (
+                      {notification.actor && !isVoucherNotif && !isCustomReward && !isBillNotif && !isApprovedNotif ? (
                         <div className="notification-avatar">
                           <img src={notification.actor.avatar_url || 'https://via.placeholder.com/150'} alt={notification.actor.full_name} />
                         </div>
@@ -1064,34 +1079,51 @@ const ProfilePage: React.FC = () => {
                         <div 
                           className="notification-icon-wrap" 
                           style={
-                            isBillNotif 
-                              ? { background: '#059669' } 
+                            isCustomReward
+                              ? { background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' }
+                              : isBillNotif 
+                              ? { background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)' } 
                               : isVoucherNotif 
-                              ? { background: '#10b981' } 
+                              ? { background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)' } 
+                              : isApprovedNotif
+                              ? { background: 'linear-gradient(135deg, #10b981 0%, #047857 100%)' }
                               : undefined
                           }
                         >
                           <span className="material-symbols-outlined">
-                            {isBillNotif ? 'receipt_long' : isVoucherNotif ? 'confirmation_number' : 'campaign'}
+                            {isCustomReward
+                              ? 'redeem'
+                              : isBillNotif 
+                              ? 'receipt_long' 
+                              : isVoucherNotif 
+                              ? 'confirmation_number' 
+                              : isApprovedNotif
+                              ? 'verified'
+                              : 'campaign'}
                           </span>
                         </div>
                       )}
                       
                       <div className="notification-text" style={{ width: '100%' }}>
-                        {isVoucherNotif ? (
-                          <>Your video was approved and voucher code <strong>{extractedVoucherCode || 'VCH-ACTIVE'}</strong> was generated.</>
-                        ) : notification.actor ? (
+                        {notification.actor && !notification.content.startsWith('🎁') && !notification.content.startsWith('🧾') && !notification.content.startsWith('🎟️') && !notification.content.startsWith('✅') ? (
                           <><strong>{notification.actor.full_name}</strong> {notification.content}</>
                         ) : (
                           <>{notification.content}</>
                         )}
 
                         {/* Clean voucher code tag and campaign navigation hint */}
-                        {(isVoucherNotif || isBillNotif) && (
+                        {(isVoucherNotif || isCustomReward || isBillNotif) && (
                           <div className="mt-1.5 flex items-center justify-between flex-wrap gap-1">
                             {extractedVoucherCode && (
-                              <span className="inline-flex items-center gap-1 font-mono text-xs font-bold text-emerald-300 bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded">
-                                {isBillNotif ? '🧾' : '🎟️'} {extractedVoucherCode}
+                              <span 
+                                className="inline-flex items-center gap-1 font-mono text-xs font-bold px-2 py-0.5 rounded"
+                                style={
+                                  isCustomReward
+                                    ? { color: '#fbbf24', background: 'rgba(245, 158, 11, 0.15)', border: '1px solid rgba(245, 158, 11, 0.3)' }
+                                    : { color: '#6ee7b7', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)' }
+                                }
+                              >
+                                {isBillNotif ? '🧾' : isCustomReward ? '🎁' : '🎟️'} {extractedVoucherCode}
                               </span>
                             )}
                             {notification.entity_id && (

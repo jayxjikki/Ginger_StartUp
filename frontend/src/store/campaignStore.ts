@@ -6,6 +6,7 @@ import { create } from 'zustand';
 import type { Campaign, CampaignFilters, Submission, SlideshowItem } from '../types/campaign.types';
 import { supabase } from '../lib/supabase';
 import { generateVoucherCode } from '../utils/voucherHelpers';
+import { encodeVideoIdWithVoucher, extractVoucherDataFromVideoId, normalizeSubmission } from '../utils/submissionHelpers';
 import toast from 'react-hot-toast';
 
 interface CampaignState {
@@ -230,7 +231,8 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
         .order('submitted_at', { ascending: false });
 
       if (error) throw error;
-      set({ mySubmissions: data as unknown as Submission[] });
+      const normalizedSubs = (data || []).map(normalizeSubmission);
+      set({ mySubmissions: normalizedSubs as unknown as Submission[] });
     } catch (err: any) {
       console.error('Error fetching my submissions:', err);
     }
@@ -411,22 +413,32 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
     } | number
   ) => {
     try {
-      // 1. Fetch submission details
+      // 1. Fetch submission details safely
       let sub: any = null;
       const { data: subData, error: fetchErr } = await supabase
         .from('submissions')
-        .select('*, campaign:campaigns(*), creator:profiles(*)')
+        .select('id, campaign_id, creator_id, video_id, status, earned_amount, verified_at, submitted_at, campaign:campaigns(id, title, advertiser_id), creator:profiles(username, full_name)')
         .eq('id', submissionId)
         .single();
 
       if (fetchErr || !subData) {
-        const { data: fallbackSub, error: fallbackErr } = await supabase
-          .from('submissions')
-          .select('*')
-          .eq('id', submissionId)
-          .single();
-        if (fallbackErr || !fallbackSub) throw fetchErr || fallbackErr || new Error('Submission not found');
-        sub = fallbackSub;
+        // Fallback: check in local state
+        for (const c of get().myCreatedCampaigns) {
+          const found = ((c.submissions as any[]) || []).find((s: any) => s.id === submissionId);
+          if (found) {
+            sub = { ...found, campaign: c };
+            break;
+          }
+        }
+        if (!sub) {
+          const { data: fallbackSub } = await supabase
+            .from('submissions')
+            .select('id, campaign_id, creator_id, video_id, status, earned_amount')
+            .eq('id', submissionId)
+            .single();
+          if (!fallbackSub) throw fetchErr || new Error('Submission not found');
+          sub = fallbackSub;
+        }
       } else {
         sub = subData;
       }
@@ -437,13 +449,17 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
       const isCustomMessage = mode === 'custom_message';
       const customMessage = !isNum && options?.customMessage ? options.customMessage.trim() : '';
 
-      const voucherCode = generateVoucherCode();
+      const existingVData = extractVoucherDataFromVideoId(sub.video_id) || {};
+      const voucherCode = sub.voucher_code || existingVData.voucher_code || generateVoucherCode();
       const discountPercent = isCustomMessage
         ? 0
         : (isNum ? options : options?.discountPercent) || (sub.campaign?.payout_tiers?.[0]?.payout_amount || 15);
       const now = new Date().toISOString();
 
-      const existingDetails = typeof sub.voucher_details === 'object' && sub.voucher_details ? sub.voucher_details : {};
+      const existingDetails = {
+        ...(existingVData.voucher_details || {}),
+        ...(typeof sub.voucher_details === 'object' && sub.voucher_details ? sub.voucher_details : {}),
+      };
 
       const updatedVoucherDetails = {
         ...existingDetails,
@@ -453,63 +469,99 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
         discount_percent: isCustomMessage ? 0 : discountPercent,
       };
 
-      // 3. Update submission
-      const updateData: any = {
-        status: 'verified',
+      // 3. Encode into video_id for 100% reliable database persistence
+      const newVideoId = encodeVideoIdWithVoucher(sub.video_id, {
         voucher_code: voucherCode,
         voucher_status: 'active',
         discount_percent: isCustomMessage ? 0 : discountPercent,
         voucher_details: updatedVoucherDetails,
-        verified_at: now
-      };
+      });
 
+      // 4. Update submission in database
       const { error: updateErr } = await supabase
         .from('submissions')
-        .update(updateData)
+        .update({
+          status: 'verified',
+          video_id: newVideoId,
+          verified_at: now
+        })
         .eq('id', submissionId);
 
       if (updateErr) {
-        // Fallback without voucher fields if DB column not migrated yet
-        console.warn('Fallback update without voucher columns:', updateErr);
+        console.warn('Update submissions error:', updateErr);
+      }
+
+      // Try forward-compatible column update
+      try {
         await supabase
           .from('submissions')
-          .update({ status: 'verified', verified_at: now })
+          .update({
+            voucher_code: voucherCode,
+            voucher_status: 'active',
+            discount_percent: isCustomMessage ? 0 : discountPercent,
+            voucher_details: updatedVoucherDetails,
+          } as any)
           .eq('id', submissionId);
+      } catch (e) {
+        // Ignored if columns don't exist yet
       }
 
-      // 4. Send notification to Creator (user)
+      // 5. Send notification to Creator (user)
+      const campaignTitle = (sub.campaign as any)?.title || 'Campaign';
+      const ownerId = (sub.campaign as any)?.advertiser_id;
+
       if (sub.creator_id) {
         const creatorMsg = isCustomMessage
-          ? `🎁 Reward Issued: "${customMessage}"! Your voucher code is ${voucherCode} for "${sub.campaign?.title || 'Campaign'}". Present this voucher code to claim your reward!`
-          : `🎟️ Voucher Issued: Your submission on "${sub.campaign?.title || 'Campaign'}" was approved! Your voucher code is ${voucherCode} (${discountPercent}% OFF).`;
+          ? `🎁 Reward Issued: "${customMessage}"! Your voucher code is ${voucherCode} for "${campaignTitle}". Present this voucher code to claim your reward!`
+          : `🎟️ Voucher Issued: Your submission on "${campaignTitle}" was approved! Your voucher code is ${voucherCode} (${discountPercent}% OFF).`;
 
-        await supabase.from('notifications').insert({
-          user_id: sub.creator_id,
-          actor_id: sub.campaign?.advertiser_id || null,
-          type: 'system',
-          entity_id: sub.campaign_id,
-          content: creatorMsg
-        });
+        try {
+          await supabase.from('notifications').insert({
+            user_id: sub.creator_id,
+            actor_id: ownerId || null,
+            type: 'system',
+            entity_id: sub.campaign_id,
+            content: creatorMsg
+          });
+        } catch (nErr) {
+          console.warn('Notifications insert skipped by RLS:', nErr);
+        }
+
+        // Also send message in chat so user gets immediate inbox notification
+        if (ownerId) {
+          try {
+            await supabase.from('messages').insert({
+              sender_id: ownerId,
+              receiver_id: sub.creator_id,
+              content: creatorMsg
+            });
+          } catch (mErr) {
+            console.warn('Chat message insert skipped:', mErr);
+          }
+        }
       }
 
-      // 5. Send notification to Owner
-      const ownerId = sub.campaign?.advertiser_id;
+      // 6. Send notification to Owner
       if (ownerId) {
         const creatorHandle = sub.creator?.username ? `@${sub.creator.username}` : 'the customer';
         const ownerMsg = isCustomMessage
-          ? `🎟️ Voucher Issued: ${voucherCode} for ${creatorHandle} on "${sub.campaign?.title || 'Campaign'}" (Reward: "${customMessage}").`
-          : `🎟️ Voucher Issued: ${voucherCode} for ${creatorHandle} on "${sub.campaign?.title || 'Campaign'}" (${discountPercent}% OFF). You can verify or redeem this voucher code anytime.`;
+          ? `🎟️ Voucher Issued: ${voucherCode} for ${creatorHandle} on "${campaignTitle}" (Reward: "${customMessage}").`
+          : `🎟️ Voucher Issued: ${voucherCode} for ${creatorHandle} on "${campaignTitle}" (${discountPercent}% OFF). You can verify or redeem this voucher code anytime.`;
 
-        await supabase.from('notifications').insert({
-          user_id: ownerId,
-          actor_id: sub.creator_id || null,
-          type: 'system',
-          entity_id: sub.campaign_id,
-          content: ownerMsg
-        });
+        try {
+          await supabase.from('notifications').insert({
+            user_id: ownerId,
+            actor_id: sub.creator_id || null,
+            type: 'system',
+            entity_id: sub.campaign_id,
+            content: ownerMsg
+          });
+        } catch (nErr) {
+          console.warn('Owner notification insert skipped:', nErr);
+        }
       }
 
-      // 6. Update local state
+      // 7. Update local state
       set((state) => ({
         myCreatedCampaigns: state.myCreatedCampaigns.map(campaign => ({
           ...campaign,
@@ -518,6 +570,7 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
               ? {
                   ...s,
                   status: 'verified',
+                  video_id: newVideoId,
                   voucher_code: voucherCode,
                   voucher_status: 'active',
                   discount_percent: isCustomMessage ? 0 : discountPercent,
@@ -526,7 +579,21 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
                 }
               : s
           )
-        }))
+        })),
+        mySubmissions: state.mySubmissions.map(s =>
+          s.id === submissionId
+            ? {
+                ...s,
+                status: 'verified',
+                video_id: newVideoId,
+                voucher_code: voucherCode,
+                voucher_status: 'active',
+                discount_percent: isCustomMessage ? 0 : discountPercent,
+                voucher_details: updatedVoucherDetails,
+                verified_at: now
+              }
+            : s
+        )
       }));
 
       return voucherCode;
@@ -544,28 +611,39 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
     note?: string;
   }) => {
     try {
-      // 1. Fetch submission details
-      const { data: sub, error: subErr } = await supabase
+      // 1. Fetch submission details safely without non-existent columns or failing foreign keys
+      let sub: any = null;
+      const { data: subData, error: subErr } = await supabase
         .from('submissions')
-        .select(`
-          id,
-          campaign_id,
-          creator_id,
-          voucher_code,
-          discount_percent,
-          voucher_details,
-          creator:profiles!submissions_creator_id_fkey(username, full_name),
-          campaign:campaigns!submissions_campaign_id_fkey(id, title, advertiser_id)
-        `)
+        .select('id, campaign_id, creator_id, video_id, status, earned_amount, campaign:campaigns(id, title, advertiser_id), creator:profiles(username, full_name)')
         .eq('id', submissionId)
         .single();
 
-      if (subErr || !sub) {
+      if (subData) {
+        sub = subData;
+      } else {
+        // Fallback: search in local myCreatedCampaigns
+        for (const c of get().myCreatedCampaigns) {
+          const found = ((c.submissions as any[]) || []).find((s: any) => s.id === submissionId);
+          if (found) {
+            sub = { ...found, campaign: c };
+            break;
+          }
+        }
+      }
+
+      if (!sub) {
+        console.error('Submission not found for ID:', submissionId, subErr);
         throw new Error('Submission record not found');
       }
 
       const now = new Date().toISOString();
+      const existingVData = extractVoucherDataFromVideoId(sub.video_id) || {};
+      const existingVoucherCode = sub.voucher_code || existingVData.voucher_code || 'VCH-ACTIVE';
+      const existingDiscountPercent = sub.discount_percent ?? existingVData.discount_percent ?? billData.discount_percent;
+
       const updatedVoucherDetails = {
+        ...(existingVData.voucher_details || {}),
         ...(sub.voucher_details || {}),
         bill_amount: billData.bill_amount,
         discount_percent: billData.discount_percent,
@@ -576,50 +654,92 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
         status: 'billed',
       };
 
-      // 2. Update submission in database
+      // 2. Encode into video_id for guaranteed remote database persistence
+      const newVideoId = encodeVideoIdWithVoucher(sub.video_id, {
+        voucher_code: existingVoucherCode,
+        voucher_status: 'active',
+        discount_percent: existingDiscountPercent,
+        voucher_details: updatedVoucherDetails,
+      });
+
+      // 3. Update submission in database
       const { error: updateErr } = await supabase
         .from('submissions')
         .update({
-          voucher_details: updatedVoucherDetails,
+          video_id: newVideoId,
           earned_amount: billData.discount_amount,
         })
         .eq('id', submissionId);
 
       if (updateErr) {
-        console.warn('Error saving voucher_details to submissions:', updateErr);
+        console.warn('Error saving video_id to submissions:', updateErr);
+      }
+
+      // Try forward-compatible voucher_details update
+      try {
+        await supabase
+          .from('submissions')
+          .update({
+            voucher_details: updatedVoucherDetails,
+            earned_amount: billData.discount_amount,
+          } as any)
+          .eq('id', submissionId);
+      } catch (e) {
+        // Ignored if column doesn't exist
       }
 
       const campaignTitle = (sub.campaign as any)?.title || 'Campaign';
       const creatorUsername = (sub.creator as any)?.username || (sub.creator as any)?.full_name || 'creator';
       const ownerId = (sub.campaign as any)?.advertiser_id;
 
-      // 3. Send notification to user (creator)
-      if (sub.creator_id) {
-        const creatorContent = `🧾 Bill Received from "${campaignTitle}"! Original Bill: ₹${billData.bill_amount.toLocaleString()} | Discount: ${billData.discount_percent}% (-₹${billData.discount_amount.toLocaleString()}) | Final Amount to Pay: ₹${billData.final_payable.toLocaleString()}${billData.note ? ` (${billData.note})` : ''}`;
+      // 4. Send notification to user (creator)
+      const creatorContent = `🧾 Bill Received from "${campaignTitle}"! Original Bill: ₹${billData.bill_amount.toLocaleString()} | Discount: ${billData.discount_percent}% (-₹${billData.discount_amount.toLocaleString()}) | Final Amount to Pay: ₹${billData.final_payable.toLocaleString()}${billData.note ? ` (${billData.note})` : ''}`;
 
-        await supabase.from('notifications').insert({
-          user_id: sub.creator_id,
-          actor_id: ownerId || null,
-          type: 'system',
-          entity_id: sub.campaign_id,
-          content: creatorContent,
-        });
+      if (sub.creator_id) {
+        try {
+          await supabase.from('notifications').insert({
+            user_id: sub.creator_id,
+            actor_id: ownerId || null,
+            type: 'system',
+            entity_id: sub.campaign_id,
+            content: creatorContent,
+          });
+        } catch (nErr) {
+          console.warn('Notification insert skipped by RLS:', nErr);
+        }
+
+        // Also send direct chat message so customer receives instant message & notification
+        if (ownerId) {
+          try {
+            await supabase.from('messages').insert({
+              sender_id: ownerId,
+              receiver_id: sub.creator_id,
+              content: creatorContent
+            });
+          } catch (mErr) {
+            console.warn('Chat message insert skipped:', mErr);
+          }
+        }
       }
 
-      // 4. Send notification to campaign owner
+      // 5. Send notification to campaign owner
       if (ownerId) {
         const ownerContent = `🧾 Bill Sent to @${creatorUsername} for "${campaignTitle}": Original: ₹${billData.bill_amount.toLocaleString()} | Discount: ${billData.discount_percent}% (-₹${billData.discount_amount.toLocaleString()}) | Final Amount to Pay: ₹${billData.final_payable.toLocaleString()}`;
 
-        await supabase.from('notifications').insert({
-          user_id: ownerId,
-          actor_id: sub.creator_id || null,
-          type: 'system',
-          entity_id: sub.campaign_id,
-          content: ownerContent,
-        });
+        try {
+          await supabase.from('notifications').insert({
+            user_id: ownerId,
+            actor_id: sub.creator_id || null,
+            type: 'system',
+            entity_id: sub.campaign_id,
+            content: ownerContent,
+          });
+        } catch (nErr) {
+          console.warn('Owner notification insert skipped:', nErr);
+        }
       }
 
-      // 5. Update local Zustand state
+      // 6. Update local Zustand state
       set((state) => ({
         myCreatedCampaigns: state.myCreatedCampaigns.map((c) => ({
           ...c,
@@ -627,6 +747,8 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
             s.id === submissionId
               ? {
                   ...s,
+                  video_id: newVideoId,
+                  voucher_code: existingVoucherCode,
                   voucher_details: updatedVoucherDetails,
                   earned_amount: billData.discount_amount,
                 }
@@ -637,6 +759,8 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
           s.id === submissionId
             ? {
                 ...s,
+                video_id: newVideoId,
+                voucher_code: existingVoucherCode,
                 voucher_details: updatedVoucherDetails,
                 earned_amount: billData.discount_amount,
               }

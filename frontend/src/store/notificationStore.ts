@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
+import { normalizeSubmission, isDirectDiscountSubmission } from '../utils/submissionHelpers';
 import toast from 'react-hot-toast';
 
 export interface Notification {
@@ -76,7 +77,7 @@ const resolveNotificationActors = async (rawNotifs: any[]): Promise<Notification
   });
 };
 
-export const useNotificationStore = create<NotificationState>((set) => ({
+export const useNotificationStore = create<NotificationState>((set, get) => ({
   notifications: [],
   unreadCount: 0,
   isLoading: false,
@@ -84,50 +85,74 @@ export const useNotificationStore = create<NotificationState>((set) => ({
   fetchNotifications: async (userId: string) => {
     set({ isLoading: true });
     try {
-      const { data, error } = await supabase
-        .from('notifications')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(50);
-
-      if (error) throw error;
-
-      let rawNotifs = data || [];
-
-      // Auto-sync any approved submissions for this user into notifications
+      let rawNotifs: any[] = [];
       try {
-        const { data: approvedSubs } = await supabase
+        const { data, error } = await supabase
+          .from('notifications')
+          .select('*')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false })
+          .limit(50);
+
+        if (!error && data) {
+          rawNotifs = [...data];
+        }
+      } catch (err) {
+        console.warn('Direct notifications fetch warning:', err);
+      }
+
+      // Auto-sync any approved or billed submissions for this user into notifications
+      try {
+        const { data: userSubs, error: subsErr } = await supabase
           .from('submissions')
-          .select('id, campaign_id, voucher_code, status, verified_at, submitted_at, campaign:campaigns(id, title, advertiser_id)')
+          .select('id, campaign_id, video_id, status, earned_amount, verified_at, submitted_at, campaign:campaigns(id, title, advertiser_id)')
           .eq('creator_id', userId)
           .in('status', ['verified', 'paid']);
 
-        if (approvedSubs && approvedSubs.length > 0) {
-          for (const sub of approvedSubs) {
+        if (!subsErr && userSubs && userSubs.length > 0) {
+          for (const rawSub of userSubs) {
+            const sub = normalizeSubmission(rawSub);
+            const campaignTitle = (sub.campaign as any)?.title || 'Campaign';
             const vCode = sub.voucher_code || 'VCH-ACTIVE';
-            const contentText = `Your video was approved and voucher code ${vCode} was generated.`;
-            const existingIdx = rawNotifs.findIndex(
-              (n: any) => n.content && (n.content.includes(vCode) || (n.entity_id === sub.campaign_id && n.content.toLowerCase().includes('approved')))
-            );
-            if (existingIdx === -1) {
-              // Persist into database in background
-              (async () => {
-                try {
-                  await supabase.from('notifications').insert({
-                    user_id: userId,
-                    actor_id: (sub.campaign as any)?.advertiser_id || null,
-                    type: 'system',
-                    entity_id: sub.campaign_id,
-                    content: contentText,
-                  });
-                } catch (e) {
-                  console.warn('Silent insert error:', e);
-                }
-              })();
 
-              rawNotifs.unshift({
-                id: `sub-approved-${sub.id}`,
+            // 1. If bill details exist, synthesize a Bill Received notification
+            if (sub.voucher_details?.bill_amount) {
+              const billContent = `🧾 Bill Received from "${campaignTitle}"! Original Bill: ₹${Number(sub.voucher_details.bill_amount).toLocaleString()} | Discount: ${sub.voucher_details.discount_percent}% (-₹${Number(sub.voucher_details.discount_amount).toLocaleString()}) | Final Amount to Pay: ₹${Number(sub.voucher_details.final_payable).toLocaleString()}${sub.voucher_details.note ? ` (${sub.voucher_details.note})` : ''}`;
+              const billNotifId = `sub-bill-${sub.id}`;
+              const exists = rawNotifs.some(n => n.id === billNotifId || (n.content && n.content.includes('🧾') && n.entity_id === sub.campaign_id));
+              if (!exists) {
+                rawNotifs.push({
+                  id: billNotifId,
+                  user_id: userId,
+                  actor_id: (sub.campaign as any)?.advertiser_id || null,
+                  type: 'system',
+                  entity_id: sub.campaign_id,
+                  content: billContent,
+                  is_read: false,
+                  created_at: sub.voucher_details?.billed_at || sub.verified_at || new Date().toISOString()
+                });
+              }
+            }
+
+            // 2. Voucher or Approval notification
+            let contentText = '';
+            if (sub.voucher_details?.is_custom_reward || sub.voucher_details?.reward_type === 'custom_message' || sub.voucher_details?.custom_message) {
+              contentText = `🎁 Reward Issued: "${sub.voucher_details?.custom_message || 'Custom Reward'}"! Your voucher code is ${vCode} for "${campaignTitle}". Present this voucher code to claim your reward!`;
+            } else if (isDirectDiscountSubmission(sub) || sub.voucher_code) {
+              const disc = sub.discount_percent || sub.voucher_details?.discount_percent || 20;
+              contentText = `🎟️ Voucher Issued: Your submission on "${campaignTitle}" was approved! Your voucher code is ${vCode} (${disc}% OFF).`;
+            } else {
+              contentText = `✅ Submission Approved: Your submission on "${campaignTitle}" was approved!`;
+            }
+
+            const voucherNotifId = `sub-approved-${sub.id}`;
+            const existingIdx = rawNotifs.findIndex(
+              (n: any) => n.id === voucherNotifId || (n.content && (n.content.includes(vCode) || (n.entity_id === sub.campaign_id && (n.content.includes('approved') || n.content.includes('Reward Issued') || n.content.includes('Voucher Issued')))))
+            );
+
+            if (existingIdx === -1) {
+              rawNotifs.push({
+                id: voucherNotifId,
                 user_id: userId,
                 actor_id: (sub.campaign as any)?.advertiser_id || null,
                 type: 'system',
@@ -137,10 +162,9 @@ export const useNotificationStore = create<NotificationState>((set) => ({
                 created_at: sub.verified_at || sub.submitted_at || new Date().toISOString()
               });
             } else {
-              // Normalize existing notification content to the clean text and ensure entity_id is set
-              rawNotifs[existingIdx].content = contentText;
-              if (!rawNotifs[existingIdx].entity_id) {
-                rawNotifs[existingIdx].entity_id = sub.campaign_id;
+              // Update content if it was a generic placeholder
+              if (rawNotifs[existingIdx].content.includes('Your video was approved') && contentText.includes('🎁')) {
+                rawNotifs[existingIdx].content = contentText;
               }
             }
           }
@@ -148,6 +172,9 @@ export const useNotificationStore = create<NotificationState>((set) => ({
       } catch (syncErr) {
         console.warn('Could not sync approved submission notifications:', syncErr);
       }
+
+      // Sort rawNotifs by created_at descending
+      rawNotifs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
       const notifications = await resolveNotificationActors(rawNotifs);
       const unreadCount = notifications.filter(n => !n.is_read).length;
@@ -206,7 +233,7 @@ export const useNotificationStore = create<NotificationState>((set) => ({
     }
 
     notificationSubscription = supabase
-      .channel('public:notifications')
+      .channel('public:notifications_and_events')
       .on(
         'postgres_changes',
         {
@@ -229,7 +256,6 @@ export const useNotificationStore = create<NotificationState>((set) => ({
               unreadCount: state.unreadCount + 1
             }));
             
-            // Show toast notification
             toast.success('You have a new notification!', {
               icon: '🔔',
               style: {
@@ -239,6 +265,33 @@ export const useNotificationStore = create<NotificationState>((set) => ({
                 border: '1px solid rgba(255,255,255,0.1)'
               }
             });
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'submissions',
+          filter: `creator_id=eq.${userId}`
+        },
+        () => {
+          // Instant notification sync whenever user's submission is approved or billed
+          get().fetchNotifications(userId);
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `receiver_id=eq.${userId}`
+        },
+        (payload) => {
+          if (payload.new?.content && (payload.new.content.includes('🧾') || payload.new.content.includes('🎟️') || payload.new.content.includes('🎁'))) {
+            get().fetchNotifications(userId);
           }
         }
       )

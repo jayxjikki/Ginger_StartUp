@@ -1023,6 +1023,30 @@ const ManageCampaignDetailPage: React.FC = () => {
         onSendBill={async (submissionId, billData) => {
           const success = await sendBillToCreator(submissionId, billData);
           if (success) {
+            setSingleCampaign((prev: any) => {
+              if (!prev) return prev;
+              return {
+                ...prev,
+                submissions: (prev.submissions || []).map((s: any) =>
+                  s.id === submissionId
+                    ? {
+                        ...s,
+                        voucher_details: {
+                          ...(s.voucher_details || {}),
+                          bill_amount: billData.bill_amount,
+                          discount_percent: billData.discount_percent,
+                          discount_amount: billData.discount_amount,
+                          final_payable: billData.final_payable,
+                          note: billData.note || null,
+                          billed_at: new Date().toISOString(),
+                          status: 'billed',
+                        },
+                        earned_amount: billData.discount_amount,
+                      }
+                    : s
+                ),
+              };
+            });
             fetchCampaignData();
           }
           return success;
