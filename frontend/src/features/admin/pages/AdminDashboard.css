@@ -534,6 +534,21 @@
   color: #34d399;
 }
 
+.sub-filter-pill.highlight-flagged {
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.sub-filter-pill.highlight-flagged.active {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.5);
+  box-shadow: 0 2px 12px rgba(239, 68, 68, 0.2);
+}
+
+.sub-filter-pill.highlight-flagged .pill-count {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+}
+
 .pulsing-dot-accent {
   width: 8px;
   height: 8px;

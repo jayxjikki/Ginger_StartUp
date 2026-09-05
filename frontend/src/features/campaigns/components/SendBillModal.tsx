@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiX, FiLock, FiCheckCircle } from 'react-icons/fi';
+import { FiX, FiCheckCircle } from 'react-icons/fi';
 import type { Submission, Campaign } from '../../../types/campaign.types';
 import Avatar from '../../../components/ui/Avatar';
 import './SendBillModal.css';
@@ -144,19 +144,12 @@ export const SendBillModal: React.FC<SendBillModalProps> = ({
                 <span>🧾</span>
               </div>
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <h3 className="send-bill-title">
-                    {isAlreadyBilled ? 'Sent Bill Receipt' : 'Send Bill & Apply Discount'}
-                  </h3>
-                  {isAlreadyBilled && (
-                    <span className="billed-locked-badge">
-                      <FiLock size={11} /> Sent & Locked
-                    </span>
-                  )}
-                </div>
+                <h3 className="send-bill-title">
+                  {isAlreadyBilled ? 'Sent Bill Receipt' : 'Send Bill & Apply Discount'}
+                </h3>
                 <p className="send-bill-subtitle">
                   {isAlreadyBilled
-                    ? `This bill has been sent to @${submission.creator?.username || 'customer'} with a ${billedDiscountPercent}% pre-set discount. Details are locked and view-only.`
+                    ? `This bill has been sent to @${submission.creator?.username || 'customer'}. Details are locked and view-only.`
                     : `Directly enter the bill amount. The pre-set ${discountPercent}% discount is automatically deducted and sent to user & campaign notifications.`}
                 </p>
               </div>
@@ -172,7 +165,7 @@ export const SendBillModal: React.FC<SendBillModalProps> = ({
           </div>
 
           <form onSubmit={handleSubmit} className="send-bill-form">
-            {/* Creator & Voucher Pill */}
+            {/* Creator Bar */}
             <div className="send-bill-customer-bar">
               <div className="send-bill-customer-info">
                 <Avatar
@@ -190,72 +183,63 @@ export const SendBillModal: React.FC<SendBillModalProps> = ({
                 </div>
               </div>
 
-              <div className="send-bill-voucher-pill">
-                <span className="voucher-icon">🎟️</span>
-                <span className="voucher-code">{submission.voucher_code || 'VCH-ACTIVE'}</span>
-                <span className="voucher-discount-badge">{billedDiscountPercent}% OFF</span>
-              </div>
-            </div>
-
-            {/* Bill Amount Input / View */}
-            <div className="send-bill-field-group">
-              <label className="send-bill-label">
-                <span>Original Bill Amount</span>
-                {isAlreadyBilled ? (
-                  <span style={{ fontSize: '10.5px', color: '#fbbf24', fontWeight: 500, textTransform: 'lowercase' }}>(view-only)</span>
-                ) : (
-                  <span className="required-star">*</span>
-                )}
-              </label>
-
-              {isAlreadyBilled ? (
-                <div className="send-bill-input-wrap">
-                  <span className="send-bill-currency-symbol">₹</span>
-                  <div className="send-bill-input send-bill-input-locked">
-                    {billedOriginal.toLocaleString()}
-                  </div>
+              {!isAlreadyBilled && (
+                <div className="send-bill-voucher-pill">
+                  <span className="voucher-icon">🎟️</span>
+                  <span className="voucher-code">{submission.voucher_code || 'VCH-ACTIVE'}</span>
+                  <span className="voucher-discount-badge">{billedDiscountPercent}% OFF</span>
                 </div>
-              ) : (
-                <>
-                  <div className="send-bill-input-wrap">
-                    <span className="send-bill-currency-symbol">₹</span>
-                    <input
-                      type="number"
-                      min="1"
-                      step="any"
-                      className="send-bill-input"
-                      placeholder="e.g. 1000"
-                      value={billAmountInput}
-                      onChange={(e) => setBillAmountInput(e.target.value)}
-                      autoFocus
-                      required
-                    />
-                  </div>
-
-                  {/* Quick Amount Chips */}
-                  <div className="send-bill-chips-row">
-                    {quickAmounts.map((amt) => (
-                      <button
-                        key={amt}
-                        type="button"
-                        className={`send-bill-chip ${billedOriginal === amt ? 'active' : ''}`}
-                        onClick={() => setBillAmountInput(String(amt))}
-                      >
-                        ₹{amt.toLocaleString()}
-                      </button>
-                    ))}
-                  </div>
-                </>
               )}
             </div>
+
+            {/* Bill Amount Input (Only when creating a bill, hidden on view-only receipt to avoid clutter) */}
+            {!isAlreadyBilled && (
+              <div className="send-bill-field-group">
+                <label className="send-bill-label">
+                  <span>Original Bill Amount</span>
+                  <span className="required-star">*</span>
+                </label>
+
+                <div className="send-bill-input-wrap">
+                  <span className="send-bill-currency-symbol">₹</span>
+                  <input
+                    type="number"
+                    min="1"
+                    step="any"
+                    className="send-bill-input"
+                    placeholder="e.g. 1000"
+                    value={billAmountInput}
+                    onChange={(e) => setBillAmountInput(e.target.value)}
+                    autoFocus
+                    required
+                  />
+                </div>
+
+                {/* Quick Amount Chips */}
+                <div className="send-bill-chips-row">
+                  {quickAmounts.map((amt) => (
+                    <button
+                      key={amt}
+                      type="button"
+                      className={`send-bill-chip ${billedOriginal === amt ? 'active' : ''}`}
+                      onClick={() => setBillAmountInput(String(amt))}
+                    >
+                      ₹{amt.toLocaleString()}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Live Calculation Receipt Breakdown */}
             <div className="send-bill-breakdown-card">
               <div className="breakdown-header">
                 <span className="breakdown-header-tag">
-                  {isAlreadyBilled ? '🧾 SENT BILL BREAKDOWN (LOCKED)' : '🧾 LIVE BILL BREAKDOWN'}
+                  {isAlreadyBilled ? '🧾 SENT BILL BREAKDOWN' : '🧾 LIVE BILL BREAKDOWN'}
                 </span>
-                <span className="breakdown-auto-tag">Pre-set {billedDiscountPercent}% Applied</span>
+                {!isAlreadyBilled && (
+                  <span className="breakdown-auto-tag">Pre-set {billedDiscountPercent}% Applied</span>
+                )}
               </div>
 
               <div className="breakdown-row">

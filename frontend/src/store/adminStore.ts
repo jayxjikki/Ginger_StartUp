@@ -7,6 +7,7 @@ import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import type { Profile } from '../types/user.types';
 import type { Campaign } from '../types/campaign.types';
+import { normalizeSubmission } from '../utils/submissionHelpers';
 
 export interface AdminState {
   users: Profile[];
@@ -34,6 +35,7 @@ export interface AdminState {
   createSlideshow: (data: any) => Promise<void>;
   updateSlideshow: (slideId: string, data: any) => Promise<void>;
   deleteSubmission: (submissionId: string) => Promise<void>;
+  unflagSubmissionAsAdmin: (submissionId: string) => Promise<void>;
   approveSubmissionAsAdmin: (submissionId: string, payoutAmount?: number) => Promise<void>;
   verifySubmissionAsAdmin: (submissionId: string) => Promise<void>;
   approveAndPayCampaign: (campaignId: string, payoutPerCreator: number) => Promise<void>;
@@ -109,9 +111,13 @@ export const useAdminStore = create<AdminState>((set, get) => ({
   },
 
   fetchSubmissions: async () => {
-    const { data, error } = await supabase.from('submissions').select('*, campaign:campaigns(*), creator:profiles(*)').order('submitted_at', { ascending: false });
+    const { data, error } = await supabase
+      .from('submissions')
+      .select('*, campaign:campaigns(*), creator:profiles(*)')
+      .order('submitted_at', { ascending: false });
     if (error) throw error;
-    set({ submissions: data });
+    const normalized = (data || []).map((s) => normalizeSubmission(s));
+    set({ submissions: normalized });
   },
 
   fetchWithdrawals: async () => {
@@ -149,9 +155,21 @@ export const useAdminStore = create<AdminState>((set, get) => ({
   },
 
   deleteSubmission: async (submissionId: string) => {
+    // Delete any associated reports first to avoid FK issues
+    try {
+      await supabase.from('reports').delete().eq('reported_item_id', submissionId);
+    } catch (_) {}
     const { error } = await supabase.from('submissions').delete().eq('id', submissionId);
     if (error) throw error;
     set((state) => ({ submissions: state.submissions.filter(s => s.id !== submissionId) }));
+  },
+
+  unflagSubmissionAsAdmin: async (submissionId: string) => {
+    const { error } = await supabase.from('submissions').update({ status: 'pending' }).eq('id', submissionId);
+    if (error) throw error;
+    set((state) => ({
+      submissions: state.submissions.map(s => s.id === submissionId ? { ...s, status: 'pending' } : s)
+    }));
   },
 
   approveAndPayCampaign: async (campaignId: string, payoutPerCreator: number) => {

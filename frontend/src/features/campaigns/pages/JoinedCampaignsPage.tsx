@@ -51,6 +51,7 @@ const JoinedCampaignsPage: React.FC = () => {
       case 'verified': return <Badge variant="success" size="sm">{isDirectDiscount ? 'Approved' : 'Approved (Pending Admin)'}</Badge>;
       case 'paid': return <Badge variant="accent" size="sm">{isDirectDiscount ? 'Approved' : 'Admin Approved & Paid'}</Badge>;
       case 'rejected': return <Badge variant="error" size="sm">Rejected</Badge>;
+      case 'flagged': return <Badge variant="error" size="sm">Flagged by Owner</Badge>;
       case 'disputed': return <Badge variant="warning" size="sm">Disputed</Badge>;
       default: return <Badge variant="default" size="sm">{status}</Badge>;
     }

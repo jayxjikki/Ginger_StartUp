@@ -9,6 +9,32 @@ import { generateVoucherCode } from '../utils/voucherHelpers';
 import { encodeVideoIdWithVoucher, extractVoucherDataFromVideoId, normalizeSubmission } from '../utils/submissionHelpers';
 import toast from 'react-hot-toast';
 
+export const saveLocalNotification = (userId: string, notif: {
+  user_id: string;
+  actor_id?: string | null;
+  type?: string;
+  entity_id?: string | null;
+  content: string;
+}) => {
+  try {
+    const key = `ginger_local_notifications_${userId}`;
+    const list = JSON.parse(localStorage.getItem(key) || '[]');
+    const newNotif = {
+      id: `local-notif-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`,
+      user_id: userId,
+      actor_id: notif.actor_id || null,
+      type: notif.type || 'system',
+      entity_id: notif.entity_id || null,
+      content: notif.content,
+      is_read: false,
+      created_at: new Date().toISOString(),
+    };
+    localStorage.setItem(key, JSON.stringify([newNotif, ...list].slice(0, 50)));
+  } catch (err) {
+    console.warn('Could not save local notification:', err);
+  }
+};
+
 interface CampaignState {
   campaigns: Campaign[];
   filteredCampaigns: Campaign[];
@@ -36,6 +62,7 @@ interface CampaignState {
   raiseDispute: (submissionId: string) => Promise<void>;
   fetchMyCreatedCampaigns: (userId: string) => Promise<void>;
   flagSubmissionByAdvertiser: (submissionId: string) => Promise<void>;
+  unflagSubmissionByAdvertiser: (submissionId: string) => Promise<void>;
   approveSubmissionByAdvertiser: (submissionId: string) => Promise<void>;
   approveDirectDiscountSubmission: (
     submissionId: string,
@@ -343,8 +370,14 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
       
       if (error) throw error;
 
-      // Update local state for myCreatedCampaigns
+      // Update local state for myCreatedCampaigns & selectedCampaign
       set((state) => ({
+        selectedCampaign: state.selectedCampaign ? {
+          ...state.selectedCampaign,
+          submissions: (state.selectedCampaign.submissions as any[] || []).map(sub => 
+            sub.id === submissionId ? { ...sub, status: 'flagged' } : sub
+          )
+        } : null,
         myCreatedCampaigns: state.myCreatedCampaigns.map(campaign => ({
           ...campaign,
           submissions: (campaign.submissions as any[] || []).map(sub => 
@@ -358,6 +391,36 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
     }
   },
 
+  unflagSubmissionByAdvertiser: async (submissionId: string) => {
+    try {
+      const { error } = await supabase
+        .from('submissions')
+        .update({ status: 'pending' })
+        .eq('id', submissionId);
+      
+      if (error) throw error;
+
+      // Update local state for myCreatedCampaigns & selectedCampaign
+      set((state) => ({
+        selectedCampaign: state.selectedCampaign ? {
+          ...state.selectedCampaign,
+          submissions: (state.selectedCampaign.submissions as any[] || []).map(sub => 
+            sub.id === submissionId ? { ...sub, status: 'pending' } : sub
+          )
+        } : null,
+        myCreatedCampaigns: state.myCreatedCampaigns.map(campaign => ({
+          ...campaign,
+          submissions: (campaign.submissions as any[] || []).map(sub => 
+            sub.id === submissionId ? { ...sub, status: 'pending' } : sub
+          )
+        }))
+      }));
+    } catch (error) {
+      console.error('Error unflagging submission:', error);
+      throw error;
+    }
+  },
+
   approveSubmissionByAdvertiser: async (submissionId: string) => {
     try {
       const { error } = await supabase
@@ -367,30 +430,38 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
       
       if (error) throw error;
 
-      // Send approval notification to creator
+      // Send approval notification to creator safely without failing cross-user RLS
       try {
         const { data: sub } = await supabase
           .from('submissions')
           .select('id, campaign_id, creator_id, voucher_code, campaign:campaigns(id, title, advertiser_id)')
           .eq('id', submissionId)
-          .single();
+          .maybeSingle();
 
         if (sub?.creator_id) {
           const vCode = sub.voucher_code || 'VCH-ACTIVE';
-          await supabase.from('notifications').insert({
+          saveLocalNotification(sub.creator_id, {
             user_id: sub.creator_id,
             actor_id: (sub.campaign as any)?.advertiser_id || null,
             type: 'system',
             entity_id: sub.campaign_id,
-            content: `Your video was approved and voucher code ${vCode} was generated.`,
+            content: sub.voucher_code
+              ? `Your submission on "${(sub.campaign as any)?.title || 'Campaign'}" was approved! Voucher code: ${vCode}.`
+              : `Your submission on "${(sub.campaign as any)?.title || 'Campaign'}" was approved!`,
           });
         }
       } catch (nErr) {
         console.warn('Could not send approval notification:', nErr);
       }
 
-      // Update local state for myCreatedCampaigns
+      // Update local state for myCreatedCampaigns & selectedCampaign
       set((state) => ({
+        selectedCampaign: state.selectedCampaign ? {
+          ...state.selectedCampaign,
+          submissions: (state.selectedCampaign.submissions as any[] || []).map(sub => 
+            sub.id === submissionId ? { ...sub, status: 'verified' } : sub
+          )
+        } : null,
         myCreatedCampaigns: state.myCreatedCampaigns.map(campaign => ({
           ...campaign,
           submissions: (campaign.submissions as any[] || []).map(sub => 
@@ -515,17 +586,13 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
           ? `🎁 Reward Issued: "${customMessage}"! Your voucher code is ${voucherCode} for "${campaignTitle}". Present this voucher code to claim your reward!`
           : `🎟️ Voucher Issued: Your submission on "${campaignTitle}" was approved! Your voucher code is ${voucherCode} (${discountPercent}% OFF).`;
 
-        try {
-          await supabase.from('notifications').insert({
-            user_id: sub.creator_id,
-            actor_id: ownerId || null,
-            type: 'system',
-            entity_id: sub.campaign_id,
-            content: creatorMsg
-          });
-        } catch (nErr) {
-          console.warn('Notifications insert skipped by RLS:', nErr);
-        }
+        saveLocalNotification(sub.creator_id, {
+          user_id: sub.creator_id,
+          actor_id: ownerId || null,
+          type: 'system',
+          entity_id: sub.campaign_id,
+          content: creatorMsg
+        });
 
         // Also send message in chat so user gets immediate inbox notification
         if (ownerId) {
@@ -548,17 +615,13 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
           ? `🎟️ Voucher Issued: ${voucherCode} for ${creatorHandle} on "${campaignTitle}" (Reward: "${customMessage}").`
           : `🎟️ Voucher Issued: ${voucherCode} for ${creatorHandle} on "${campaignTitle}" (${discountPercent}% OFF). You can verify or redeem this voucher code anytime.`;
 
-        try {
-          await supabase.from('notifications').insert({
-            user_id: ownerId,
-            actor_id: sub.creator_id || null,
-            type: 'system',
-            entity_id: sub.campaign_id,
-            content: ownerMsg
-          });
-        } catch (nErr) {
-          console.warn('Owner notification insert skipped:', nErr);
-        }
+        saveLocalNotification(ownerId, {
+          user_id: ownerId,
+          actor_id: sub.creator_id || null,
+          type: 'system',
+          entity_id: sub.campaign_id,
+          content: ownerMsg
+        });
       }
 
       // 7. Update local state
@@ -617,7 +680,7 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
         .from('submissions')
         .select('id, campaign_id, creator_id, video_id, status, earned_amount, campaign:campaigns(id, title, advertiser_id), creator:profiles(username, full_name)')
         .eq('id', submissionId)
-        .single();
+        .maybeSingle();
 
       if (subData) {
         sub = subData;
@@ -684,17 +747,13 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
       const creatorContent = `🧾 Bill Received from "${campaignTitle}"! Original Bill: ₹${billData.bill_amount.toLocaleString()} | Discount: ${billData.discount_percent}% (-₹${billData.discount_amount.toLocaleString()}) | Final Amount to Pay: ₹${billData.final_payable.toLocaleString()}${billData.note ? ` (${billData.note})` : ''}`;
 
       if (sub.creator_id) {
-        try {
-          await supabase.from('notifications').insert({
-            user_id: sub.creator_id,
-            actor_id: ownerId || null,
-            type: 'system',
-            entity_id: sub.campaign_id,
-            content: creatorContent,
-          });
-        } catch (nErr) {
-          console.warn('Notification insert skipped by RLS:', nErr);
-        }
+        saveLocalNotification(sub.creator_id, {
+          user_id: sub.creator_id,
+          actor_id: ownerId || null,
+          type: 'system',
+          entity_id: sub.campaign_id,
+          content: creatorContent,
+        });
 
         // Also send direct chat message so customer receives instant message & notification
         if (ownerId) {
@@ -714,17 +773,13 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
       if (ownerId) {
         const ownerContent = `🧾 Bill Sent to @${creatorUsername} for "${campaignTitle}": Original: ₹${billData.bill_amount.toLocaleString()} | Discount: ${billData.discount_percent}% (-₹${billData.discount_amount.toLocaleString()}) | Final Amount to Pay: ₹${billData.final_payable.toLocaleString()}`;
 
-        try {
-          await supabase.from('notifications').insert({
-            user_id: ownerId,
-            actor_id: sub.creator_id || null,
-            type: 'system',
-            entity_id: sub.campaign_id,
-            content: ownerContent,
-          });
-        } catch (nErr) {
-          console.warn('Owner notification insert skipped:', nErr);
-        }
+        saveLocalNotification(ownerId, {
+          user_id: ownerId,
+          actor_id: sub.creator_id || null,
+          type: 'system',
+          entity_id: sub.campaign_id,
+          content: ownerContent,
+        });
       }
 
       // 6. Update local Zustand state

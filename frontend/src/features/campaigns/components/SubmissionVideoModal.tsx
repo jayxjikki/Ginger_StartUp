@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiX, FiExternalLink, FiCheck, FiFlag } from 'react-icons/fi';
+import { FiX, FiExternalLink, FiCheck, FiFlag, FiRotateCcw } from 'react-icons/fi';
 import Avatar from '../../../components/ui/Avatar';
 import { getSocialIcon } from '../../../utils/socialHelpers';
 import { getEmbedInfo, getVideoThumbnail } from '../../../utils/videoHelpers';
@@ -12,6 +12,7 @@ interface SubmissionVideoModalProps {
   onClose: () => void;
   onApprove?: (id: string) => void;
   onFlag?: (id: string) => void;
+  onUnflag?: (id: string) => void;
   onReject?: (id: string) => void;
   campaignStatus?: string;
   isAdmin?: boolean;
@@ -23,6 +24,7 @@ const SubmissionVideoModal: React.FC<SubmissionVideoModalProps> = ({
   onClose,
   onApprove,
   onFlag,
+  onUnflag,
   onReject,
   campaignStatus = 'active',
   isAdmin = false,
@@ -184,9 +186,9 @@ const SubmissionVideoModal: React.FC<SubmissionVideoModalProps> = ({
               )}
             </div>
 
-            {/* Modal Actions Footer - only displayed if pending review */}
+            {/* Modal Actions Footer */}
             {((isAdmin && submission.status !== 'paid') ||
-              (!isAdmin && submission.status === 'pending' && campaignStatus === 'active')) && (
+              (!isAdmin && (submission.status === 'pending' || submission.status === 'flagged') && campaignStatus === 'active')) && (
               <div className="submission-modal-actions">
                 {isAdmin ? (
                   <>
@@ -242,6 +244,24 @@ const SubmissionVideoModal: React.FC<SubmissionVideoModalProps> = ({
                         >
                           <FiFlag size={16} />
                           <span>Flag Video</span>
+                        </button>
+                      )}
+
+                    {submission.status === 'flagged' &&
+                      campaignStatus === 'active' &&
+                      onUnflag && (
+                        <button
+                          type="button"
+                          className="btn btn-outline flag-btn flex-1 flex items-center justify-center gap-2"
+                          style={{
+                            borderColor: 'rgba(245, 158, 11, 0.45)',
+                            color: '#fbbf24',
+                            background: 'rgba(245, 158, 11, 0.08)',
+                          }}
+                          onClick={() => onUnflag(submission.id)}
+                        >
+                          <FiRotateCcw size={16} />
+                          <span>Unflag Video (Restore to Pending)</span>
                         </button>
                       )}
                   </>

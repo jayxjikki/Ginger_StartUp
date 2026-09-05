@@ -101,6 +101,18 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
         console.warn('Direct notifications fetch warning:', err);
       }
 
+      // Merge local notifications queue
+      try {
+        const localData = JSON.parse(localStorage.getItem(`ginger_local_notifications_${userId}`) || '[]');
+        if (Array.isArray(localData)) {
+          localData.forEach((ln: any) => {
+            if (!rawNotifs.some(n => n.id === ln.id || (n.content === ln.content && n.entity_id === ln.entity_id))) {
+              rawNotifs.push(ln);
+            }
+          });
+        }
+      } catch (_) {}
+
       // Auto-sync any approved or billed submissions for this user into notifications
       try {
         const { data: userSubs, error: subsErr } = await supabase
@@ -196,14 +208,26 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
         unreadCount: Math.max(0, state.unreadCount - 1)
       }));
 
-      const { error } = await supabase
-        .from('notifications')
-        .update({ is_read: true })
-        .eq('id', notificationId);
+      // Update local storage if present
+      try {
+        const notifObj = get().notifications.find(n => n.id === notificationId);
+        const userId = notifObj?.user_id;
+        if (userId) {
+          const key = `ginger_local_notifications_${userId}`;
+          const list = JSON.parse(localStorage.getItem(key) || '[]');
+          const updated = list.map((n: any) => n.id === notificationId ? { ...n, is_read: true } : n);
+          localStorage.setItem(key, JSON.stringify(updated));
+        }
+      } catch (_) {}
 
-      if (error) throw error;
+      if (!notificationId.startsWith('local-notif-') && !notificationId.startsWith('sub-')) {
+        await supabase
+          .from('notifications')
+          .update({ is_read: true })
+          .eq('id', notificationId);
+      }
     } catch (err) {
-      console.error('Error marking notification as read:', err);
+      console.warn('Error marking notification as read:', err);
     }
   },
 
@@ -215,15 +239,22 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
         unreadCount: 0
       }));
 
-      const { error } = await supabase
-        .from('notifications')
-        .update({ is_read: true })
-        .eq('user_id', userId)
-        .eq('is_read', false);
+      try {
+        const key = `ginger_local_notifications_${userId}`;
+        const list = JSON.parse(localStorage.getItem(key) || '[]');
+        const updated = list.map((n: any) => ({ ...n, is_read: true }));
+        localStorage.setItem(key, JSON.stringify(updated));
+      } catch (_) {}
 
-      if (error) throw error;
+      try {
+        await supabase
+          .from('notifications')
+          .update({ is_read: true })
+          .eq('user_id', userId)
+          .eq('is_read', false);
+      } catch (_) {}
     } catch (err) {
-      console.error('Error marking all notifications as read:', err);
+      console.warn('Error marking all notifications as read:', err);
     }
   },
 

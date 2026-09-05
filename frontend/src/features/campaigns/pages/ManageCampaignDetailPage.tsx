@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   FiArrowLeft,
   FiFlag,
+  FiRotateCcw,
   FiVideo,
   FiCheck,
   FiPlay,
@@ -49,6 +50,7 @@ const ManageCampaignDetailPage: React.FC = () => {
     myCreatedCampaigns,
     fetchMyCreatedCampaigns,
     flagSubmissionByAdvertiser,
+    unflagSubmissionByAdvertiser,
     approveSubmissionByAdvertiser,
     approveDirectDiscountSubmission,
     sendBillToCreator,
@@ -81,7 +83,7 @@ const ManageCampaignDetailPage: React.FC = () => {
     }
   }, [activeMenuId]);
 
-  // Direct fetch for fresh submissions & campaign details
+  // Direct fetch for fresh submissions & campaign details safely without 406 Not Acceptable
   const fetchCampaignData = useCallback(async () => {
     if (!id) return;
     setIsFetchingDirect(true);
@@ -90,21 +92,43 @@ const ManageCampaignDetailPage: React.FC = () => {
         .from('campaigns')
         .select('*')
         .eq('id', id)
-        .single();
+        .maybeSingle();
 
       if (campErr) throw campErr;
 
       const { data: subRes, error: subErr } = await supabase
         .from('submissions')
-        .select('*, creator:profiles(*)')
+        .select('*')
         .eq('campaign_id', id)
         .order('submitted_at', { ascending: false });
 
       if (subErr) throw subErr;
 
+      // Safely batch-fetch creator profiles
+      const creatorIds = Array.from(new Set((subRes || []).map((s: any) => s.creator_id).filter(Boolean)));
+      let profilesMap: Record<string, any> = {};
+      if (creatorIds.length > 0) {
+        try {
+          const { data: profilesData } = await supabase
+            .from('profiles')
+            .select('id, full_name, username, avatar_url')
+            .in('id', creatorIds);
+          (profilesData || []).forEach((p: any) => {
+            profilesMap[p.id] = p;
+          });
+        } catch (pErr) {
+          console.warn('Could not batch load creator profiles:', pErr);
+        }
+      }
+
       setSingleCampaign({
         ...campaignRes,
-        submissions: (subRes || []).map(normalizeSubmission),
+        submissions: (subRes || []).map((sub: any) =>
+          normalizeSubmission({
+            ...sub,
+            creator: profilesMap[sub.creator_id] || sub.creator || null,
+          })
+        ),
       });
     } catch (err: any) {
       console.error('Error fetching campaign details:', err);
@@ -273,6 +297,31 @@ const ManageCampaignDetailPage: React.FC = () => {
     } catch (err: any) {
       console.error(err);
       toast.error(err.message || 'Failed to flag submission. Please try again.');
+    }
+  };
+
+  const handleUnflagSubmission = async (submissionId: string) => {
+    const confirmed = await showConfirm(
+      'Unflag this submission and restore it to Pending review?',
+      'Unflag Submission'
+    );
+    if (!confirmed) return;
+
+    try {
+      await unflagSubmissionByAdvertiser(submissionId);
+      setSingleCampaign((prev: any) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          submissions: (prev.submissions || []).map((s: any) =>
+            s.id === submissionId ? { ...s, status: 'pending' } : s
+          ),
+        };
+      });
+      toast.success('Submission unflagged and restored to pending');
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || 'Failed to unflag submission. Please try again.');
     }
   };
 
@@ -868,6 +917,21 @@ const ManageCampaignDetailPage: React.FC = () => {
                                     <span>Flag Submission</span>
                                   </button>
                                 )}
+
+                              {sub.status === 'flagged' && campaign.status === 'active' && (
+                                <button
+                                  type="button"
+                                  className="submission-dropdown-item text-warning"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActiveMenuId(null);
+                                    handleUnflagSubmission(sub.id);
+                                  }}
+                                >
+                                  <FiRotateCcw size={14} />
+                                  <span>Unflag Submission</span>
+                                </button>
+                              )}
                             </div>
                           )}
                         </div>
@@ -1024,6 +1088,34 @@ const ManageCampaignDetailPage: React.FC = () => {
                           </button>
                         </div>
                       )}
+
+                      {/* Unflag Action if flagged by mistake */}
+                      {sub.status === 'flagged' && campaign.status === 'active' && (
+                        <div className="submission-actions-row">
+                          <button
+                            type="button"
+                            className="btn btn-outline unflag-action-btn w-full"
+                            style={{
+                              borderColor: 'rgba(245, 158, 11, 0.45)',
+                              background: 'rgba(245, 158, 11, 0.08)',
+                              color: '#fbbf24',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '8px',
+                              padding: '10px 16px',
+                              borderRadius: '10px',
+                              fontWeight: 600,
+                              cursor: 'pointer'
+                            }}
+                            onClick={() => handleUnflagSubmission(sub.id)}
+                            title="Restore submission back to pending review"
+                          >
+                            <FiRotateCcw size={15} />
+                            <span>Unflag Submission (Restore to Pending)</span>
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </motion.div>
                 );
@@ -1046,6 +1138,7 @@ const ManageCampaignDetailPage: React.FC = () => {
           }
         }}
         onFlag={handleFlagSubmission}
+        onUnflag={handleUnflagSubmission}
         campaignStatus={campaign.status}
       />
 
