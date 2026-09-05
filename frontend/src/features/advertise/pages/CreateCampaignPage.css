@@ -500,6 +500,20 @@
   border-color: var(--ginger-500, #F7931E);
 }
 
+.tier-add-btn.tier-add-btn-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  border-style: dotted;
+  filter: grayscale(0.2);
+}
+
+.tier-add-btn.tier-add-btn-disabled:hover {
+  background: transparent;
+  border-color: rgba(247, 147, 30, 0.35);
+  transform: none;
+  box-shadow: none;
+}
+
 .tier-header-left {
   display: flex;
   align-items: center;
@@ -837,6 +851,20 @@
   border-color: #FFD700;
   box-shadow: 0 0 16px rgba(255, 215, 0, 0.25);
   transform: translateY(-1px);
+}
+
+.gold-tier-add-btn.tier-add-btn-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  border-style: dotted;
+  filter: grayscale(0.2);
+}
+
+.gold-tier-add-btn.tier-add-btn-disabled:hover {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.05) 0%, rgba(245, 158, 11, 0.03) 100%);
+  border-color: rgba(255, 215, 0, 0.55);
+  box-shadow: none;
+  transform: none;
 }
 
 .gold-max-alert {

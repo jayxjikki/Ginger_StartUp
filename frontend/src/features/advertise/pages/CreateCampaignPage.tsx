@@ -69,15 +69,13 @@ const CreateCampaignPage: React.FC = () => {
       { term: 'Shoot a video', reward: '' },
     ] as DirectDiscountTierItem[],
     cashTiers: [
-      { minViews: '1000', amount: '1000' },
-      { minViews: '10000', amount: '10000' },
+      { minViews: '', amount: '' },
     ],
     discountTiers: [
-      { minViews: '1000', amount: '15' },
-      { minViews: '5000', amount: '30' },
+      { minViews: '', amount: '' },
     ],
     giftTiers: [
-      { type: 'views' as 'views' | 'text', minViews: '10000', condition: '', gift: 'Smart Watch / Brand Merch' },
+      { type: 'views' as 'views' | 'text', minViews: '', condition: '', gift: '' },
     ],
     images: [] as string[],
     image_url: '',
@@ -289,10 +287,44 @@ const CreateCampaignPage: React.FC = () => {
     updateField('type', typeId);
   };
 
+  // ── Tier Completion Helper Checks (Prevents adding new tier until current one is filled) ──
+  const isLastDirectDiscountTierFilled =
+    formData.directDiscountTiers.length === 0 ||
+    Boolean(formData.directDiscountTiers[formData.directDiscountTiers.length - 1]?.reward?.trim());
+
+  const isLastCashTierFilled =
+    formData.cashTiers.length === 0 ||
+    (Boolean(formData.cashTiers[formData.cashTiers.length - 1]?.minViews?.trim()) &&
+     Boolean(formData.cashTiers[formData.cashTiers.length - 1]?.amount?.trim()));
+
+  const isLastDiscountTierFilled =
+    formData.discountTiers.length === 0 ||
+    (Boolean(formData.discountTiers[formData.discountTiers.length - 1]?.amount?.trim()) &&
+     Boolean(formData.discountTiers[formData.discountTiers.length - 1]?.minViews?.trim()));
+
+  const isLastGiftTierFilled =
+    formData.giftTiers.length === 0 ||
+    (() => {
+      const last = formData.giftTiers[formData.giftTiers.length - 1];
+      if (!last) return true;
+      if (!last.gift?.trim()) return false;
+      if (last.type === 'views') {
+        return Boolean(last.minViews && String(last.minViews).trim() !== '');
+      } else {
+        return Boolean(last.condition && last.condition.trim() !== '');
+      }
+    })();
+
   // Direct Discount Tiers Handlers (1st Tier in Every Campaign, Max 4, non-repeating terms)
   const addDirectDiscountTier = () => {
     if (formData.directDiscountTiers.length >= 4) {
       toast.error('Maximum 4 direct discount tiers allowed');
+      return;
+    }
+    if (!isLastDirectDiscountTierFilled) {
+      toast.error(
+        `Please fill in the reward for Direct Discount Tier ${formData.directDiscountTiers.length} before adding another.`
+      );
       return;
     }
     const usedTerms = formData.directDiscountTiers.map((t) => t.term);
@@ -337,6 +369,12 @@ const CreateCampaignPage: React.FC = () => {
 
   // Cash Tiers Handlers
   const addCashTier = () => {
+    if (!isLastCashTierFilled) {
+      toast.error(
+        `Please fill in Min. Views and Payout for Cash Tier ${formData.cashTiers.length} before adding another.`
+      );
+      return;
+    }
     setFormData((prev) => ({
       ...prev,
       cashTiers: [...prev.cashTiers, { minViews: '', amount: '' }],
@@ -360,6 +398,12 @@ const CreateCampaignPage: React.FC = () => {
 
   // Discount Tiers Handlers
   const addDiscountTier = () => {
+    if (!isLastDiscountTierFilled) {
+      toast.error(
+        `Please fill in Discount (%) and Min. Views for Discount Tier ${formData.discountTiers.length} before adding another.`
+      );
+      return;
+    }
     setFormData((prev) => ({
       ...prev,
       discountTiers: [...prev.discountTiers, { minViews: '', amount: '' }],
@@ -383,6 +427,21 @@ const CreateCampaignPage: React.FC = () => {
 
   // Gift Tiers Handlers
   const addGiftTier = (tierType: 'views' | 'text' = 'views') => {
+    if (!isLastGiftTierFilled) {
+      const last = formData.giftTiers[formData.giftTiers.length - 1];
+      const missingField =
+        last?.type === 'views'
+          ? !last?.minViews?.trim()
+            ? 'Min. Views'
+            : 'Gift Description'
+          : !last?.condition?.trim()
+          ? 'Requirement / Task'
+          : 'Reward / Perk';
+      toast.error(
+        `Please fill in ${missingField} for Gift Tier ${formData.giftTiers.length} before adding another.`
+      );
+      return;
+    }
     setFormData((prev) => ({
       ...prev,
       giftTiers: [
@@ -495,7 +554,7 @@ const CreateCampaignPage: React.FC = () => {
 
       if (formData.type === 'pool') {
         formData.cashTiers.forEach((t) => {
-          if (t.minViews || t.amount) {
+          if (t.minViews?.trim() && t.amount?.trim()) {
             allTiers.push({
               min_views: Number(t.minViews) || 0,
               payout_amount: Number(t.amount) || 0,
@@ -506,7 +565,7 @@ const CreateCampaignPage: React.FC = () => {
         });
       } else if (formData.type === 'discount') {
         formData.discountTiers.forEach((t) => {
-          if (t.minViews || t.amount) {
+          if (t.minViews?.trim() && t.amount?.trim()) {
             allTiers.push({
               min_views: Number(t.minViews) || 0,
               payout_amount: Number(t.amount) || 0,
@@ -518,7 +577,7 @@ const CreateCampaignPage: React.FC = () => {
       } else if (formData.type === 'hybrid') {
         // 1st: Cash tiers (views : pay)
         formData.cashTiers.forEach((t) => {
-          if (t.minViews || t.amount) {
+          if (t.minViews?.trim() && t.amount?.trim()) {
             allTiers.push({
               min_views: Number(t.minViews) || 0,
               payout_amount: Number(t.amount) || 0,
@@ -529,7 +588,7 @@ const CreateCampaignPage: React.FC = () => {
         });
         // 2nd: Discount tiers (discount : views)
         formData.discountTiers.forEach((t) => {
-          if (t.minViews || t.amount) {
+          if (t.minViews?.trim() && t.amount?.trim()) {
             allTiers.push({
               min_views: Number(t.minViews) || 0,
               payout_amount: Number(t.amount) || 0,
@@ -541,21 +600,21 @@ const CreateCampaignPage: React.FC = () => {
         // 3rd: Gift tiers (views : gifts or condition : reward)
         formData.giftTiers.forEach((t) => {
           if (t.type === 'text') {
-            if (t.condition?.trim() || t.gift?.trim()) {
+            if (t.condition?.trim() && t.gift?.trim()) {
               allTiers.push({
                 min_views: 0,
                 payout_amount: 0,
                 reward_type: 'gift' as const,
-                reward_description: `${t.condition?.trim() || 'Custom Task'} : REWARD : ${t.gift?.trim() || 'Bonus Reward'}`,
+                reward_description: `${t.condition.trim()} : REWARD : ${t.gift.trim()}`,
               });
             }
           } else {
-            if (t.minViews || t.gift) {
+            if (t.minViews?.trim() && t.gift?.trim()) {
               allTiers.push({
                 min_views: Number(t.minViews) || 0,
                 payout_amount: 0,
                 reward_type: 'gift' as const,
-                reward_description: t.gift?.trim() || 'Bonus Gift',
+                reward_description: t.gift.trim(),
               });
             }
           }
@@ -1153,11 +1212,12 @@ const CreateCampaignPage: React.FC = () => {
                     {formData.directDiscountTiers.length < 4 ? (
                       <button
                         type="button"
-                        className="tier-add-btn gold-tier-add-btn"
+                        className={`tier-add-btn gold-tier-add-btn ${!isLastDirectDiscountTierFilled ? 'tier-add-btn-disabled' : ''}`}
                         onClick={addDirectDiscountTier}
+                        title={!isLastDirectDiscountTierFilled ? "Fill current direct discount tier reward to unlock adding another" : undefined}
                       >
                         <FiPlus size={16} />
-                        <span>Add Another Direct Discount Tier ({formData.directDiscountTiers.length}/4)</span>
+                        <span>{formData.directDiscountTiers.length > 0 ? `Add Another Direct Discount Tier (${formData.directDiscountTiers.length}/4)` : '+ Add Direct Discount Tier'}</span>
                       </button>
                     ) : (
                       <div className="gold-max-alert">
@@ -1180,17 +1240,15 @@ const CreateCampaignPage: React.FC = () => {
                         <div key={idx} className="tier-card">
                           <div className="tier-card-header">
                             <span className="tier-badge">Tier {idx + 1}</span>
-                            {formData.cashTiers.length > 1 && (
-                              <button
-                                type="button"
-                                className="tier-delete-btn"
-                                onClick={() => removeCashTier(idx)}
-                                title="Remove tier"
-                                aria-label={`Remove tier ${idx + 1}`}
-                              >
-                                <FiTrash2 size={15} />
-                              </button>
-                            )}
+                            <button
+                              type="button"
+                              className="tier-delete-btn"
+                              onClick={() => removeCashTier(idx)}
+                              title="Remove tier"
+                              aria-label={`Remove tier ${idx + 1}`}
+                            >
+                              <FiTrash2 size={15} />
+                            </button>
                           </div>
                           <div className="tier-inputs-grid">
                             <Input
@@ -1199,7 +1257,7 @@ const CreateCampaignPage: React.FC = () => {
                               min="0"
                               value={tier.minViews}
                               onChange={(e) => updateCashTier(idx, 'minViews', e.target.value)}
-                              placeholder="1000"
+                              placeholder="e.g., 1000"
                             />
                             <div className="tier-arrow-indicator">
                               <FiArrowRight size={18} />
@@ -1210,15 +1268,20 @@ const CreateCampaignPage: React.FC = () => {
                               min="0"
                               value={tier.amount}
                               onChange={(e) => updateCashTier(idx, 'amount', e.target.value)}
-                              placeholder="1000"
+                              placeholder="e.g., 1000"
                             />
                           </div>
                         </div>
                       ))}
 
-                      <button type="button" className="tier-add-btn" onClick={addCashTier}>
+                      <button
+                        type="button"
+                        className={`tier-add-btn ${!isLastCashTierFilled ? 'tier-add-btn-disabled' : ''}`}
+                        onClick={addCashTier}
+                        title={!isLastCashTierFilled ? 'Fill current cash tier to unlock adding another' : undefined}
+                      >
                         <FiPlus size={16} />
-                        <span>Add Another Tier</span>
+                        <span>{formData.cashTiers.length > 0 ? 'Add Another Cash Tier' : '+ Add Cash Payout Tier'}</span>
                       </button>
                     </div>
                   </div>
@@ -1237,17 +1300,15 @@ const CreateCampaignPage: React.FC = () => {
                         <div key={idx} className="tier-card">
                           <div className="tier-card-header">
                             <span className="tier-badge">Tier {idx + 1}</span>
-                            {formData.discountTiers.length > 1 && (
-                              <button
-                                type="button"
-                                className="tier-delete-btn"
-                                onClick={() => removeDiscountTier(idx)}
-                                title="Remove tier"
-                                aria-label={`Remove tier ${idx + 1}`}
-                              >
-                                <FiTrash2 size={15} />
-                              </button>
-                            )}
+                            <button
+                              type="button"
+                              className="tier-delete-btn"
+                              onClick={() => removeDiscountTier(idx)}
+                              title="Remove tier"
+                              aria-label={`Remove tier ${idx + 1}`}
+                            >
+                              <FiTrash2 size={15} />
+                            </button>
                           </div>
                           <div className="tier-inputs-grid">
                             <Input
@@ -1274,9 +1335,14 @@ const CreateCampaignPage: React.FC = () => {
                         </div>
                       ))}
 
-                      <button type="button" className="tier-add-btn" onClick={addDiscountTier}>
+                      <button
+                        type="button"
+                        className={`tier-add-btn ${!isLastDiscountTierFilled ? 'tier-add-btn-disabled' : ''}`}
+                        onClick={addDiscountTier}
+                        title={!isLastDiscountTierFilled ? 'Fill current discount tier to unlock adding another' : undefined}
+                      >
                         <FiPlus size={16} />
-                        <span>Add Another Tier</span>
+                        <span>{formData.discountTiers.length > 0 ? 'Add Another Discount Tier' : '+ Add Discount Tier'}</span>
                       </button>
                     </div>
                   </div>
@@ -1314,7 +1380,7 @@ const CreateCampaignPage: React.FC = () => {
                                 min="0"
                                 value={tier.minViews}
                                 onChange={(e) => updateCashTier(idx, 'minViews', e.target.value)}
-                                placeholder="1000"
+                                placeholder="e.g., 1000"
                               />
                               <div className="tier-arrow-indicator">
                                 <FiArrowRight size={18} />
@@ -1325,13 +1391,18 @@ const CreateCampaignPage: React.FC = () => {
                                 min="0"
                                 value={tier.amount}
                                 onChange={(e) => updateCashTier(idx, 'amount', e.target.value)}
-                                placeholder="1000"
+                                placeholder="e.g., 1000"
                               />
                             </div>
                           </div>
                         ))}
 
-                        <button type="button" className="tier-add-btn" onClick={addCashTier}>
+                        <button
+                          type="button"
+                          className={`tier-add-btn ${!isLastCashTierFilled ? 'tier-add-btn-disabled' : ''}`}
+                          onClick={addCashTier}
+                          title={!isLastCashTierFilled ? 'Fill current cash tier to unlock adding another' : undefined}
+                        >
                           <FiPlus size={16} />
                           <span>{formData.cashTiers.length > 0 ? 'Add Another Cash Tier' : '+ Add Cash Payout Tier'}</span>
                         </button>
@@ -1385,7 +1456,12 @@ const CreateCampaignPage: React.FC = () => {
                           </div>
                         ))}
 
-                        <button type="button" className="tier-add-btn" onClick={addDiscountTier}>
+                        <button
+                          type="button"
+                          className={`tier-add-btn ${!isLastDiscountTierFilled ? 'tier-add-btn-disabled' : ''}`}
+                          onClick={addDiscountTier}
+                          title={!isLastDiscountTierFilled ? 'Fill current discount tier to unlock adding another' : undefined}
+                        >
                           <FiPlus size={16} />
                           <span>{formData.discountTiers.length > 0 ? 'Add Another Discount Tier' : '+ Add Discount Tier'}</span>
                         </button>
@@ -1461,7 +1537,7 @@ const CreateCampaignPage: React.FC = () => {
                                   type="text"
                                   value={tier.gift || ''}
                                   onChange={(e) => updateGiftTier(idx, 'gift', e.target.value)}
-                                  placeholder={!isTextTier ? "e.g., Smart Watch, Hoodie, Merch" : "e.g., Get 15 percent of something off"}
+                                  placeholder={!isTextTier ? "e.g., Smart Watch, Hoodie, Merch" : "e.g., 15% Off coupon, Free trial"}
                                 />
                               </div>
                             </div>
@@ -1471,16 +1547,18 @@ const CreateCampaignPage: React.FC = () => {
                         <div className="tier-add-buttons-row">
                           <button
                             type="button"
-                            className="tier-add-btn tier-add-half"
+                            className={`tier-add-btn tier-add-half ${!isLastGiftTierFilled ? 'tier-add-btn-disabled' : ''}`}
                             onClick={() => addGiftTier('views')}
+                            title={!isLastGiftTierFilled ? 'Fill current gift tier to unlock adding another' : undefined}
                           >
                             <FiPlus size={16} />
                             <span>+ Add Views Milestone</span>
                           </button>
                           <button
                             type="button"
-                            className="tier-add-btn tier-add-half tier-add-task"
+                            className={`tier-add-btn tier-add-half tier-add-task ${!isLastGiftTierFilled ? 'tier-add-btn-disabled' : ''}`}
                             onClick={() => addGiftTier('text')}
+                            title={!isLastGiftTierFilled ? 'Fill current gift tier to unlock adding another' : undefined}
                           >
                             <FiPlus size={16} />
                             <span>+ Add Custom Task (Text-Text)</span>
@@ -1582,10 +1660,17 @@ const CreateCampaignPage: React.FC = () => {
                           <span className="review-label">Prize Pool</span>
                           <span className="review-value prize-highlight">₹{Number(formData.prizePool || 0).toLocaleString()}</span>
                         </div>
-                        <div className="review-row">
-                          <span className="review-label">Cash Tiers</span>
-                          <span className="review-value">{formData.cashTiers.length} Tiers configured</span>
-                        </div>
+                        {formData.cashTiers.filter((t) => t.minViews?.trim() && t.amount?.trim()).length > 0 && (
+                          <div className="review-row">
+                            <span className="review-label">Cash Tiers</span>
+                            <span className="review-value">
+                              {formData.cashTiers
+                                .filter((t) => t.minViews?.trim() && t.amount?.trim())
+                                .map((t) => `₹${Number(t.amount || 0).toLocaleString()} (${Number(t.minViews || 0).toLocaleString()} views)`)
+                                .join(', ')}
+                            </span>
+                          </div>
+                        )}
                       </>
                     )}
 
@@ -1595,12 +1680,17 @@ const CreateCampaignPage: React.FC = () => {
                           <span className="review-label">Campaign Type</span>
                           <span className="review-value prize-highlight">Discount Offer</span>
                         </div>
-                        <div className="review-row">
-                          <span className="review-label">Discount Tiers</span>
-                          <span className="review-value text-ginger font-semibold">
-                            {formData.discountTiers.map((t) => `${t.amount || '0'}% (${Number(t.minViews || 0).toLocaleString()} views)`).join(', ')}
-                          </span>
-                        </div>
+                        {formData.discountTiers.filter((t) => t.minViews?.trim() && t.amount?.trim()).length > 0 && (
+                          <div className="review-row">
+                            <span className="review-label">Discount Tiers</span>
+                            <span className="review-value text-ginger font-semibold">
+                              {formData.discountTiers
+                                .filter((t) => t.minViews?.trim() && t.amount?.trim())
+                                .map((t) => `${t.amount}% (${Number(t.minViews || 0).toLocaleString()} views)`)
+                                .join(', ')}
+                            </span>
+                          </div>
+                        )}
                       </>
                     )}
 
@@ -1616,31 +1706,40 @@ const CreateCampaignPage: React.FC = () => {
                             <span className="review-value font-semibold">₹{Number(formData.prizePool).toLocaleString()}</span>
                           </div>
                         )}
-                        {formData.cashTiers.length > 0 && (
+                        {formData.cashTiers.filter((t) => t.minViews?.trim() && t.amount?.trim()).length > 0 && (
                           <div className="review-row">
                             <span className="review-label">Cash Tiers (Views:Pay)</span>
                             <span className="review-value font-semibold">
-                              {formData.cashTiers.map((t) => `₹${Number(t.amount || 0).toLocaleString()} (${Number(t.minViews || 0).toLocaleString()} views)`).join(', ')}
+                              {formData.cashTiers
+                                .filter((t) => t.minViews?.trim() && t.amount?.trim())
+                                .map((t) => `₹${Number(t.amount || 0).toLocaleString()} (${Number(t.minViews || 0).toLocaleString()} views)`)
+                                .join(', ')}
                             </span>
                           </div>
                         )}
-                        {formData.discountTiers.length > 0 && (
+                        {formData.discountTiers.filter((t) => t.minViews?.trim() && t.amount?.trim()).length > 0 && (
                           <div className="review-row">
                             <span className="review-label">Discount Tiers (Discount:Views)</span>
                             <span className="review-value text-ginger font-semibold">
-                              {formData.discountTiers.map((t) => `${t.amount || '0'}% (${Number(t.minViews || 0).toLocaleString()} views)`).join(', ')}
+                              {formData.discountTiers
+                                .filter((t) => t.minViews?.trim() && t.amount?.trim())
+                                .map((t) => `${t.amount}% (${Number(t.minViews || 0).toLocaleString()} views)`)
+                                .join(', ')}
                             </span>
                           </div>
                         )}
-                        {formData.giftTiers.length > 0 && (
+                        {formData.giftTiers.filter((t) => t.gift?.trim() && (t.type === 'views' ? t.minViews?.trim() : t.condition?.trim())).length > 0 && (
                           <div className="review-row">
                             <span className="review-label">Bonus / Gift Tiers</span>
                             <span className="review-value font-semibold">
-                              {formData.giftTiers.map((t) =>
-                                t.type === 'text'
-                                  ? `🎁 ${t.gift || 'Reward'} ("${t.condition || 'Task'}")`
-                                  : `🎁 ${t.gift} (${Number(t.minViews || 0).toLocaleString()} views)`
-                              ).join(', ')}
+                              {formData.giftTiers
+                                .filter((t) => t.gift?.trim() && (t.type === 'views' ? t.minViews?.trim() : t.condition?.trim()))
+                                .map((t) =>
+                                  t.type === 'text'
+                                    ? `🎁 ${t.gift} ("${t.condition}")`
+                                    : `🎁 ${t.gift} (${Number(t.minViews || 0).toLocaleString()} views)`
+                                )
+                                .join(', ')}
                             </span>
                           </div>
                         )}
