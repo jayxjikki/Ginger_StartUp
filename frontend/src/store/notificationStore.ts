@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
-import { normalizeSubmission, isDirectDiscountSubmission } from '../utils/submissionHelpers';
+import { normalizeSubmission, isDirectDiscountSubmission, getFallbackUniqueVoucherCode } from '../utils/submissionHelpers';
 import toast from 'react-hot-toast';
 
 export interface Notification {
@@ -125,7 +125,9 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
           for (const rawSub of userSubs) {
             const sub = normalizeSubmission(rawSub);
             const campaignTitle = (sub.campaign as any)?.title || 'Campaign';
-            const vCode = sub.voucher_code || 'VCH-ACTIVE';
+            const vCode = sub.voucher_code && sub.voucher_code !== 'VCH-ACTIVE'
+              ? sub.voucher_code
+              : getFallbackUniqueVoucherCode(sub.id);
 
             // 1. If bill details exist, synthesize a Bill Received notification
             if (sub.voucher_details?.bill_amount) {

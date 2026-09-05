@@ -5,7 +5,7 @@
 import { create } from 'zustand';
 import type { Campaign, CampaignFilters, Submission, SlideshowItem } from '../types/campaign.types';
 import { supabase } from '../lib/supabase';
-import { generateVoucherCode } from '../utils/voucherHelpers';
+import { generateUniqueVoucherCode, getFallbackUniqueVoucherCode } from '../utils/voucherHelpers';
 import { encodeVideoIdWithVoucher, extractVoucherDataFromVideoId, normalizeSubmission } from '../utils/submissionHelpers';
 import toast from 'react-hot-toast';
 
@@ -439,7 +439,9 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
           .maybeSingle();
 
         if (sub?.creator_id) {
-          const vCode = sub.voucher_code || 'VCH-ACTIVE';
+          const vCode = sub.voucher_code && sub.voucher_code !== 'VCH-ACTIVE'
+            ? sub.voucher_code
+            : getFallbackUniqueVoucherCode(sub.id);
           saveLocalNotification(sub.creator_id, {
             user_id: sub.creator_id,
             actor_id: (sub.campaign as any)?.advertiser_id || null,
@@ -521,7 +523,11 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
       const customMessage = !isNum && options?.customMessage ? options.customMessage.trim() : '';
 
       const existingVData = extractVoucherDataFromVideoId(sub.video_id) || {};
-      const voucherCode = sub.voucher_code || existingVData.voucher_code || generateVoucherCode();
+      let voucherCode = (sub.voucher_code && sub.voucher_code !== 'VCH-ACTIVE')
+        ? sub.voucher_code
+        : (existingVData.voucher_code && existingVData.voucher_code !== 'VCH-ACTIVE')
+          ? existingVData.voucher_code
+          : await generateUniqueVoucherCode();
       const discountPercent = isCustomMessage
         ? 0
         : (isNum ? options : options?.discountPercent) || (sub.campaign?.payout_tiers?.[0]?.payout_amount || 15);
@@ -702,7 +708,11 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
 
       const now = new Date().toISOString();
       const existingVData = extractVoucherDataFromVideoId(sub.video_id) || {};
-      const existingVoucherCode = sub.voucher_code || existingVData.voucher_code || 'VCH-ACTIVE';
+      let existingVoucherCode = (sub.voucher_code && sub.voucher_code !== 'VCH-ACTIVE')
+        ? sub.voucher_code
+        : (existingVData.voucher_code && existingVData.voucher_code !== 'VCH-ACTIVE')
+          ? existingVData.voucher_code
+          : await generateUniqueVoucherCode();
       const existingDiscountPercent = sub.discount_percent ?? existingVData.discount_percent ?? billData.discount_percent;
 
       const updatedVoucherDetails = {

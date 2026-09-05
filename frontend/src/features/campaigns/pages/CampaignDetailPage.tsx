@@ -28,7 +28,7 @@ import { formatCurrency, formatCount, formatTimeLeft } from '../../../utils/form
 import { getCampaignImages, parseTierReward, getCampaignDirectDiscountTiers } from '../../../types/campaign.types';
 import { uploadToCloudinary } from '../../../lib/cloudinary';
 import { CampaignImageSlideshow } from '../../../components/ui/CampaignImageSlideshow';
-import { isDirectDiscountSubmission, normalizeSubmission, encodeVideoId, isReviewSubmission, getSubmissionReviewUrl, openReviewPage } from '../../../utils/submissionHelpers';
+import { isDirectDiscountSubmission, normalizeSubmission, encodeVideoId, isReviewSubmission, getSubmissionReviewUrl, openReviewPage, getFallbackUniqueVoucherCode } from '../../../utils/submissionHelpers';
 
 import CampaignShareModal from '../../../components/ui/CampaignShareModal';
 import './CampaignDetailPage.css';
@@ -978,13 +978,14 @@ const CampaignDetailPage: React.FC = () => {
 
                         <div className="flex items-center justify-between bg-black/40 p-2.5 rounded-lg border border-white/5">
                           <span className="font-mono text-base font-bold text-emerald-300">
-                            {userSubmission.voucher_code || 'VCH-ACTIVE'}
+                            {userSubmission.voucher_code || getFallbackUniqueVoucherCode(userSubmission.id)}
                           </span>
                           <button
                             type="button"
                             className="icon-btn"
                             onClick={() => {
-                              navigator.clipboard.writeText(userSubmission.voucher_code || '');
+                              const code = userSubmission.voucher_code || getFallbackUniqueVoucherCode(userSubmission.id);
+                              navigator.clipboard.writeText(code);
                               toast.success('Voucher code copied!');
                             }}
                             title="Copy voucher code"

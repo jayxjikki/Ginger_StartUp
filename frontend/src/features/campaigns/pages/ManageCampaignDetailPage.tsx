@@ -34,7 +34,7 @@ import VoucherVerifierModal from '../../../components/ui/VoucherVerifierModal';
 import SendBillModal from '../components/SendBillModal';
 import ApproveVoucherModal from '../components/ApproveVoucherModal';
 import CampaignCountdownTimer from '../../../components/ui/CampaignCountdownTimer';
-import { isDirectDiscountSubmission, normalizeSubmission, isReviewSubmission } from '../../../utils/submissionHelpers';
+import { isDirectDiscountSubmission, normalizeSubmission, isReviewSubmission, getFallbackUniqueVoucherCode } from '../../../utils/submissionHelpers';
 import toast from 'react-hot-toast';
 import './ManageCampaignsPage.css';
 
@@ -481,9 +481,6 @@ const ManageCampaignDetailPage: React.FC = () => {
               <h2 className="manage-detail-title">
                 {campaign.title || 'Untitled Campaign'}
               </h2>
-              {campaign.slogan && (
-                <p className="manage-detail-slogan">{campaign.slogan}</p>
-              )}
             </div>
             <Badge
               variant={campaign.status === 'active' ? 'success' : 'default'}
@@ -985,13 +982,14 @@ const ManageCampaignDetailPage: React.FC = () => {
                           <div className="voucher-card-header">
                             <div className="voucher-code-wrapper">
                               <span className="voucher-code-pill">
-                                🎟️ {sub.voucher_code || 'VCH-ACTIVE'}
+                                🎟️ {sub.voucher_code || getFallbackUniqueVoucherCode(sub.id)}
                               </span>
                               <button
                                 type="button"
                                 className="icon-btn voucher-copy-icon-btn"
                                 onClick={() => {
-                                  navigator.clipboard.writeText(sub.voucher_code || '');
+                                  const codeToCopy = sub.voucher_code || getFallbackUniqueVoucherCode(sub.id);
+                                  navigator.clipboard.writeText(codeToCopy);
                                   toast.success('Voucher code copied!');
                                 }}
                                 title="Copy voucher code"

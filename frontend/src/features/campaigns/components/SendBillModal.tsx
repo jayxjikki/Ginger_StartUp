@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FiX, FiCheckCircle } from 'react-icons/fi';
 import type { Submission, Campaign } from '../../../types/campaign.types';
 import Avatar from '../../../components/ui/Avatar';
+import { getFallbackUniqueVoucherCode } from '../../../utils/submissionHelpers';
 import './SendBillModal.css';
 
 interface SendBillModalProps {
@@ -186,7 +187,7 @@ export const SendBillModal: React.FC<SendBillModalProps> = ({
               {!isAlreadyBilled && (
                 <div className="send-bill-voucher-pill">
                   <span className="voucher-icon">🎟️</span>
-                  <span className="voucher-code">{submission.voucher_code || 'VCH-ACTIVE'}</span>
+                  <span className="voucher-code">{submission.voucher_code || getFallbackUniqueVoucherCode(submission.id)}</span>
                   <span className="voucher-discount-badge">{billedDiscountPercent}% OFF</span>
                 </div>
               )}

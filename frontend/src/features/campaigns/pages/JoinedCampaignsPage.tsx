@@ -9,7 +9,7 @@ import { FiArrowLeft, FiClock, FiVideo, FiTrash2, FiCopy } from 'react-icons/fi'
 import { supabase } from '../../../lib/supabase';
 import Badge from '../../../components/ui/Badge';
 import DiscountCalculator from '../../../components/ui/DiscountCalculator';
-import { isDirectDiscountSubmission, isReviewSubmission, getSubmissionReviewUrl, openReviewPage } from '../../../utils/submissionHelpers';
+import { isDirectDiscountSubmission, isReviewSubmission, getSubmissionReviewUrl, openReviewPage, getFallbackUniqueVoucherCode } from '../../../utils/submissionHelpers';
 
 import toast from 'react-hot-toast';
 import './JoinedCampaignsPage.css';
@@ -166,13 +166,14 @@ const JoinedCampaignsPage: React.FC = () => {
 
                     <div className="flex items-center justify-between bg-black/40 p-2 rounded-lg border border-white/5">
                       <span className="font-mono text-sm font-bold text-emerald-300">
-                        {(sub as any).voucher_code || 'VCH-ACTIVE'}
+                        {(sub as any).voucher_code || getFallbackUniqueVoucherCode(sub.id)}
                       </span>
                       <button
                         type="button"
                         className="icon-btn"
                         onClick={() => {
-                          navigator.clipboard.writeText((sub as any).voucher_code || '');
+                          const code = (sub as any).voucher_code || getFallbackUniqueVoucherCode(sub.id);
+                          navigator.clipboard.writeText(code);
                           toast.success('Voucher code copied!');
                         }}
                         title="Copy voucher code"

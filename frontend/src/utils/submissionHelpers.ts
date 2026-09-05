@@ -62,6 +62,23 @@ export const getSubmissionType = (s: any): SubmissionType => {
 };
 
 /**
+ * Fallback to generate a deterministic, unique voucher code from a submission ID
+ * Ensures no submission ever repeats a fallback code like 'VCH-ACTIVE'
+ */
+export const getFallbackUniqueVoucherCode = (subId?: string): string => {
+  if (!subId) {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let r = '';
+    for (let i = 0; i < 6; i++) r += chars.charAt(Math.floor(Math.random() * chars.length));
+    return `VCH-GNG-${r}`;
+  }
+  const clean = subId.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+  const p1 = clean.slice(0, 4) || 'GNG1';
+  const p2 = clean.slice(-4) || 'VCH9';
+  return `VCH-GNG-${p1}-${p2}`;
+};
+
+/**
  * Normalizes a submission object to always have reliable submission_type,
  * voucher_code, discount_percent, and voucher_details properties even on legacy DB schema
  */
@@ -77,7 +94,13 @@ export const normalizeSubmission = <T extends Record<string, any>>(s: T): T & {
   // Extract any embedded voucher data in video_id
   const vData = extractVoucherDataFromVideoId(s.video_id);
 
-  const voucherCode = s.voucher_code || vData?.voucher_code || undefined;
+  let voucherCode = s.voucher_code || vData?.voucher_code || undefined;
+  if (voucherCode === 'VCH-ACTIVE' || (!voucherCode && (s.status === 'verified' || s.status === 'paid' || isDirectDiscountSubmission(s)))) {
+    if (s.id) {
+      voucherCode = getFallbackUniqueVoucherCode(s.id);
+    }
+  }
+
   const voucherStatus = s.voucher_status || vData?.voucher_status || (voucherCode ? 'active' : undefined);
   const discountPercent = s.discount_percent != null ? s.discount_percent : vData?.discount_percent;
   const voucherDetails = {
