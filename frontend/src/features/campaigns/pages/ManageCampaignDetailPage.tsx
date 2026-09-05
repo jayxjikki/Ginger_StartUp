@@ -25,7 +25,10 @@ import { formatCurrency, formatCount } from '../../../utils/formatters';
 import { getSocialIcon } from '../../../utils/socialHelpers';
 import { getVideoThumbnail } from '../../../utils/videoHelpers';
 import SubmissionVideoModal from '../components/SubmissionVideoModal';
+import { getCampaignDirectDiscountTiers } from '../../../types/campaign.types';
 import DiscountCalculator from '../../../components/ui/DiscountCalculator';
+
+
 import VoucherVerifierModal from '../../../components/ui/VoucherVerifierModal';
 import SendBillModal from '../components/SendBillModal';
 import ApproveVoucherModal from '../components/ApproveVoucherModal';
@@ -131,6 +134,53 @@ const ManageCampaignDetailPage: React.FC = () => {
     return submissions.find((s: any) => s.id === selectedSubmissionId) || null;
   }, [submissions, selectedSubmissionId]);
 
+  // Extract configured direct discount tiers for this campaign
+  const directDiscountTiers = useMemo(() => getCampaignDirectDiscountTiers(campaign), [campaign]);
+
+  // Check if owner configured any direct discount tier
+  const hasDirectDiscountOption = useMemo(() => {
+    if (directDiscountTiers.length > 0) return true;
+    let termsObj = campaign?.terms;
+    if (typeof termsObj === 'string') {
+      try {
+        termsObj = JSON.parse(termsObj);
+      } catch {}
+    }
+    return Array.isArray(termsObj?.direct_discount_tiers) && termsObj.direct_discount_tiers.length > 0;
+  }, [directDiscountTiers, campaign]);
+
+  // Check if owner configured any review / rate us perk
+  const hasReviewOption = useMemo(() => {
+    // 1. Direct discount tiers containing 'review' or 'rate'
+    const hasTier = directDiscountTiers.some((t) => {
+      const term = (t.term || '').toLowerCase();
+      return term.includes('review') || term.includes('rate');
+    });
+    if (hasTier) return true;
+
+    // 2. Terms direct_discount_tiers
+    let termsObj = campaign?.terms;
+    if (typeof termsObj === 'string') {
+      try {
+        termsObj = JSON.parse(termsObj);
+      } catch {}
+    }
+    if (Array.isArray(termsObj?.direct_discount_tiers)) {
+      const inTerms = termsObj.direct_discount_tiers.some((t: any) => {
+        const term = (t?.term || '').toLowerCase();
+        return term.includes('review') || term.includes('rate');
+      });
+      if (inTerms) return true;
+    }
+
+    // 3. Campaign top-level review_url
+    if (campaign?.review_url && typeof campaign.review_url === 'string' && campaign.review_url.trim()) {
+      return true;
+    }
+
+    return false;
+  }, [directDiscountTiers, campaign]);
+
   // Split submissions by mode using bulletproof helper
   const reviewSubmissions = useMemo(
     () => submissions.filter((s: any) => isReviewSubmission(s)),
@@ -145,11 +195,27 @@ const ManageCampaignDetailPage: React.FC = () => {
     [submissions]
   );
 
+  // Review mode is ONLY visible if the owner set review type discount tiers (or has existing review submissions)
+  const showReviewMode = hasReviewOption || reviewSubmissions.length > 0;
+
+  // Direct discount mode is ONLY visible if the owner set direct discount tiers (or has existing discount submissions)
+  const showDiscountMode = hasDirectDiscountOption || discountSubmissions.length > 0;
+
+  // Auto-switch mode if current mode becomes unavailable
+  useEffect(() => {
+    if (submissionMode === 'reviews' && !showReviewMode) {
+      setSubmissionMode(showDiscountMode ? 'direct_discount' : 'all_rewards');
+    } else if (submissionMode === 'direct_discount' && !showDiscountMode) {
+      setSubmissionMode('all_rewards');
+    }
+  }, [submissionMode, showReviewMode, showDiscountMode]);
+
   const currentModeSubmissions = useMemo(() => {
     if (submissionMode === 'all_rewards') return rewardSubmissions;
     if (submissionMode === 'direct_discount') return discountSubmissions;
     return reviewSubmissions;
   }, [submissionMode, rewardSubmissions, discountSubmissions, reviewSubmissions]);
+
 
   // Counts for tabs in current mode
   const pendingCount = useMemo(
@@ -415,47 +481,53 @@ const ManageCampaignDetailPage: React.FC = () => {
         </motion.div>
 
         {/* Mode Switcher: All Campaign Rewards vs Direct Discount vs Reviews */}
-        <div className="manage-mode-switcher">
-          <button
-            type="button"
-            className={`mode-switch-btn ${submissionMode === 'all_rewards' ? 'active' : ''}`}
-            onClick={() => {
-              setSubmissionMode('all_rewards');
-              setActiveFilter('all');
-            }}
-          >
-            <span>🏆 All Campaign Rewards Submissions</span>
-            <span className="mode-pill-badge">{rewardSubmissions.length}</span>
-          </button>
+        {(showDiscountMode || showReviewMode) && (
+          <div className="manage-mode-switcher">
+            <button
+              type="button"
+              className={`mode-switch-btn ${submissionMode === 'all_rewards' ? 'active' : ''}`}
+              onClick={() => {
+                setSubmissionMode('all_rewards');
+                setActiveFilter('all');
+              }}
+            >
+              <span>🏆 All Campaign Rewards Submissions</span>
+              <span className="mode-pill-badge">{rewardSubmissions.length}</span>
+            </button>
 
-          <button
-            type="button"
-            className={`mode-switch-btn highlight-discount ${submissionMode === 'direct_discount' ? 'active' : ''}`}
-            onClick={() => {
-              setSubmissionMode('direct_discount');
-              setActiveFilter('all');
-            }}
-          >
-            <span>🏷️ Direct Discount Videos & Vouchers</span>
-            <span className="mode-pill-badge discount">{discountSubmissions.length}</span>
-          </button>
+            {showDiscountMode && (
+              <button
+                type="button"
+                className={`mode-switch-btn highlight-discount ${submissionMode === 'direct_discount' ? 'active' : ''}`}
+                onClick={() => {
+                  setSubmissionMode('direct_discount');
+                  setActiveFilter('all');
+                }}
+              >
+                <span>🏷️ Direct Discount Videos & Vouchers</span>
+                <span className="mode-pill-badge discount">{discountSubmissions.length}</span>
+              </button>
+            )}
 
-          {/* Golden Option Button below / alongside Direct Discount */}
-          <button
-            type="button"
-            className={`mode-switch-btn highlight-reviews-gold ${submissionMode === 'reviews' ? 'active' : ''}`}
-            onClick={() => {
-              setSubmissionMode('reviews');
-              setActiveFilter('all');
-            }}
-          >
-            <span>⭐ Reviews / Rate Us Submissions</span>
-            <span className="mode-pill-badge gold-badge">{reviewSubmissions.length}</span>
-          </button>
-        </div>
+            {/* Golden Option Button only visible to owners who have set review type discount tiers */}
+            {showReviewMode && (
+              <button
+                type="button"
+                className={`mode-switch-btn highlight-reviews-gold ${submissionMode === 'reviews' ? 'active' : ''}`}
+                onClick={() => {
+                  setSubmissionMode('reviews');
+                  setActiveFilter('all');
+                }}
+              >
+                <span>⭐ Reviews / Rate Us Submissions</span>
+                <span className="mode-pill-badge gold-badge">{reviewSubmissions.length}</span>
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Direct Discount Top Banner with Verifier & Calculator Shortcuts */}
-        {submissionMode === 'direct_discount' && (
+        {submissionMode === 'direct_discount' && showDiscountMode && (
           <div className="direct-discount-banner">
             <div className="direct-discount-banner-text">
               <h4>🏷️ Direct Discount Videos & Vouchers</h4>
@@ -500,7 +572,7 @@ const ManageCampaignDetailPage: React.FC = () => {
         )}
 
         {/* Reviews / Rate Us Top Golden Banner with Verifier & Calculator Shortcuts */}
-        {submissionMode === 'reviews' && (
+        {submissionMode === 'reviews' && showReviewMode && (
           <div className="reviews-gold-banner">
             <div className="reviews-gold-banner-text">
               <h4>⭐ Reviews / Rate Us Submissions</h4>
