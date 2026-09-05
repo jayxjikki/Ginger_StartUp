@@ -50,6 +50,7 @@ export interface CampaignTerms {
   content_restrictions?: string;
   additional_notes?: string;
   images?: string[];
+  direct_discount_tiers?: DirectDiscountTierItem[];
 }
 
 /**
@@ -94,6 +95,20 @@ export interface PayoutTier {
   reward_description: string | null;
 }
 
+export const DIRECT_DISCOUNT_TERMS = [
+  { id: 'shoot_video', label: 'Shoot a video', icon: '🎥' },
+  { id: 'visit_us', label: 'Visit us', icon: '📍' },
+  { id: 'post_story', label: 'Post story/highlight', icon: '📱' },
+  { id: 'review_rate', label: 'Review/rate us', icon: '⭐' },
+] as const;
+
+export type DirectDiscountTerm = (typeof DIRECT_DISCOUNT_TERMS)[number]['label'];
+
+export interface DirectDiscountTierItem {
+  term: DirectDiscountTerm | string;
+  reward: string;
+}
+
 export interface GiftTierItem {
   type?: 'views' | 'text';
   minViews?: string;
@@ -102,29 +117,55 @@ export interface GiftTierItem {
 }
 
 /**
- * Parses a payout tier's reward_description to check for custom text-text condition/reward
+ * Parses a payout tier's reward_description to check for direct discount or custom text-text condition/reward
  */
 export function parseTierReward(tier: {
   reward_type?: string;
   reward_description?: string | null;
   min_views?: number;
+  payout_amount?: number;
 }): {
   isTextTier: boolean;
+  isDirectDiscount: boolean;
   conditionText: string;
   rewardText: string;
 } {
+  if (tier.reward_description) {
+    if (
+      tier.reward_description.startsWith('[Direct Discount]') ||
+      tier.reward_description.startsWith('Direct Discount:')
+    ) {
+      const clean = tier.reward_description.replace(/^(\[Direct Discount\]\s*|Direct Discount:\s*)/, '');
+      if (clean.includes(' ::: ')) {
+        const [term, rew] = clean.split(' ::: ');
+        return { isTextTier: true, isDirectDiscount: true, conditionText: term.trim(), rewardText: rew.trim() };
+      }
+      if (clean.includes(' : REWARD : ')) {
+        const [term, rew] = clean.split(' : REWARD : ');
+        return { isTextTier: true, isDirectDiscount: true, conditionText: term.trim(), rewardText: rew.trim() };
+      }
+      return {
+        isTextTier: true,
+        isDirectDiscount: true,
+        conditionText: clean,
+        rewardText: tier.payout_amount ? `${tier.payout_amount}% Discount` : 'Discount',
+      };
+    }
+  }
+
   if (tier.reward_type === 'gift' && tier.reward_description) {
     if (tier.reward_description.includes(' : REWARD : ')) {
       const [cond, rew] = tier.reward_description.split(' : REWARD : ');
-      return { isTextTier: true, conditionText: cond.trim(), rewardText: rew.trim() };
+      return { isTextTier: true, isDirectDiscount: false, conditionText: cond.trim(), rewardText: rew.trim() };
     }
     if (tier.reward_description.includes(' ::: ')) {
       const [cond, rew] = tier.reward_description.split(' ::: ');
-      return { isTextTier: true, conditionText: cond.trim(), rewardText: rew.trim() };
+      return { isTextTier: true, isDirectDiscount: false, conditionText: cond.trim(), rewardText: rew.trim() };
     }
   }
   return {
     isTextTier: false,
+    isDirectDiscount: false,
     conditionText: '',
     rewardText: tier.reward_description || 'Bonus Gift',
   };

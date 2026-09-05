@@ -23,6 +23,7 @@ import { getSocialIcon } from '../../../utils/socialHelpers';
 import { uploadToCloudinary } from '../../../lib/cloudinary';
 import { CampaignImageSlideshow } from '../../../components/ui/CampaignImageSlideshow';
 import { INDIAN_STATES_AND_CITIES } from '../../../lib/indianLocations';
+import { DIRECT_DISCOUNT_TERMS, type DirectDiscountTierItem } from '../../../types/campaign.types';
 import CampaignCheckoutModal from '../components/CampaignCheckoutModal';
 import './CreateCampaignPage.css';
 
@@ -63,8 +64,10 @@ const CreateCampaignPage: React.FC = () => {
     keywordInput: '',
     platforms: ['youtube', 'instagram'] as string[],
     prizePool: '',
-    discountPercent: '',
     verificationDays: 30,
+    directDiscountTiers: [
+      { term: 'Shoot a video', reward: '' },
+    ] as DirectDiscountTierItem[],
     cashTiers: [
       { minViews: '1000', amount: '1000' },
       { minViews: '10000', amount: '10000' },
@@ -286,6 +289,52 @@ const CreateCampaignPage: React.FC = () => {
     updateField('type', typeId);
   };
 
+  // Direct Discount Tiers Handlers (1st Tier in Every Campaign, Max 4, non-repeating terms)
+  const addDirectDiscountTier = () => {
+    if (formData.directDiscountTiers.length >= 4) {
+      toast.error('Maximum 4 direct discount tiers allowed');
+      return;
+    }
+    const usedTerms = formData.directDiscountTiers.map((t) => t.term);
+    const nextAvailable =
+      DIRECT_DISCOUNT_TERMS.find((t) => !usedTerms.includes(t.label))?.label ||
+      DIRECT_DISCOUNT_TERMS[0].label;
+
+    setFormData((prev) => ({
+      ...prev,
+      directDiscountTiers: [
+        ...prev.directDiscountTiers,
+        { term: nextAvailable, reward: '' },
+      ],
+    }));
+  };
+
+  const updateDirectDiscountTier = (
+    index: number,
+    field: 'term' | 'reward',
+    value: string
+  ) => {
+    setFormData((prev) => {
+      const nextTiers = [...prev.directDiscountTiers];
+      if (field === 'term') {
+        const isAlreadyUsed = nextTiers.some((t, i) => i !== index && t.term === value);
+        if (isAlreadyUsed) {
+          toast.error(`"${value}" is already selected in another tier. Please pick another option.`);
+          return prev;
+        }
+      }
+      nextTiers[index] = { ...nextTiers[index], [field]: value };
+      return { ...prev, directDiscountTiers: nextTiers };
+    });
+  };
+
+  const removeDirectDiscountTier = (index: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      directDiscountTiers: prev.directDiscountTiers.filter((_, i) => i !== index),
+    }));
+  };
+
   // Cash Tiers Handlers
   const addCashTier = () => {
     setFormData((prev) => ({
@@ -367,7 +416,55 @@ const CreateCampaignPage: React.FC = () => {
     }));
   };
 
+  // Step Validations
+  const validateStep = (step: number): boolean => {
+    if (step === 2) {
+      if (!formData.title?.trim()) {
+        toast.error('Campaign title is compulsory. Please enter a title.');
+        return false;
+      }
+      if (formData.images.length === 0) {
+        toast.error('At least 1 campaign picture is compulsory. Please upload an image.');
+        return false;
+      }
+      if (!formData.videoRequirements?.trim()) {
+        toast.error('Video requirements are compulsory. Please detail guidelines for creators.');
+        return false;
+      }
+      return true;
+    }
+
+    if (step === 3) {
+      if (formData.directDiscountTiers.length === 0) {
+        toast.error('At least 1 Direct Discount Tier is compulsory. Please add a tier.');
+        return false;
+      }
+      const emptyDirectTier = formData.directDiscountTiers.find((t) => !t.reward?.trim());
+      if (emptyDirectTier) {
+        toast.error(`Please enter the reward for "${emptyDirectTier.term}" in Direct Discount Tiers.`);
+        return false;
+      }
+
+      if (formData.type === 'pool') {
+        const poolVal = Number(formData.prizePool);
+        if (!formData.prizePool || isNaN(poolVal) || poolVal <= 0) {
+          toast.error('Prize pool amount is compulsory for Prize Pool campaigns.');
+          return false;
+        }
+      }
+      return true;
+    }
+
+    return true;
+  };
+
+  const handleNextStep = () => {
+    if (!validateStep(currentStep)) return;
+    setCurrentStep((s) => s + 1);
+  };
+
   const handleLaunch = () => {
+    if (!validateStep(2) || !validateStep(3)) return;
     const cost = Number(formData.prizePool) || 0;
     if (cost > 0) {
       setShowCheckoutModal(true);
@@ -377,10 +474,24 @@ const CreateCampaignPage: React.FC = () => {
   };
 
   const executeLaunch = async () => {
+    if (!validateStep(2) || !validateStep(3)) return;
     setIsSubmitting(true);
     setShowCheckoutModal(false);
     try {
       const allTiers: any[] = [];
+
+      // ── 1ST TIER: Direct Discount Tiers (always above every tier) ──
+      formData.directDiscountTiers.forEach((t) => {
+        if (t.term && t.reward?.trim()) {
+          const numericAmount = parseFloat(t.reward.replace(/[^0-9.]/g, '')) || 0;
+          allTiers.push({
+            min_views: 0,
+            payout_amount: numericAmount,
+            reward_type: 'discount' as const,
+            reward_description: `[Direct Discount] ${t.term} ::: ${t.reward.trim()}`,
+          });
+        }
+      });
 
       if (formData.type === 'pool') {
         formData.cashTiers.forEach((t) => {
@@ -464,12 +575,18 @@ const CreateCampaignPage: React.FC = () => {
         slogan: formData.slogan,
         keywords: formData.keywords,
         location: formData.isOnlineVenue ? 'None' : (formData.location || 'None'),
-        discount_percent: (formData.type === 'discount' || formData.type === 'hybrid') && formData.discountTiers.length > 0 ? Number(formData.discountTiers[0].amount) || 0 : 0,
+        discount_percent:
+          formData.directDiscountTiers.some((t) => t.reward?.trim())
+            ? parseFloat(formData.directDiscountTiers.find((t) => t.reward?.trim())!.reward.replace(/[^0-9.]/g, '')) || 0
+            : (formData.type === 'discount' || formData.type === 'hybrid') && formData.discountTiers.length > 0
+            ? Number(formData.discountTiers[0].amount) || 0
+            : 0,
         verification_days: formData.verificationDays,
         image_url: formData.images[0] || '',
         images: formData.images,
         terms: {
           images: formData.images,
+          direct_discount_tiers: formData.directDiscountTiers.filter((t) => t.reward?.trim()),
         },
         payout_tiers: allTiers as any,
       });
@@ -600,10 +717,11 @@ const CreateCampaignPage: React.FC = () => {
 
               <div className="form-fields">
                 <Input
-                  label="Campaign Title"
+                  label="Campaign Title *"
                   value={formData.title}
                   onChange={(e) => updateField('title', e.target.value)}
                   placeholder="e.g., Luxury Resort Grand Opening"
+                  required
                 />
 
                 <Textarea
@@ -616,11 +734,11 @@ const CreateCampaignPage: React.FC = () => {
                 {/* ── 1st & 2nd: Campaign Images (Up to 3 pictures & Automatic Slideshow, no "Cloudinary") ── */}
                 <div className="form-group campaign-images-uploader-group">
                   <div className="section-title-row">
-                    <label className="form-label">Campaign Images ({formData.images.length}/3)</label>
+                    <label className="form-label">Campaign Images ({formData.images.length}/3) *</label>
                     <span className="field-hint-inline">
                       {formData.images.length > 1
                         ? '✨ Automatic slideshow active for multiple pictures'
-                        : 'Upload up to 3 pictures. 2+ pictures will play as an auto-slideshow.'}
+                        : 'Upload up to 3 pictures (at least 1 is compulsory).'}
                     </span>
                   </div>
 
@@ -818,10 +936,11 @@ const CreateCampaignPage: React.FC = () => {
                 {/* ── 4th: Deadline box & option REMOVED completely! ── */}
 
                 <Textarea
-                  label="Video Requirements"
+                  label="Video Requirements *"
                   value={formData.videoRequirements}
                   onChange={(e) => updateField('videoRequirements', e.target.value)}
                   placeholder="Detail must-include guidelines, hashtags, or required talking points..."
+                  required
                 />
 
                 {/* ── 5th: Keywords & Tags (Auto-starts with #, no double ##) ── */}
@@ -916,12 +1035,13 @@ const CreateCampaignPage: React.FC = () => {
               <div className="form-fields">
                 {(formData.type === 'pool' || formData.type === 'hybrid') && (
                   <Input
-                    label={formData.type === 'hybrid' ? 'Prize Pool Amount (₹) (Optional)' : 'Prize Pool Amount (₹)'}
+                    label={formData.type === 'hybrid' ? 'Prize Pool Amount (₹) (Optional)' : 'Prize Pool Amount (₹) *'}
                     type="number"
                     min="0"
                     value={formData.prizePool}
                     onChange={(e) => updateField('prizePool', e.target.value)}
                     placeholder={formData.type === 'hybrid' ? 'e.g., 50000 (Optional for hybrid)' : 'e.g., 100000'}
+                    required={formData.type === 'pool'}
                   />
                 )}
 
@@ -943,6 +1063,107 @@ const CreateCampaignPage: React.FC = () => {
                         </button>
                       );
                     })}
+                  </div>
+                </div>
+
+                {/* ════════════════════════════════════════════════════════════════ */}
+                {/* ── 1ST TIER IN EVERY CAMPAIGN: DIRECT DISCOUNT TIER (GOLD) ─── */}
+                {/* ════════════════════════════════════════════════════════════════ */}
+                <div className="form-group direct-discount-section">
+                  <div className="tiers-section-header direct-discount-section-header">
+                    <div className="gold-header-badge-row">
+                      <span className="gold-header-star">✨</span>
+                      <label className="form-label gold-section-title">Direct Discount Tiers</label>
+                      <span className="gold-section-pill">1st Tier in Every Campaign</span>
+                    </div>
+                    <p className="field-hint gold-section-desc">
+                      Reward creators instantly with exclusive discounts for specific actions. Choose from 4 fixed terms — each term can only be used once (max 4 tiers). Set your custom reward for each action.
+                    </p>
+                  </div>
+
+                  <div className="tiers-builder gold-tiers-builder">
+                    {formData.directDiscountTiers.length === 0 && (
+                      <div className="gold-empty-notice">
+                        <span>⚠️ At least 1 Direct Discount Tier is compulsory. Click below to add a tier.</span>
+                      </div>
+                    )}
+
+                    {formData.directDiscountTiers.map((tier, idx) => (
+                      <div key={idx} className="tier-card gold-tier-card">
+                        <div className="tier-card-header gold-tier-card-header">
+                          <div className="gold-card-title-group">
+                            <span className="tier-badge gold-tier-badge">
+                              ✨ Direct Discount Tier {idx + 1}
+                            </span>
+                            <span className="gold-instant-tag">Instant Action Perk</span>
+                          </div>
+                          <button
+                            type="button"
+                            className="tier-delete-btn gold-tier-delete-btn"
+                            onClick={() => removeDirectDiscountTier(idx)}
+                            title="Remove direct discount tier"
+                            aria-label={`Remove direct discount tier ${idx + 1}`}
+                          >
+                            <FiTrash2 size={15} />
+                          </button>
+                        </div>
+
+                        <div className="tier-inputs-grid gold-inputs-grid">
+                          <div className="gold-select-group">
+                            <label className="gold-field-label">Action Requirement (Term)</label>
+                            <select
+                              className="gold-tier-select"
+                              value={tier.term}
+                              onChange={(e) => updateDirectDiscountTier(idx, 'term', e.target.value)}
+                            >
+                              {DIRECT_DISCOUNT_TERMS.map((opt) => {
+                                const isUsedElsewhere = formData.directDiscountTiers.some(
+                                  (t, i) => i !== idx && t.term === opt.label
+                                );
+                                return (
+                                  <option
+                                    key={opt.id}
+                                    value={opt.label}
+                                    disabled={isUsedElsewhere}
+                                  >
+                                    {opt.icon} {opt.label} {isUsedElsewhere ? '(Already selected)' : ''}
+                                  </option>
+                                );
+                              })}
+                            </select>
+                          </div>
+
+                          <div className="tier-arrow-indicator gold-arrow-indicator">
+                            <FiArrowRight size={18} />
+                          </div>
+
+                          <div className="gold-reward-group">
+                            <Input
+                              label="Reward / Discount (Set by you)"
+                              type="text"
+                              value={tier.reward}
+                              onChange={(e) => updateDirectDiscountTier(idx, 'reward', e.target.value)}
+                              placeholder="e.g., 20% Off, Flat ₹150 Off, Free Appetizer"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+
+                    {formData.directDiscountTiers.length < 4 ? (
+                      <button
+                        type="button"
+                        className="tier-add-btn gold-tier-add-btn"
+                        onClick={addDirectDiscountTier}
+                      >
+                        <FiPlus size={16} />
+                        <span>Add Another Direct Discount Tier ({formData.directDiscountTiers.length}/4)</span>
+                      </button>
+                    ) : (
+                      <div className="gold-max-alert">
+                        <span>✨ All 4 direct discount action tiers configured (Maximum reached)</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -1331,6 +1552,30 @@ const CreateCampaignPage: React.FC = () => {
                       </span>
                     </div>
 
+                    {/* ── Direct Discount Tiers (1st in Review) ── */}
+                    {formData.directDiscountTiers.some((t) => t.reward?.trim()) && (
+                      <div className="review-row gold-review-row">
+                        <div className="gold-review-header">
+                          <span className="gold-review-badge">✨ DIRECT DISCOUNT TIERS</span>
+                          <span className="gold-review-subtag">1st Tier • Instant Perks</span>
+                        </div>
+                        <div className="gold-review-list">
+                          {formData.directDiscountTiers
+                            .filter((t) => t.reward?.trim())
+                            .map((t, idx) => (
+                              <div key={idx} className="gold-review-item">
+                                <span className="gold-review-term">
+                                  {DIRECT_DISCOUNT_TERMS.find((d) => d.label === t.term)?.icon || '📌'}{' '}
+                                  {t.term}
+                                </span>
+                                <span className="gold-review-arrow">→</span>
+                                <span className="gold-review-reward">{t.reward}</span>
+                              </div>
+                            ))}
+                        </div>
+                      </div>
+                    )}
+
                     {formData.type === 'pool' && (
                       <>
                         <div className="review-row">
@@ -1447,7 +1692,7 @@ const CreateCampaignPage: React.FC = () => {
             <Button
               variant="primary"
               size="md"
-              onClick={() => setCurrentStep((s) => s + 1)}
+              onClick={handleNextStep}
               icon={<FiArrowRight />}
               iconPosition="right"
               type="button"

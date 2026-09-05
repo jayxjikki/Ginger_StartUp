@@ -402,7 +402,9 @@ const HomeMenuPage: React.FC = () => {
                             const parsed = parseTierReward(tier);
                             return (
                               <span className="payout-tier" key={tier.id}>
-                                {tier.reward_type === 'gift'
+                                {parsed.isDirectDiscount
+                                  ? `${parsed.conditionText} -> 🏷️ ${parsed.rewardText}`
+                                  : tier.reward_type === 'gift'
                                   ? parsed.isTextTier
                                     ? `${parsed.conditionText} -> 🎁 ${parsed.rewardText}`
                                     : `${formatCount(tier.min_views)} -> 🎁 ${parsed.rewardText}`

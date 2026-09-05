@@ -472,48 +472,109 @@ const CampaignDetailPage: React.FC = () => {
         <motion.div variants={fadeUp}>
           <h5 className="section-title">{campaign.type === 'discount' ? 'Discount Tiers' : 'Payout Tiers'}</h5>
           <div className="payout-tiers">
-            {campaign.payout_tiers?.map((tier: any, idx: number) => {
-              const parsed = parseTierReward(tier);
-              return (
-                <motion.div
-                  key={tier.id || idx}
-                  className="payout-tier"
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.3 + idx * 0.08, type: 'spring' as const, stiffness: 300, damping: 30 }}
-                >
-                  <div className="tier-views">
-                    <div className="tier-dot" />
-                    <span>
-                      {parsed.isTextTier
-                        ? `📌 ${parsed.conditionText}`
-                        : `${formatCount(tier.min_views)} views`}
-                    </span>
-                  </div>
-                  <div className="tier-arrow">→</div>
-                  <div className="tier-reward">
-                    {tier.reward_type === 'gift' ? (
-                      <span className="tier-amount">
-                        🎁 {parsed.rewardText}
+            {(() => {
+              // Ensure direct discount tiers are always 1st above all other tiers
+              const rawTiers = [...(campaign.payout_tiers || [])];
+              if (campaign.terms?.direct_discount_tiers && Array.isArray(campaign.terms.direct_discount_tiers)) {
+                campaign.terms.direct_discount_tiers.forEach((dt: any, i: number) => {
+                  const alreadyPresent = rawTiers.some((t: any) => {
+                    const p = parseTierReward(t);
+                    return p.isDirectDiscount && p.conditionText === dt.term;
+                  });
+                  if (!alreadyPresent && dt.term && dt.reward) {
+                    rawTiers.unshift({
+                      id: `direct-discount-${i}`,
+                      campaign_id: campaign.id,
+                      min_views: 0,
+                      payout_amount: parseFloat(String(dt.reward).replace(/[^0-9.]/g, '')) || 0,
+                      reward_type: 'discount',
+                      reward_description: `[Direct Discount] ${dt.term} ::: ${dt.reward}`,
+                    });
+                  }
+                });
+              }
+
+              const sortedTiers = rawTiers.sort((a: any, b: any) => {
+                const isDirectA = parseTierReward(a).isDirectDiscount;
+                const isDirectB = parseTierReward(b).isDirectDiscount;
+                if (isDirectA && !isDirectB) return -1;
+                if (!isDirectA && isDirectB) return 1;
+                return 0;
+              });
+
+              return sortedTiers.map((tier: any, idx: number) => {
+                const parsed = parseTierReward(tier);
+                if (parsed.isDirectDiscount) {
+                  return (
+                    <motion.div
+                      key={tier.id || idx}
+                      className="payout-tier gold-detail-tier"
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.2 + idx * 0.08, type: 'spring' as const, stiffness: 300, damping: 30 }}
+                    >
+                      <div className="gold-detail-header-tag">
+                        <span>✨ DIRECT DISCOUNT TIER</span>
+                      </div>
+                      <div className="gold-detail-content">
+                        <div className="tier-views">
+                          <div className="tier-dot gold-detail-dot" />
+                          <span className="gold-detail-term">
+                            {parsed.conditionText}
+                          </span>
+                        </div>
+                        <div className="tier-arrow gold-detail-arrow">→</div>
+                        <div className="tier-reward">
+                          <span className="tier-amount gold-detail-amount">
+                            🏷️ {parsed.rewardText}
+                          </span>
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                }
+
+                return (
+                  <motion.div
+                    key={tier.id || idx}
+                    className="payout-tier"
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.3 + idx * 0.08, type: 'spring' as const, stiffness: 300, damping: 30 }}
+                  >
+                    <div className="tier-views">
+                      <div className="tier-dot" />
+                      <span>
+                        {parsed.isTextTier
+                          ? `📌 ${parsed.conditionText}`
+                          : `${formatCount(tier.min_views)} views`}
                       </span>
-                    ) : tier.reward_type === 'discount' || campaign.type === 'discount' ? (
-                      <span className="tier-amount tier-discount-amount">
-                        {tier.payout_amount ? `${tier.payout_amount}% Discount` : (tier.reward_description || 'Discount')}
-                      </span>
-                    ) : (
-                      <>
+                    </div>
+                    <div className="tier-arrow">→</div>
+                    <div className="tier-reward">
+                      {tier.reward_type === 'gift' ? (
                         <span className="tier-amount">
-                          {formatCurrency(tier.payout_amount, true)}
+                          🎁 {parsed.rewardText}
                         </span>
-                        {tier.reward_description && (
-                          <span className="tier-bonus">{tier.reward_description}</span>
-                        )}
-                      </>
-                    )}
-                  </div>
-                </motion.div>
-              );
-            })}
+                      ) : tier.reward_type === 'discount' || campaign.type === 'discount' ? (
+                        <span className="tier-amount tier-discount-amount">
+                          {tier.payout_amount ? `${tier.payout_amount}% Discount` : (tier.reward_description || 'Discount')}
+                        </span>
+                      ) : (
+                        <>
+                          <span className="tier-amount">
+                            {formatCurrency(tier.payout_amount, true)}
+                          </span>
+                          {tier.reward_description && (
+                            <span className="tier-bonus">{tier.reward_description}</span>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </motion.div>
+                );
+              });
+            })()}
           </div>
         </motion.div>
 
