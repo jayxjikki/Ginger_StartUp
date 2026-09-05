@@ -1,12 +1,12 @@
 /* ── Approve Voucher Modal Styles ── */
 .approve-voucher-modal-card {
   width: 100%;
-  max-width: 500px;
-  background: #141416;
-  border: 1.5px solid rgba(255, 215, 0, 0.35);
-  border-radius: 18px;
+  max-width: 480px;
+  background: linear-gradient(180deg, #18181b 0%, #111113 100%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 20px;
   padding: 1.5rem;
-  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.7), 0 0 25px rgba(255, 215, 0, 0.12);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 0 0 30px rgba(255, 215, 0, 0.08);
   color: #fff;
   position: relative;
 }
@@ -15,8 +15,28 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-bottom: 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.modal-close-icon-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.modal-close-icon-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  transform: scale(1.05);
 }
 
 .approve-mode-grid {
@@ -35,18 +55,18 @@
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  padding: 12px;
-  border-radius: 12px;
+  padding: 13px;
+  border-radius: 14px;
   background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   text-align: left;
 }
 
 .approve-mode-card:hover {
-  background: rgba(255, 215, 0, 0.06);
-  border-color: rgba(255, 215, 0, 0.3);
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 215, 0, 0.25);
 }
 
 .approve-mode-card.active {
@@ -54,7 +74,7 @@
     radial-gradient(circle at 10% 20%, rgba(255, 235, 130, 0.12) 0%, transparent 60%),
     rgba(255, 215, 0, 0.05);
   border-color: #FFD700;
-  box-shadow: 0 0 12px rgba(255, 215, 0, 0.2);
+  box-shadow: 0 0 16px rgba(255, 215, 0, 0.18), inset 0 0 10px rgba(255, 215, 0, 0.04);
 }
 
 .mode-card-radio {
@@ -81,9 +101,21 @@
   background: #FFD700;
 }
 
+.mode-icon-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: rgba(255, 215, 0, 0.12);
+  color: #fbbf24;
+  flex-shrink: 0;
+}
+
 .discount-percent-field {
   width: 100%;
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(0, 0, 0, 0.45);
   border: 1px solid rgba(255, 215, 0, 0.3);
   border-radius: 10px;
   padding: 10px 14px;
@@ -96,7 +128,7 @@
 
 .discount-percent-field:focus {
   border-color: #FFD700;
-  box-shadow: 0 0 10px rgba(255, 215, 0, 0.25);
+  box-shadow: 0 0 12px rgba(255, 215, 0, 0.25);
 }
 
 .discount-suffix {
@@ -108,49 +140,122 @@
   pointer-events: none;
 }
 
+.custom-msg-input-box {
+  padding: 14px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
 .custom-msg-textarea {
   width: 100%;
-  background: rgba(0, 0, 0, 0.4);
-  border: 1px solid rgba(255, 215, 0, 0.3);
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 215, 0, 0.32);
   border-radius: 10px;
-  padding: 10px 12px;
-  font-size: 13px;
+  padding: 12px 14px;
+  font-size: 13.5px;
   color: #ffffff;
   outline: none;
   resize: vertical;
-  min-height: 55px;
-  transition: border-color 0.2s ease;
+  min-height: 62px;
+  line-height: 1.45;
+  transition: all 0.2s ease;
 }
 
 .custom-msg-textarea:focus {
   border-color: #FFD700;
-  box-shadow: 0 0 10px rgba(255, 215, 0, 0.25);
+  box-shadow: 0 0 12px rgba(255, 215, 0, 0.25);
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.custom-msg-textarea::placeholder {
+  color: rgba(255, 255, 255, 0.35);
 }
 
 .suggestion-chip {
-  padding: 4px 8px;
-  border-radius: 6px;
-  font-size: 11px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  font-size: 11.5px;
   font-weight: 600;
-  color: #FFDF00;
-  background: rgba(255, 215, 0, 0.08);
-  border: 1px solid rgba(255, 215, 0, 0.25);
+  color: #fde68a;
+  background: rgba(255, 215, 0, 0.07);
+  border: 1px solid rgba(255, 215, 0, 0.22);
   cursor: pointer;
   transition: all 0.15s ease;
+  user-select: none;
 }
 
 .suggestion-chip:hover {
   background: rgba(255, 215, 0, 0.18);
   border-color: #FFD700;
   transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(255, 215, 0, 0.2);
 }
 
-.approve-submit-btn {
-  box-shadow: 0 4px 15px rgba(245, 158, 11, 0.35);
-  transition: all 0.2s ease;
+.suggestion-chip:active {
+  transform: translateY(0);
 }
 
-.approve-submit-btn:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.5);
+/* ── Green Shiny "Done" Button ── */
+.approve-submit-btn-green {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, #10b981 0%, #059669 60%, #047857 100%);
+  color: #ffffff !important;
+  font-weight: 700;
+  font-size: 13px;
+  border: 1px solid rgba(110, 231, 183, 0.55);
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.approve-submit-btn-green:hover:not(:disabled) {
+  background: linear-gradient(135deg, #34d399 0%, #10b981 60%, #059669 100%);
+  box-shadow: 0 6px 22px rgba(16, 185, 129, 0.6), 0 0 16px rgba(52, 211, 153, 0.45);
+  border-color: #6ee7b7;
+  transform: translateY(-1.5px);
+}
+
+.approve-submit-btn-green:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.approve-submit-btn-green:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  filter: grayscale(0.2);
+}
+
+/* Green Shiny Shimmer Effect */
+.approve-submit-btn-green::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -70%;
+  width: 45%;
+  height: 200%;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.55) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transform: rotate(25deg);
+  animation: greenShinySweep 2.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  pointer-events: none;
+}
+
+@keyframes greenShinySweep {
+  0% { left: -75%; }
+  40% { left: 135%; }
+  100% { left: 135%; }
 }

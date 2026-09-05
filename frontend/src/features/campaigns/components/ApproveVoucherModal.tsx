@@ -137,6 +137,7 @@ export const ApproveVoucherModal: React.FC<ApproveVoucherModalProps> = ({
 
           <form onSubmit={handleSubmit} className="approve-modal-body mt-4 flex flex-col gap-4">
             {/* Mode Select Tabs */}
+            {/* Mode Select Tabs */}
             <div className="approve-mode-grid">
               <button
                 type="button"
@@ -147,11 +148,13 @@ export const ApproveVoucherModal: React.FC<ApproveVoucherModalProps> = ({
                   {mode === 'discount' && <div className="mode-card-radio-inner" />}
                 </div>
                 <div className="mode-card-info">
-                  <div className="flex items-center gap-1.5 font-bold text-sm text-white">
-                    <FiPercent size={14} className="text-amber-400" />
+                  <div className="flex items-center gap-2 font-bold text-sm text-white">
+                    <span className="mode-icon-badge">
+                      <FiPercent size={13} />
+                    </span>
                     <span>Give Discount</span>
                   </div>
-                  <p className="text-[11px] text-secondary mt-0.5 leading-snug">
+                  <p className="text-[11px] text-secondary mt-1 leading-snug">
                     Issue percentage discount voucher with bill calculation option.
                   </p>
                 </div>
@@ -166,11 +169,13 @@ export const ApproveVoucherModal: React.FC<ApproveVoucherModalProps> = ({
                   {mode === 'custom_message' && <div className="mode-card-radio-inner" />}
                 </div>
                 <div className="mode-card-info">
-                  <div className="flex items-center gap-1.5 font-bold text-sm text-white">
-                    <FiMessageSquare size={14} className="text-amber-400" />
+                  <div className="flex items-center gap-2 font-bold text-sm text-white">
+                    <span className="mode-icon-badge">
+                      <FiMessageSquare size={13} />
+                    </span>
                     <span>Send Custom Message</span>
                   </div>
-                  <p className="text-[11px] text-secondary mt-0.5 leading-snug">
+                  <p className="text-[11px] text-secondary mt-1 leading-snug">
                     Send custom reward (e.g. free merch, freebie) without bill calculation.
                   </p>
                 </div>
@@ -179,7 +184,7 @@ export const ApproveVoucherModal: React.FC<ApproveVoucherModalProps> = ({
 
             {/* Dynamic Inputs Based on Selection */}
             {mode === 'discount' ? (
-              <div className="discount-input-box p-3 rounded-xl bg-white/[0.03] border border-white/10 flex flex-col gap-2">
+              <div className="discount-input-box p-3.5 rounded-xl bg-white/[0.03] border border-white/10 flex flex-col gap-2">
                 <label className="text-xs font-bold text-amber-300 uppercase tracking-wider block">
                   Discount Percentage (%)
                 </label>
@@ -202,11 +207,7 @@ export const ApproveVoucherModal: React.FC<ApproveVoucherModalProps> = ({
                 </p>
               </div>
             ) : (
-              <div className="custom-msg-input-box p-3 rounded-xl bg-white/[0.03] border border-white/10 flex flex-col gap-2.5">
-                <label className="text-xs font-bold text-amber-300 uppercase tracking-wider block flex items-center justify-between">
-                  <span>Custom Reward Message</span>
-                  <span className="text-[10px] text-secondary font-normal">No bill calculation</span>
-                </label>
+              <div className="custom-msg-input-box">
                 <textarea
                   className="custom-msg-textarea"
                   rows={2}
@@ -216,7 +217,7 @@ export const ApproveVoucherModal: React.FC<ApproveVoucherModalProps> = ({
                   autoFocus
                 />
                 <div className="quick-suggestions-row">
-                  <span className="text-[10px] text-secondary font-bold uppercase tracking-wider block mb-1">
+                  <span className="text-[10px] text-secondary font-bold uppercase tracking-wider block mb-1.5">
                     Quick Perks:
                   </span>
                   <div className="flex flex-wrap gap-1.5">
@@ -232,9 +233,6 @@ export const ApproveVoucherModal: React.FC<ApproveVoucherModalProps> = ({
                     ))}
                   </div>
                 </div>
-                <p className="text-[11px] text-secondary mt-1">
-                  Customer will receive this reward along with their voucher code in their notifications and joined campaigns. No bill will be sent.
-                </p>
               </div>
             )}
 
@@ -242,7 +240,7 @@ export const ApproveVoucherModal: React.FC<ApproveVoucherModalProps> = ({
             <div className="approve-modal-actions mt-2 flex items-center justify-end gap-2.5 pt-3 border-t border-white/10">
               <button
                 type="button"
-                className="btn btn-ghost text-xs py-2 px-4"
+                className="btn btn-ghost text-xs py-2 px-4 text-white/70 hover:text-white"
                 onClick={onClose}
                 disabled={isSubmitting}
               >
@@ -250,17 +248,11 @@ export const ApproveVoucherModal: React.FC<ApproveVoucherModalProps> = ({
               </button>
               <button
                 type="submit"
-                className="btn btn-primary approve-submit-btn text-xs py-2 px-5 flex items-center gap-1.5"
+                className="btn approve-submit-btn-green text-xs py-2 px-5 flex items-center gap-1.5"
                 disabled={isSubmitting}
-                style={{
-                  background: 'linear-gradient(135deg, #FFD700 0%, #F59E0B 100%)',
-                  color: '#1a1300',
-                  fontWeight: 800,
-                  border: 'none',
-                }}
               >
-                <FiCheck size={14} />
-                <span>{isSubmitting ? 'Issuing Voucher...' : 'Approve & Issue Voucher'}</span>
+                <FiCheck size={15} />
+                <span>{isSubmitting ? 'Saving...' : 'Done'}</span>
               </button>
             </div>
           </form>
