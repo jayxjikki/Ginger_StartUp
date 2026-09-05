@@ -26,6 +26,7 @@ export const DiscountCalculator: React.FC<DiscountCalculatorProps> = ({
   isOwner = false,
   recipientUsername,
   onSendBill,
+  onClose,
 }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const [billAmount, setBillAmount] = useState<string>('1000');
@@ -57,38 +58,58 @@ export const DiscountCalculator: React.FC<DiscountCalculatorProps> = ({
     }
   };
 
-  // Prevent body scroll when modal open
+  // Prevent body scroll when modal open and listen for ESC key
   useEffect(() => {
     if (isOpen && !inline) {
       document.body.style.overflow = 'hidden';
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+          setIsOpen(false);
+          onClose?.();
+        }
+      };
+      window.addEventListener('keydown', handleKeyDown);
+      return () => {
+        document.body.style.overflow = '';
+        window.removeEventListener('keydown', handleKeyDown);
+      };
     } else {
       document.body.style.overflow = '';
     }
-    return () => { document.body.style.overflow = ''; };
-  }, [isOpen, inline]);
+  }, [isOpen, inline, onClose]);
 
   const content = (
     <div className="discount-calculator-box">
-      {/* Close button — absolute top-right of card */}
-      <button
-        type="button"
-        className="calc-modal-close-btn"
-        onClick={() => setIsOpen(false)}
-        title="Close calculator"
-        aria-label="Close"
-        style={{ position: 'absolute', top: '12px', right: '12px', zIndex: 2 }}
-      >
-        <FiX size={17} />
-      </button>
-
-      <div className="discount-calc-header" style={{ paddingRight: '36px' }}>
-        <div className="calc-title-row">
-          <span style={{ fontSize: '1.1rem' }}>🧮</span>
-          <h5>{isOwner ? 'Store Bill & Discount' : 'Quick Discount Calculator'}</h5>
+      <div className="discount-calc-header">
+        <div className="calc-header-top">
+          <div className="calc-title-row">
+            <span className="calc-header-icon">🧮</span>
+            <h5>{isOwner ? 'Store Bill & Discount' : 'Quick Discount Calculator'}</h5>
+          </div>
+          {(onClose || !inline) && (
+            <button
+              type="button"
+              className="calc-modal-close-btn"
+              onClick={() => {
+                setIsOpen(false);
+                onClose?.();
+              }}
+              title="Close calculator"
+              aria-label="Close"
+            >
+              <FiX size={18} />
+            </button>
+          )}
         </div>
-        {voucherCode && <span className="calc-badge">{voucherCode}</span>}
-      </div>
 
+        {voucherCode && (
+          <div className="calc-voucher-row">
+            <span className="calc-voucher-tag-icon">🎟️</span>
+            <span className="calc-voucher-label">Applied Voucher:</span>
+            <span className="calc-badge">{voucherCode}</span>
+          </div>
+        )}
+      </div>
 
       <div className="calc-inputs-grid">
         {/* Bill / Item Amount */}
@@ -217,7 +238,12 @@ export const DiscountCalculator: React.FC<DiscountCalculatorProps> = ({
       {isOpen && (
         <div
           className="calc-modal-overlay"
-          onClick={(e) => { if (e.target === e.currentTarget) setIsOpen(false); }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setIsOpen(false);
+              onClose?.();
+            }
+          }}
           role="dialog"
           aria-modal="true"
           aria-label="Discount Calculator"
