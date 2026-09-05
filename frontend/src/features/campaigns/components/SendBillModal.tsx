@@ -184,13 +184,7 @@ export const SendBillModal: React.FC<SendBillModalProps> = ({
                 </div>
               </div>
 
-              {!isAlreadyBilled && (
-                <div className="send-bill-voucher-pill">
-                  <span className="voucher-icon">🎟️</span>
-                  <span className="voucher-code">{submission.voucher_code || getFallbackUniqueVoucherCode(submission.id)}</span>
-                  <span className="voucher-discount-badge">{billedDiscountPercent}% OFF</span>
-                </div>
-              )}
+
             </div>
 
             {/* Bill Amount Input (Only when creating a bill, hidden on view-only receipt to avoid clutter) */}
@@ -238,9 +232,7 @@ export const SendBillModal: React.FC<SendBillModalProps> = ({
                 <span className="breakdown-header-tag">
                   {isAlreadyBilled ? '🧾 SENT BILL BREAKDOWN' : '🧾 LIVE BILL BREAKDOWN'}
                 </span>
-                {!isAlreadyBilled && (
-                  <span className="breakdown-auto-tag">Pre-set {billedDiscountPercent}% Applied</span>
-                )}
+
               </div>
 
               <div className="breakdown-row">
