@@ -367,15 +367,17 @@ const CampaignDetailPage: React.FC = () => {
         throw error;
       }
 
-      // Notify owner
+      // Notify owner — both notification badge AND inbox message
       if (campaign?.advertiser_id) {
         const creatorName = user.user_metadata?.full_name || user.user_metadata?.username || 'A customer';
+        const creatorHandle = user.user_metadata?.username ? `@${user.user_metadata.username}` : creatorName;
         const notifMsg = isReviewAction
-          ? `⭐ New Review / Rating Submission from @${creatorName} for "${campaign.title}" claiming ${activeDirectTier?.reward || 'Discount'}!`
+          ? `⭐ New Review / Rating Submission from ${creatorHandle} for "${campaign.title}" claiming ${activeDirectTier?.reward || 'Discount'}! Go approve it now.`
           : submissionType === 'direct_discount'
-            ? `🏷️ New Direct Discount Submission (${activeDirectTier?.term || 'Perk'}) from @${creatorName} for "${campaign.title}"!`
-            : `🎬 New Video Submission from @${creatorName} on "${campaign.title}"!`;
+            ? `🏷️ New Direct Discount Submission (${activeDirectTier?.term || 'Perk'}) from ${creatorHandle} for "${campaign.title}"! Go review it now.`
+            : `🎬 New Video Submission from ${creatorHandle} on "${campaign.title}"! Go review and approve it.`;
 
+        // 1. Notification icon badge
         try {
           await supabase.from('notifications').insert({
             user_id: campaign.advertiser_id,
@@ -385,7 +387,18 @@ const CampaignDetailPage: React.FC = () => {
             content: notifMsg,
           });
         } catch {
-          // Non-blocking notification error
+          // Non-blocking
+        }
+
+        // 2. DM in messages inbox so owner sees the green dot and the full message
+        try {
+          await supabase.from('messages').insert({
+            sender_id: user.id,
+            receiver_id: campaign.advertiser_id,
+            content: notifMsg,
+          });
+        } catch {
+          // Non-blocking
         }
       }
 
