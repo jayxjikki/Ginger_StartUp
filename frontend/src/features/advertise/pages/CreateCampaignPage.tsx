@@ -65,9 +65,7 @@ const CreateCampaignPage: React.FC = () => {
     platforms: ['youtube', 'instagram'] as string[],
     prizePool: '',
     verificationDays: 30,
-    directDiscountTiers: [
-      { term: 'Shoot a video', reward: '' },
-    ] as DirectDiscountTierItem[],
+    directDiscountTiers: [] as DirectDiscountTierItem[],
     cashTiers: [
       { minViews: '', amount: '' },
     ],
@@ -320,7 +318,7 @@ const CreateCampaignPage: React.FC = () => {
     (t) => Boolean(t.minViews?.trim()) && Boolean(t.amount?.trim())
   );
 
-  // Direct Discount Tiers Handlers (1st Tier in Every Campaign, Max 4, non-repeating terms)
+  // Direct Discount Tiers Handlers (Optional, Max 4, non-repeating terms)
   const addDirectDiscountTier = () => {
     if (formData.directDiscountTiers.length >= 4) {
       toast.error('Maximum 4 direct discount tiers allowed');
@@ -499,34 +497,88 @@ const CreateCampaignPage: React.FC = () => {
     }
 
     if (step === 3) {
-      if (formData.directDiscountTiers.length === 0) {
-        toast.error('At least 1 Direct Discount Tier is compulsory. Please add a tier.');
-        return false;
+      // 1. Direct Discount Tiers Validation (if any configured)
+      if (formData.directDiscountTiers.length > 0) {
+        const emptyDirectTier = formData.directDiscountTiers.find((t) => !t.reward?.trim());
+        if (emptyDirectTier) {
+          toast.error(`Please enter the reward for "${emptyDirectTier.term}" in Direct Discount Tiers (or remove the tier).`);
+          return false;
+        }
+
+        const emptyReviewUrlTier = formData.directDiscountTiers.find(
+          (t) => (t.term === 'Review/rate us' || t.term === 'review_rate') && !t.review_url?.trim()
+        );
+        if (emptyReviewUrlTier) {
+          toast.error('Please enter the Review / Rating URL for the "Review/rate us" tier.');
+          return false;
+        }
       }
-      const emptyDirectTier = formData.directDiscountTiers.find((t) => !t.reward?.trim());
-      if (emptyDirectTier) {
-        toast.error(`Please enter the reward for "${emptyDirectTier.term}" in Direct Discount Tiers.`);
+
+      // 2. Check for partially filled cash tiers
+      if (formData.type === 'pool' || formData.type === 'hybrid') {
+        const partialCashTier = formData.cashTiers.find(
+          (t) => (t.minViews?.trim() && !t.amount?.trim()) || (!t.minViews?.trim() && t.amount?.trim())
+        );
+        if (partialCashTier) {
+          toast.error('Please fill both Min. Views and Payout for all cash tiers (or remove incomplete tiers).');
+          return false;
+        }
+      }
+
+      // 3. Check for partially filled discount tiers
+      if (formData.type === 'discount' || formData.type === 'hybrid') {
+        const partialDiscountTier = formData.discountTiers.find(
+          (t) => (t.minViews?.trim() && !t.amount?.trim()) || (!t.minViews?.trim() && t.amount?.trim())
+        );
+        if (partialDiscountTier) {
+          toast.error('Please fill both Discount (%) and Min. Views for all discount tiers (or remove incomplete tiers).');
+          return false;
+        }
+      }
+
+      // 4. Check for partially filled gift tiers
+      if (formData.type === 'hybrid') {
+        const partialGiftTier = formData.giftTiers.find((t) => {
+          if (t.type === 'views') {
+            return (t.minViews?.trim() && !t.gift?.trim()) || (!t.minViews?.trim() && t.gift?.trim());
+          } else {
+            return (t.condition?.trim() && !t.gift?.trim()) || (!t.condition?.trim() && t.gift?.trim());
+          }
+        });
+        if (partialGiftTier) {
+          toast.error('Please fill all required fields for configured gift tiers (or remove incomplete tiers).');
+          return false;
+        }
+      }
+
+      // 5. Total Valid Tiers Check — ANY one tier of any campaign is compulsory!
+      // A campaign cannot be posted without any tier.
+      const validDirectDiscountTiers = formData.directDiscountTiers.filter((t) => Boolean(t.reward?.trim()));
+      const validCashTiers = (formData.type === 'pool' || formData.type === 'hybrid')
+        ? formData.cashTiers.filter((t) => Boolean(t.minViews?.trim()) && Boolean(t.amount?.trim()))
+        : [];
+      const validDiscountTiers = (formData.type === 'discount' || formData.type === 'hybrid')
+        ? formData.discountTiers.filter((t) => Boolean(t.minViews?.trim()) && Boolean(t.amount?.trim()))
+        : [];
+      const validGiftTiers = (formData.type === 'hybrid')
+        ? formData.giftTiers.filter((t) => {
+            if (t.type === 'views') return Boolean(t.minViews?.trim()) && Boolean(t.gift?.trim());
+            return Boolean(t.condition?.trim()) && Boolean(t.gift?.trim());
+          })
+        : [];
+
+      const totalValidTiersCount =
+        validDirectDiscountTiers.length +
+        validCashTiers.length +
+        validDiscountTiers.length +
+        validGiftTiers.length;
+
+      if (totalValidTiersCount === 0) {
+        toast.error('A campaign cannot be posted without any tier. Please configure at least one reward tier.');
         return false;
       }
 
-      const emptyReviewUrlTier = formData.directDiscountTiers.find(
-        (t) => (t.term === 'Review/rate us' || t.term === 'review_rate') && !t.review_url?.trim()
-      );
-      if (emptyReviewUrlTier) {
-        toast.error('Please enter the Review / Rating URL for the "Review/rate us" tier.');
-        return false;
-      }
-
-      // Check for partially filled cash tiers
-      const partialCashTier = formData.cashTiers.find(
-        (t) => (t.minViews?.trim() && !t.amount?.trim()) || (!t.minViews?.trim() && t.amount?.trim())
-      );
-      if (partialCashTier) {
-        toast.error('Please fill both Min. Views and Payout for all cash tiers.');
-        return false;
-      }
-
-      // Only compulsory to fill prize pool amount if cash payout tier is used anywhere
+      // 6. Only compulsory to fill prize pool amount if cash payout tier is used anywhere
       if (hasCashPayoutTiers) {
         const poolVal = Number(formData.prizePool);
         if (!formData.prizePool || isNaN(poolVal) || poolVal <= 0) {
@@ -1149,14 +1201,14 @@ const CreateCampaignPage: React.FC = () => {
                 </div>
 
                 {/* ════════════════════════════════════════════════════════════════ */}
-                {/* ── 1ST TIER IN EVERY CAMPAIGN: DIRECT DISCOUNT TIER (GOLD) ─── */}
+                {/* ── DIRECT DISCOUNT TIERS: OPTIONAL INSTANT PERKS (GOLD) ──────── */}
                 {/* ════════════════════════════════════════════════════════════════ */}
                 <div className="form-group direct-discount-section">
                   <div className="tiers-section-header direct-discount-section-header">
                     <div className="gold-header-badge-row">
                       <span className="gold-header-star">✨</span>
                       <label className="form-label gold-section-title">Direct Discount Tiers</label>
-                      <span className="gold-section-pill">1st Tier in Every Campaign</span>
+                      <span className="gold-section-pill">Instant Perks (Optional)</span>
                     </div>
                     <p className="field-hint gold-section-desc">
                       Reward creators instantly with exclusive discounts for specific actions. Choose from 4 fixed terms — each term can only be used once (max 4 tiers). Set your custom reward for each action.
@@ -1164,12 +1216,6 @@ const CreateCampaignPage: React.FC = () => {
                   </div>
 
                   <div className="tiers-builder gold-tiers-builder">
-                    {formData.directDiscountTiers.length === 0 && (
-                      <div className="gold-empty-notice">
-                        <span>⚠️ At least 1 Direct Discount Tier is compulsory. Click below to add a tier.</span>
-                      </div>
-                    )}
-
                     {formData.directDiscountTiers.map((tier, idx) => (
                       <div key={idx} className="tier-card gold-tier-card">
                         <div className="tier-card-header gold-tier-card-header">
@@ -1253,7 +1299,7 @@ const CreateCampaignPage: React.FC = () => {
                         title={!isLastDirectDiscountTierFilled ? "Fill current direct discount tier reward to unlock adding another" : undefined}
                       >
                         <FiPlus size={16} />
-                        <span>{formData.directDiscountTiers.length > 0 ? `Add Another Direct Discount Tier (${formData.directDiscountTiers.length}/4)` : '+ Add Direct Discount Tier'}</span>
+                        <span>{formData.directDiscountTiers.length > 0 ? `Add Another Direct Discount Tier (${formData.directDiscountTiers.length}/4)` : '+ Add Direct Discount Tier (Optional)'}</span>
                       </button>
                     ) : (
                       <div className="gold-max-alert">
@@ -1671,7 +1717,7 @@ const CreateCampaignPage: React.FC = () => {
                       <div className="review-row gold-review-row">
                         <div className="gold-review-header">
                           <span className="gold-review-badge">✨ DIRECT DISCOUNT TIERS</span>
-                          <span className="gold-review-subtag">1st Tier • Instant Perks</span>
+                          <span className="gold-review-subtag">Instant Perks (Optional)</span>
                         </div>
                         <div className="gold-review-list">
                           {formData.directDiscountTiers
