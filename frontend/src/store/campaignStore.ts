@@ -116,7 +116,7 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
     set({ isLoading: true, error: null });
     
     try {
-      const [campaignsRes, slideshowsRes] = await Promise.all([
+      let [campaignsRes, slideshowsRes] = await Promise.all([
         supabase
           .from('campaigns')
           .select(`
@@ -131,13 +131,32 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
           .order('order_index', { ascending: true })
       ]);
 
+      if (campaignsRes.error && (campaignsRes.error.code === 'PGRST303' || campaignsRes.error.message?.includes('JWT expired'))) {
+        console.warn('JWT expired during fetchCampaigns, retrying after refresh or anon fallback...');
+        const { error: refreshErr } = await supabase.auth.refreshSession();
+        if (refreshErr) {
+          await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+        }
+        campaignsRes = await supabase
+          .from('campaigns')
+          .select(`
+            *,
+            advertiser:profiles(*),
+            payout_tiers(*)
+          `)
+          .order('created_at', { ascending: false });
+      }
+
       if (campaignsRes.error) throw campaignsRes.error;
-      if (slideshowsRes.error) throw slideshowsRes.error;
+
+      const campaignsData = (campaignsRes.data || []) as unknown as Campaign[];
+      const slideshowsData = (!slideshowsRes.error && slideshowsRes.data ? slideshowsRes.data : []) as unknown as SlideshowItem[];
 
       set({ 
-        campaigns: campaignsRes.data as unknown as Campaign[], 
-        filteredCampaigns: campaignsRes.data as unknown as Campaign[],
-        slideshows: slideshowsRes.data as unknown as SlideshowItem[]
+        campaigns: campaignsData, 
+        filteredCampaigns: campaignsData,
+        slideshows: slideshowsData,
+        error: null,
       });
       get().applyFilters();
     } catch (err: any) {

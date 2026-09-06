@@ -34,27 +34,66 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   initialize: async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-
-      if (session?.user) {
-        set({ user: session.user, session, isLoading: false, isInitialized: true });
-        await get().fetchProfile();
-      } else {
-        set({ isLoading: false, isInitialized: true });
-      }
-
-      // Listen for auth changes
-      supabase.auth.onAuthStateChange(async (_event, session) => {
-        set({ user: session?.user ?? null, session });
-        if (session?.user) {
-          await get().fetchProfile();
-        } else {
-          set({ profile: null });
+      // 1. Listen for auth changes
+      supabase.auth.onAuthStateChange(async (event, session) => {
+        if (event === 'SIGNED_OUT') {
+          set({ user: null, session: null, profile: null, isLoading: false, isInitialized: true });
+        } else if (event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN') {
+          set({ user: session?.user ?? null, session, isLoading: false, isInitialized: true });
+          if (session?.user) {
+            await get().fetchProfile();
+          }
         }
       });
+
+      // 2. Check current stored session
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+      if (sessionError || !session) {
+        set({ user: null, session: null, profile: null, isLoading: false, isInitialized: true });
+        return;
+      }
+
+      // 3. Proactively check if session JWT is already expired or near expiration (< 30s)
+      const nowSeconds = Math.floor(Date.now() / 1000);
+      const isExpired = session.expires_at ? session.expires_at <= nowSeconds + 30 : false;
+
+      let currentSession: Session | null = session;
+      if (isExpired) {
+        try {
+          const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+          if (refreshError || !refreshData.session) {
+            console.warn('Stored session is expired and refresh failed. Clearing stale auth.');
+            await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+            if (typeof window !== 'undefined') {
+              for (let i = localStorage.length - 1; i >= 0; i--) {
+                const key = localStorage.key(i);
+                if (key && (key.startsWith('sb-') && key.endsWith('-auth-token'))) {
+                  localStorage.removeItem(key);
+                }
+              }
+            }
+            set({ user: null, session: null, profile: null, isLoading: false, isInitialized: true });
+            return;
+          }
+          currentSession = refreshData.session;
+        } catch {
+          await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+          set({ user: null, session: null, profile: null, isLoading: false, isInitialized: true });
+          return;
+        }
+      }
+
+      if (currentSession?.user) {
+        set({ user: currentSession.user, session: currentSession, isLoading: false, isInitialized: true });
+        await get().fetchProfile();
+      } else {
+        set({ user: null, session: null, profile: null, isLoading: false, isInitialized: true });
+      }
+
       // Listen for realtime bans
-      if (session?.user) {
-        const channelName = `public:profiles:${session.user.id}`;
+      if (currentSession?.user) {
+        const channelName = `public:profiles:${currentSession.user.id}`;
         const existingChannel = supabase.getChannels().find(c => c.topic === `realtime:${channelName}`);
         if (existingChannel) {
           supabase.removeChannel(existingChannel);
@@ -65,7 +104,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             event: 'UPDATE', 
             schema: 'public', 
             table: 'profiles', 
-            filter: `id=eq.${session.user.id}` 
+            filter: `id=eq.${currentSession.user.id}` 
           }, (payload) => {
             const updatedProfile = payload.new as Profile;
             if (updatedProfile.is_banned) {
@@ -80,7 +119,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       }
     } catch (error) {
       console.error('Auth initialization error:', error);
-      set({ isLoading: false, isInitialized: true });
+      set({ user: null, session: null, profile: null, isLoading: false, isInitialized: true });
     }
   },
 
@@ -112,12 +151,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         supabase.removeChannel(supabase.channel(`public:profiles:${user.id}`));
       }
 
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
+      await supabase.auth.signOut().catch(() => {});
+      if (typeof window !== 'undefined') {
+        for (let i = localStorage.length - 1; i >= 0; i--) {
+          const key = localStorage.key(i);
+          if (key && (key.startsWith('sb-') && key.endsWith('-auth-token'))) {
+            localStorage.removeItem(key);
+          }
+        }
+      }
       set({ user: null, session: null, profile: null, isLoading: false });
     } catch (error) {
       console.error('Sign-out error:', error);
-      set({ isLoading: false });
+      set({ user: null, session: null, profile: null, isLoading: false });
     }
   },
 
@@ -128,15 +174,36 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (!user) return;
 
     try {
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', user.id)
         .single();
 
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error fetching profile:', error);
-        return;
+      if (error) {
+        if (error.code === 'PGRST303' || error.message?.includes('JWT expired')) {
+          console.warn('JWT expired during fetchProfile, refreshing session...');
+          const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+          if (!refreshError && refreshData.session) {
+            set({ session: refreshData.session, user: refreshData.session.user });
+            const retryRes = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', user.id)
+              .single();
+            data = retryRes.data;
+            error = retryRes.error;
+          } else {
+            console.warn('Session refresh failed in fetchProfile, signing out');
+            await get().signOut();
+            return;
+          }
+        }
+
+        if (error && error.code !== 'PGRST116') {
+          console.error('Error fetching profile:', error);
+          return;
+        }
       }
 
       if (data) {
@@ -203,3 +270,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 }));
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('supabase:jwt-expired', () => {
+    const state = useAuthStore.getState();
+    if (state.user) {
+      useAuthStore.setState({ user: null, session: null, profile: null, isLoading: false, isInitialized: true });
+      toast.error('Session expired. Please sign in again.', { id: 'session-expired' });
+    }
+  });
+}
+

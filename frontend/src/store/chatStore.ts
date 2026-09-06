@@ -96,13 +96,30 @@ export const useChatStore = create<ChatState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       // 1. Fetch all messages involving the current user
-      const { data: messages, error: msgError } = await supabase
+      let { data: messages, error: msgError } = await supabase
         .from('messages')
         .select('*')
         .or(`sender_id.eq.${currentUserId},receiver_id.eq.${currentUserId}`)
         .order('created_at', { ascending: false });
 
-      if (msgError) throw msgError;
+      if (msgError) {
+        if (msgError.code === 'PGRST303' || msgError.message?.includes('JWT expired')) {
+          const { error: refreshErr } = await supabase.auth.refreshSession();
+          if (refreshErr) {
+            await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+            set({ inboxChats: [], isLoading: false });
+            return;
+          }
+          const retry = await supabase
+            .from('messages')
+            .select('*')
+            .or(`sender_id.eq.${currentUserId},receiver_id.eq.${currentUserId}`)
+            .order('created_at', { ascending: false });
+          messages = retry.data;
+          msgError = retry.error;
+        }
+        if (msgError) throw msgError;
+      }
 
       if (!messages || messages.length === 0) {
         set({ inboxChats: [] });
