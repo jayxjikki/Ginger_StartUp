@@ -119,6 +119,7 @@ export const LocationCampaignMapModal: React.FC<LocationCampaignMapModalProps> =
           lng: position.coords.longitude,
         };
         setUserLocation(coords);
+        setPanOffset({ x: 0, y: 0 });
         setGpsStatus('granted');
         setIsLocating(false);
 
@@ -341,6 +342,7 @@ export const LocationCampaignMapModal: React.FC<LocationCampaignMapModalProps> =
 
   const handleTouchMove = (e: React.TouchEvent) => {
     if (touchStateRef.current.mode === 'pan' && e.touches.length === 1) {
+      if (!isDragging) setIsDragging(true);
       const t = e.touches[0];
       const dx = t.clientX - touchStateRef.current.startX;
       const dy = t.clientY - touchStateRef.current.startY;
@@ -349,6 +351,7 @@ export const LocationCampaignMapModal: React.FC<LocationCampaignMapModalProps> =
         y: touchStateRef.current.startPanY + dy,
       });
     } else if (e.touches.length >= 2) {
+      if (!isDragging) setIsDragging(true);
       const t1 = e.touches[0];
       const t2 = e.touches[1];
       const currentDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
@@ -399,6 +402,7 @@ export const LocationCampaignMapModal: React.FC<LocationCampaignMapModalProps> =
       };
     } else if (e.touches.length === 0) {
       touchStateRef.current.mode = 'none';
+      setIsDragging(false);
     }
   };
 
@@ -408,6 +412,34 @@ export const LocationCampaignMapModal: React.FC<LocationCampaignMapModalProps> =
     setZoomLevel(1);
     setSelectedPin(null);
   };
+
+  // Dynamic radar dimensions (22px per km matches campaign pin distance projection)
+  const SCALE_PX_PER_KM = 22;
+  const radarRadius = activeRadiusKm * SCALE_PX_PER_KM;
+  const radarDiameter = radarRadius * 2;
+
+  const radarRings = useMemo(() => {
+    return [
+      {
+        ratio: 0.33,
+        km: Math.round(activeRadiusKm * 0.33),
+        diameter: Math.round(radarDiameter * 0.33),
+        isBoundary: false,
+      },
+      {
+        ratio: 0.66,
+        km: Math.round(activeRadiusKm * 0.66),
+        diameter: Math.round(radarDiameter * 0.66),
+        isBoundary: false,
+      },
+      {
+        ratio: 1.0,
+        km: activeRadiusKm,
+        diameter: radarDiameter,
+        isBoundary: true,
+      },
+    ];
+  }, [activeRadiusKm, radarDiameter]);
 
   // Open direct chat
   const handleOpenChat = (ownerId: string, ownerName: string, ownerAvatar: string | null) => {
@@ -539,22 +571,96 @@ export const LocationCampaignMapModal: React.FC<LocationCampaignMapModalProps> =
           onWheel={handleWheel}
         >
           {/* Futuristic Radar Grid Background */}
-          <div className="map-grid-layer" />
-          <div className="radar-sweep-beam" />
-          <div className="radar-concentric-circles">
-            <div className="circle circle-1" />
-            <div className="circle circle-2" />
-            <div className="circle circle-3" />
-          </div>
+          <div 
+            className="map-grid-layer" 
+            style={{
+              backgroundPosition: `${panOffset.x}px ${panOffset.y}px`,
+              backgroundSize: `${40 * zoomLevel}px ${40 * zoomLevel}px`,
+            }}
+          />
 
           {/* Draggable & Scalable World Layer */}
           <div 
             className="map-world-layer"
             style={{
               transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoomLevel})`,
-              transformOrigin: 'center center',
+              transformOrigin: '0 0',
+              transition: isDragging ? 'none' : 'transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+              ['--zoom-level' as any]: zoomLevel,
             }}
           >
+            {/* ── Radar System Fixed to User Location Center (0, 0) ── */}
+            <div className="user-radar-system">
+              {/* Rotating Radar Sweep Beam */}
+              <div 
+                className="radar-sweep-beam" 
+                style={{
+                  width: `${radarDiameter}px`,
+                  height: `${radarDiameter}px`,
+                  marginTop: `-${radarDiameter / 2}px`,
+                  marginLeft: `-${radarDiameter / 2}px`,
+                }}
+              />
+
+              {/* Crosshair Cardinal Bearing Lines */}
+              <div className="radar-crosshairs">
+                <div 
+                  className="crosshair axis-h" 
+                  style={{ 
+                    width: `${radarDiameter}px`, 
+                    marginLeft: `-${radarDiameter / 2}px` 
+                  }}
+                >
+                  <span className="bearing-tag tag-w">W</span>
+                  <span className="bearing-tag tag-e">E</span>
+                </div>
+                <div 
+                  className="crosshair axis-v" 
+                  style={{ 
+                    height: `${radarDiameter}px`, 
+                    marginTop: `-${radarDiameter / 2}px` 
+                  }}
+                >
+                  <span className="bearing-tag tag-n">N</span>
+                  <span className="bearing-tag tag-s">S</span>
+                </div>
+                <div 
+                  className="crosshair axis-diag-1" 
+                  style={{ 
+                    width: `${radarDiameter}px`, 
+                    marginLeft: `-${radarDiameter / 2}px` 
+                  }} 
+                />
+                <div 
+                  className="crosshair axis-diag-2" 
+                  style={{ 
+                    width: `${radarDiameter}px`, 
+                    marginLeft: `-${radarDiameter / 2}px` 
+                  }} 
+                />
+              </div>
+
+              {/* Concentric Distance Rings scaled to active radius */}
+              <div className="radar-concentric-circles">
+                {radarRings.map((ring, idx) => (
+                  <div
+                    key={idx}
+                    className={`circle circle-dynamic ${ring.isBoundary ? 'boundary-ring' : ''}`}
+                    style={{
+                      width: `${ring.diameter}px`,
+                      height: `${ring.diameter}px`,
+                      marginTop: `-${ring.diameter / 2}px`,
+                      marginLeft: `-${ring.diameter / 2}px`,
+                    }}
+                  >
+                    <span className="ring-distance-badge">
+                      {ring.km} km{ring.isBoundary ? ' Boundary' : ''}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             {/* User Center Beacon ("You Are Here") */}
             <div className="user-location-marker">
               <div className="beacon-pulse-ring" />

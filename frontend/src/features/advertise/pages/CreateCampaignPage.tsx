@@ -330,6 +330,36 @@ const CreateCampaignPage: React.FC = () => {
 
   const isPrizePoolCompulsory = hasCashPayoutTiers || hasDiscountTiers;
 
+  // Determine highest/last payout filled in Cash Payout Tiers
+  const lastCashPayout = (() => {
+    const isCashActive =
+      formData.type === 'pool' ||
+      (formData.type === 'hybrid' && formData.hybridRewardType === 'cash');
+    if (!isCashActive) return 0;
+    const filledWithAmount = formData.cashTiers.filter((t) => Boolean(t.amount?.trim()));
+    if (filledWithAmount.length === 0) return 0;
+    const lastAmount = Number(filledWithAmount[filledWithAmount.length - 1].amount);
+    return !isNaN(lastAmount) && lastAmount > 0 ? lastAmount : 0;
+  })();
+
+  const minRequiredPrizePool = lastCashPayout > 0 ? lastCashPayout * 2 : 0;
+
+  const handlePrizePoolBlur = () => {
+    const rawVal = formData.prizePool?.trim();
+    if (!rawVal) return;
+    const poolVal = Number(rawVal);
+    if (isNaN(poolVal) || poolVal <= 0) {
+      toast.error('Prize pool amount must be greater than 0', { id: 'prize-pool-error' });
+      return;
+    }
+    if (minRequiredPrizePool > 0 && poolVal < minRequiredPrizePool) {
+      toast.error(
+        `Prize pool must be at least ₹${minRequiredPrizePool.toLocaleString('en-IN')} (at least double the last tier reward of ₹${lastCashPayout.toLocaleString('en-IN')}).`,
+        { id: 'prize-pool-error' }
+      );
+    }
+  };
+
   // Direct Discount Tiers Handlers (Optional, Max 4, non-repeating terms)
   const addDirectDiscountTier = () => {
     if (formData.directDiscountTiers.length >= 4) {
@@ -382,7 +412,102 @@ const CreateCampaignPage: React.FC = () => {
     }));
   };
 
-  // Cash Tiers Handlers
+  // Cash Tiers Handlers & Monotonic Validation
+  const handleCashTierBlur = (idx: number, field: 'minViews' | 'amount') => {
+    const tier = formData.cashTiers[idx];
+    if (!tier) return;
+    const rawVal = tier[field]?.trim();
+    if (!rawVal) return;
+
+    const val = Number(rawVal);
+    if (isNaN(val) || val <= 0) {
+      toast.error(
+        field === 'minViews'
+          ? `Tier ${idx + 1}: Min. Views must be greater than 0`
+          : `Tier ${idx + 1}: Payout must be greater than ₹0`,
+        { id: 'tier-val-error' }
+      );
+      return;
+    }
+
+    if (field === 'minViews' && !Number.isInteger(val)) {
+      toast.error(`Tier ${idx + 1}: Min. Views must be a whole number`, { id: 'tier-val-error' });
+      return;
+    }
+
+    // 1. Check against previous tier
+    if (idx > 0) {
+      const prevTier = formData.cashTiers[idx - 1];
+      if (prevTier) {
+        if (field === 'minViews' && prevTier.minViews?.trim()) {
+          const prevViews = Number(prevTier.minViews);
+          if (!isNaN(prevViews) && val <= prevViews) {
+            toast.error(
+              `Tier ${idx + 1} views (${val.toLocaleString()}) must be greater than Tier ${idx} (${prevViews.toLocaleString()} views).`,
+              { id: 'tier-val-error' }
+            );
+            return;
+          }
+        }
+        if (field === 'amount' && prevTier.amount?.trim()) {
+          const prevAmount = Number(prevTier.amount);
+          if (!isNaN(prevAmount) && val <= prevAmount) {
+            toast.error(
+              `Tier ${idx + 1} payout (₹${val.toLocaleString()}) must be greater than Tier ${idx} (₹${prevAmount.toLocaleString()}).`,
+              { id: 'tier-val-error' }
+            );
+            return;
+          }
+        }
+      }
+    }
+
+    // 2. Check against next tier
+    if (idx < formData.cashTiers.length - 1) {
+      const nextTier = formData.cashTiers[idx + 1];
+      if (nextTier) {
+        if (field === 'minViews' && nextTier.minViews?.trim()) {
+          const nextViews = Number(nextTier.minViews);
+          if (!isNaN(nextViews) && val >= nextViews) {
+            toast.error(
+              `Tier ${idx + 1} views (${val.toLocaleString()}) must be less than Tier ${idx + 2} (${nextViews.toLocaleString()} views).`,
+              { id: 'tier-val-error' }
+            );
+            return;
+          }
+        }
+        if (field === 'amount' && nextTier.amount?.trim()) {
+          const nextAmount = Number(nextTier.amount);
+          if (!isNaN(nextAmount) && val >= nextAmount) {
+            toast.error(
+              `Tier ${idx + 1} payout (₹${val.toLocaleString()}) must be less than Tier ${idx + 2} (₹${nextAmount.toLocaleString()}).`,
+              { id: 'tier-val-error' }
+            );
+            return;
+          }
+        }
+      }
+    }
+
+    // 3. If payout amount was edited, check prize pool requirement
+    if (field === 'amount') {
+      const allAmounts = formData.cashTiers
+        .map((t, i) => (i === idx ? val : Number(t.amount)))
+        .filter((n) => !isNaN(n) && n > 0);
+      const currentHighestPayout = allAmounts.length > 0 ? allAmounts[allAmounts.length - 1] : 0;
+      const requiredPool = currentHighestPayout * 2;
+      if (requiredPool > 0 && formData.prizePool?.trim()) {
+        const currentPool = Number(formData.prizePool);
+        if (!isNaN(currentPool) && currentPool < requiredPool) {
+          toast.error(
+            `Prize pool must be at least ₹${requiredPool.toLocaleString('en-IN')} (at least double the highest tier reward of ₹${currentHighestPayout.toLocaleString('en-IN')}).`,
+            { id: 'prize-pool-error' }
+          );
+        }
+      }
+    }
+  };
+
   const addCashTier = () => {
     if (!isLastCashTierFilled) {
       toast.error(
@@ -390,6 +515,46 @@ const CreateCampaignPage: React.FC = () => {
       );
       return;
     }
+
+    // Verify all existing cash tiers are strictly increasing
+    for (let i = 1; i < formData.cashTiers.length; i++) {
+      const prev = formData.cashTiers[i - 1];
+      const curr = formData.cashTiers[i];
+      const prevViews = Number(prev.minViews);
+      const currViews = Number(curr.minViews);
+      const prevAmount = Number(prev.amount);
+      const currAmount = Number(curr.amount);
+
+      if (currViews <= prevViews) {
+        toast.error(
+          `Tier ${i + 1} views (${currViews.toLocaleString()}) must be greater than Tier ${i} (${prevViews.toLocaleString()} views) before adding another tier.`,
+          { id: 'tier-val-error' }
+        );
+        return;
+      }
+      if (currAmount <= prevAmount) {
+        toast.error(
+          `Tier ${i + 1} payout (₹${currAmount.toLocaleString()}) must be greater than Tier ${i} (₹${prevAmount.toLocaleString()}) before adding another tier.`,
+          { id: 'tier-val-error' }
+        );
+        return;
+      }
+    }
+
+    const lastTier = formData.cashTiers[formData.cashTiers.length - 1];
+    if (lastTier) {
+      const v = Number(lastTier.minViews);
+      const a = Number(lastTier.amount);
+      if (isNaN(v) || v <= 0) {
+        toast.error(`Tier ${formData.cashTiers.length}: Min. Views must be greater than 0.`);
+        return;
+      }
+      if (isNaN(a) || a <= 0) {
+        toast.error(`Tier ${formData.cashTiers.length}: Payout must be greater than ₹0.`);
+        return;
+      }
+    }
+
     setFormData((prev) => ({
       ...prev,
       cashTiers: [...prev.cashTiers, { minViews: '', amount: '' }],
@@ -411,7 +576,89 @@ const CreateCampaignPage: React.FC = () => {
     }));
   };
 
-  // Discount Tiers Handlers
+  // Discount Tiers Handlers & Monotonic Validation
+  const handleDiscountTierBlur = (idx: number, field: 'minViews' | 'amount') => {
+    const tier = formData.discountTiers[idx];
+    if (!tier) return;
+    const rawVal = tier[field]?.trim();
+    if (!rawVal) return;
+
+    const val = Number(rawVal);
+    if (isNaN(val) || val <= 0) {
+      toast.error(
+        field === 'amount'
+          ? `Tier ${idx + 1}: Discount percentage must be greater than 0%`
+          : `Tier ${idx + 1}: Min. Views must be greater than 0`,
+        { id: 'tier-val-error' }
+      );
+      return;
+    }
+
+    if (field === 'amount' && val > 100) {
+      toast.error(`Tier ${idx + 1}: Discount percentage cannot exceed 100%`, { id: 'tier-val-error' });
+      return;
+    }
+
+    if (field === 'minViews' && !Number.isInteger(val)) {
+      toast.error(`Tier ${idx + 1}: Min. Views must be a whole number`, { id: 'tier-val-error' });
+      return;
+    }
+
+    // 1. Check against previous tier
+    if (idx > 0) {
+      const prevTier = formData.discountTiers[idx - 1];
+      if (prevTier) {
+        if (field === 'amount' && prevTier.amount?.trim()) {
+          const prevDisc = Number(prevTier.amount);
+          if (!isNaN(prevDisc) && val <= prevDisc) {
+            toast.error(
+              `Tier ${idx + 1} discount (${val}%) must be greater than Tier ${idx} (${prevDisc}%).`,
+              { id: 'tier-val-error' }
+            );
+            return;
+          }
+        }
+        if (field === 'minViews' && prevTier.minViews?.trim()) {
+          const prevViews = Number(prevTier.minViews);
+          if (!isNaN(prevViews) && val <= prevViews) {
+            toast.error(
+              `Tier ${idx + 1} views (${val.toLocaleString()}) must be greater than Tier ${idx} (${prevViews.toLocaleString()} views).`,
+              { id: 'tier-val-error' }
+            );
+            return;
+          }
+        }
+      }
+    }
+
+    // 2. Check against next tier
+    if (idx < formData.discountTiers.length - 1) {
+      const nextTier = formData.discountTiers[idx + 1];
+      if (nextTier) {
+        if (field === 'amount' && nextTier.amount?.trim()) {
+          const nextDisc = Number(nextTier.amount);
+          if (!isNaN(nextDisc) && val >= nextDisc) {
+            toast.error(
+              `Tier ${idx + 1} discount (${val}%) must be less than Tier ${idx + 2} (${nextDisc}%).`,
+              { id: 'tier-val-error' }
+            );
+            return;
+          }
+        }
+        if (field === 'minViews' && nextTier.minViews?.trim()) {
+          const nextViews = Number(nextTier.minViews);
+          if (!isNaN(nextViews) && val >= nextViews) {
+            toast.error(
+              `Tier ${idx + 1} views (${val.toLocaleString()}) must be less than Tier ${idx + 2} (${nextViews.toLocaleString()} views).`,
+              { id: 'tier-val-error' }
+            );
+            return;
+          }
+        }
+      }
+    }
+  };
+
   const addDiscountTier = () => {
     if (!isLastDiscountTierFilled) {
       toast.error(
@@ -419,6 +666,45 @@ const CreateCampaignPage: React.FC = () => {
       );
       return;
     }
+
+    for (let i = 1; i < formData.discountTiers.length; i++) {
+      const prev = formData.discountTiers[i - 1];
+      const curr = formData.discountTiers[i];
+      const prevDisc = Number(prev.amount);
+      const currDisc = Number(curr.amount);
+      const prevViews = Number(prev.minViews);
+      const currViews = Number(curr.minViews);
+
+      if (currDisc <= prevDisc) {
+        toast.error(
+          `Tier ${i + 1} discount (${currDisc}%) must be greater than Tier ${i} (${prevDisc}%) before adding another tier.`,
+          { id: 'tier-val-error' }
+        );
+        return;
+      }
+      if (currViews <= prevViews) {
+        toast.error(
+          `Tier ${i + 1} views (${currViews.toLocaleString()}) must be greater than Tier ${i} (${prevViews.toLocaleString()} views) before adding another tier.`,
+          { id: 'tier-val-error' }
+        );
+        return;
+      }
+    }
+
+    const lastTier = formData.discountTiers[formData.discountTiers.length - 1];
+    if (lastTier) {
+      const d = Number(lastTier.amount);
+      const v = Number(lastTier.minViews);
+      if (isNaN(d) || d <= 0 || d > 100) {
+        toast.error(`Tier ${formData.discountTiers.length}: Discount must be between 1% and 100%.`);
+        return;
+      }
+      if (isNaN(v) || v <= 0) {
+        toast.error(`Tier ${formData.discountTiers.length}: Min. Views must be greater than 0.`);
+        return;
+      }
+    }
+
     setFormData((prev) => ({
       ...prev,
       discountTiers: [...prev.discountTiers, { minViews: '', amount: '' }],
@@ -526,25 +812,109 @@ const CreateCampaignPage: React.FC = () => {
         }
       }
 
-      // 2. Check for partially filled cash tiers
-      if (formData.type === 'pool' || (formData.type === 'hybrid' && formData.hybridRewardType === 'cash')) {
-        const partialCashTier = formData.cashTiers.find(
-          (t) => (t.minViews?.trim() && !t.amount?.trim()) || (!t.minViews?.trim() && t.amount?.trim())
-        );
-        if (partialCashTier) {
-          toast.error('Please fill both Min. Views and Payout for all cash tiers (or remove incomplete tiers).');
-          return false;
+      // 2. Cash Tiers Validation (increasing views and payout + complete check)
+      const isCashActive = formData.type === 'pool' || (formData.type === 'hybrid' && formData.hybridRewardType === 'cash');
+      if (isCashActive) {
+        for (let i = 0; i < formData.cashTiers.length; i++) {
+          const t = formData.cashTiers[i];
+          const hasViews = Boolean(t.minViews?.trim());
+          const hasAmount = Boolean(t.amount?.trim());
+          if (hasViews !== hasAmount) {
+            toast.error(`Please fill both Min. Views and Payout for Cash Tier ${i + 1} (or remove incomplete tier).`);
+            return false;
+          }
+          if (formData.cashTiers.length > 1 && !hasViews && !hasAmount) {
+            toast.error(`Cash Tier ${i + 1} is empty. Please fill it or remove it.`);
+            return false;
+          }
+          if (hasViews && hasAmount) {
+            const v = Number(t.minViews);
+            const a = Number(t.amount);
+            if (isNaN(v) || v <= 0) {
+              toast.error(`Cash Tier ${i + 1}: Min. Views must be greater than 0.`);
+              return false;
+            }
+            if (isNaN(a) || a <= 0) {
+              toast.error(`Cash Tier ${i + 1}: Payout must be greater than ₹0.`);
+              return false;
+            }
+          }
+        }
+
+        const filledCash = formData.cashTiers.filter((t) => Boolean(t.minViews?.trim()) && Boolean(t.amount?.trim()));
+        for (let i = 1; i < filledCash.length; i++) {
+          const prev = filledCash[i - 1];
+          const curr = filledCash[i];
+          const prevViews = Number(prev.minViews);
+          const currViews = Number(curr.minViews);
+          const prevPay = Number(prev.amount);
+          const currPay = Number(curr.amount);
+
+          if (currViews <= prevViews) {
+            toast.error(
+              `Cash Tier ${i + 1} views (${currViews.toLocaleString()}) must be greater than Tier ${i} (${prevViews.toLocaleString()} views).`
+            );
+            return false;
+          }
+          if (currPay <= prevPay) {
+            toast.error(
+              `Cash Tier ${i + 1} payout (₹${currPay.toLocaleString()}) must be greater than Tier ${i} (₹${prevPay.toLocaleString()}).`
+            );
+            return false;
+          }
         }
       }
 
-      // 3. Check for partially filled discount tiers
-      if (formData.type === 'discount' || (formData.type === 'hybrid' && formData.hybridRewardType === 'discount')) {
-        const partialDiscountTier = formData.discountTiers.find(
-          (t) => (t.minViews?.trim() && !t.amount?.trim()) || (!t.minViews?.trim() && t.amount?.trim())
-        );
-        if (partialDiscountTier) {
-          toast.error('Please fill both Discount (%) and Min. Views for all discount tiers (or remove incomplete tiers).');
-          return false;
+      // 3. Discount Tiers Validation (increasing discount and views + complete check)
+      const isDiscountActive = formData.type === 'discount' || (formData.type === 'hybrid' && formData.hybridRewardType === 'discount');
+      if (isDiscountActive) {
+        for (let i = 0; i < formData.discountTiers.length; i++) {
+          const t = formData.discountTiers[i];
+          const hasDisc = Boolean(t.amount?.trim());
+          const hasViews = Boolean(t.minViews?.trim());
+          if (hasDisc !== hasViews) {
+            toast.error(`Please fill both Discount (%) and Min. Views for Discount Tier ${i + 1} (or remove incomplete tier).`);
+            return false;
+          }
+          if (formData.discountTiers.length > 1 && !hasDisc && !hasViews) {
+            toast.error(`Discount Tier ${i + 1} is empty. Please fill it or remove it.`);
+            return false;
+          }
+          if (hasDisc && hasViews) {
+            const d = Number(t.amount);
+            const v = Number(t.minViews);
+            if (isNaN(d) || d <= 0 || d > 100) {
+              toast.error(`Discount Tier ${i + 1}: Discount must be between 1% and 100%.`);
+              return false;
+            }
+            if (isNaN(v) || v <= 0) {
+              toast.error(`Discount Tier ${i + 1}: Min. Views must be greater than 0.`);
+              return false;
+            }
+          }
+        }
+
+        const filledDisc = formData.discountTiers.filter((t) => Boolean(t.amount?.trim()) && Boolean(t.minViews?.trim()));
+        for (let i = 1; i < filledDisc.length; i++) {
+          const prev = filledDisc[i - 1];
+          const curr = filledDisc[i];
+          const prevDisc = Number(prev.amount);
+          const currDisc = Number(curr.amount);
+          const prevViews = Number(prev.minViews);
+          const currViews = Number(curr.minViews);
+
+          if (currDisc <= prevDisc) {
+            toast.error(
+              `Discount Tier ${i + 1} discount (${currDisc}%) must be greater than Tier ${i} (${prevDisc}%).`
+            );
+            return false;
+          }
+          if (currViews <= prevViews) {
+            toast.error(
+              `Discount Tier ${i + 1} views (${currViews.toLocaleString()}) must be greater than Tier ${i} (${prevViews.toLocaleString()} views).`
+            );
+            return false;
+          }
         }
       }
 
@@ -566,10 +936,10 @@ const CreateCampaignPage: React.FC = () => {
       // 5. Total Valid Tiers Check — ANY one tier of any campaign is compulsory!
       // A campaign cannot be posted without any tier.
       const validDirectDiscountTiers = formData.directDiscountTiers.filter((t) => Boolean(t.reward?.trim()));
-      const validCashTiers = (formData.type === 'pool' || (formData.type === 'hybrid' && formData.hybridRewardType === 'cash'))
+      const validCashTiers = isCashActive
         ? formData.cashTiers.filter((t) => Boolean(t.minViews?.trim()) && Boolean(t.amount?.trim()))
         : [];
-      const validDiscountTiers = (formData.type === 'discount' || (formData.type === 'hybrid' && formData.hybridRewardType === 'discount'))
+      const validDiscountTiers = isDiscountActive
         ? formData.discountTiers.filter((t) => Boolean(t.minViews?.trim()) && Boolean(t.amount?.trim()))
         : [];
       const validGiftTiers = (formData.type === 'hybrid')
@@ -602,6 +972,19 @@ const CreateCampaignPage: React.FC = () => {
             toast.error('Prize pool amount is compulsory when cash payout or discount tiers are used.');
           }
           return false;
+        }
+
+        // REQUIREMENT 3: Prize pool must be at least double the last cash payout tier reward!
+        if (hasCashPayoutTiers && validCashTiers.length > 0) {
+          const lastCashTier = validCashTiers[validCashTiers.length - 1];
+          const lastPayout = Number(lastCashTier.amount) || 0;
+          const minRequiredPool = lastPayout * 2;
+          if (poolVal < minRequiredPool) {
+            toast.error(
+              `Prize pool must be at least ₹${minRequiredPool.toLocaleString('en-IN')} (at least double the last tier reward of ₹${lastPayout.toLocaleString('en-IN')}).`
+            );
+            return false;
+          }
         }
       }
       return true;
@@ -1192,12 +1575,25 @@ const CreateCampaignPage: React.FC = () => {
 
               <div className="form-fields">
                 <Input
-                  label={isPrizePoolCompulsory ? 'Prize Pool Amount (₹) *' : 'Prize Pool Amount (₹) (Optional)'}
+                  label={
+                    minRequiredPrizePool > 0
+                      ? `Prize Pool Amount (₹) * (Min. ₹${minRequiredPrizePool.toLocaleString('en-IN')})`
+                      : isPrizePoolCompulsory
+                      ? 'Prize Pool Amount (₹) *'
+                      : 'Prize Pool Amount (₹) (Optional)'
+                  }
                   type="number"
-                  min="0"
+                  min={minRequiredPrizePool > 0 ? minRequiredPrizePool : 0}
                   value={formData.prizePool}
                   onChange={(e) => updateField('prizePool', e.target.value)}
-                  placeholder={isPrizePoolCompulsory ? 'e.g., 50000 (Compulsory)' : 'e.g., 50000 (Optional)'}
+                  onBlur={handlePrizePoolBlur}
+                  placeholder={
+                    minRequiredPrizePool > 0
+                      ? `Min. ₹${minRequiredPrizePool.toLocaleString('en-IN')} (double last tier reward)`
+                      : isPrizePoolCompulsory
+                      ? 'e.g., 50000 (Compulsory)'
+                      : 'e.g., 50000 (Optional)'
+                  }
                   required={isPrizePoolCompulsory}
                 />
 
@@ -1361,6 +1757,7 @@ const CreateCampaignPage: React.FC = () => {
                               min="0"
                               value={tier.minViews}
                               onChange={(e) => updateCashTier(idx, 'minViews', e.target.value)}
+                              onBlur={() => handleCashTierBlur(idx, 'minViews')}
                               placeholder="e.g., 1000"
                             />
                             <div className="tier-arrow-indicator">
@@ -1372,6 +1769,7 @@ const CreateCampaignPage: React.FC = () => {
                               min="0"
                               value={tier.amount}
                               onChange={(e) => updateCashTier(idx, 'amount', e.target.value)}
+                              onBlur={() => handleCashTierBlur(idx, 'amount')}
                               placeholder="e.g., 1000"
                             />
                           </div>
@@ -1422,6 +1820,7 @@ const CreateCampaignPage: React.FC = () => {
                               max="100"
                               value={tier.amount}
                               onChange={(e) => updateDiscountTier(idx, 'amount', e.target.value)}
+                              onBlur={() => handleDiscountTierBlur(idx, 'amount')}
                               placeholder="e.g., 15"
                             />
                             <div className="tier-arrow-indicator">
@@ -1433,6 +1832,7 @@ const CreateCampaignPage: React.FC = () => {
                               min="0"
                               value={tier.minViews}
                               onChange={(e) => updateDiscountTier(idx, 'minViews', e.target.value)}
+                              onBlur={() => handleDiscountTierBlur(idx, 'minViews')}
                               placeholder="e.g., 1000"
                             />
                           </div>
@@ -1529,6 +1929,7 @@ const CreateCampaignPage: React.FC = () => {
                                   min="0"
                                   value={tier.minViews}
                                   onChange={(e) => updateCashTier(idx, 'minViews', e.target.value)}
+                                  onBlur={() => handleCashTierBlur(idx, 'minViews')}
                                   placeholder="e.g., 1000"
                                 />
                                 <div className="tier-arrow-indicator">
@@ -1540,6 +1941,7 @@ const CreateCampaignPage: React.FC = () => {
                                   min="0"
                                   value={tier.amount}
                                   onChange={(e) => updateCashTier(idx, 'amount', e.target.value)}
+                                  onBlur={() => handleCashTierBlur(idx, 'amount')}
                                   placeholder="e.g., 1000"
                                 />
                               </div>
@@ -1587,6 +1989,7 @@ const CreateCampaignPage: React.FC = () => {
                                   max="100"
                                   value={tier.amount}
                                   onChange={(e) => updateDiscountTier(idx, 'amount', e.target.value)}
+                                  onBlur={() => handleDiscountTierBlur(idx, 'amount')}
                                   placeholder="e.g., 15"
                                 />
                                 <div className="tier-arrow-indicator">
@@ -1598,6 +2001,7 @@ const CreateCampaignPage: React.FC = () => {
                                   min="0"
                                   value={tier.minViews}
                                   onChange={(e) => updateDiscountTier(idx, 'minViews', e.target.value)}
+                                  onBlur={() => handleDiscountTierBlur(idx, 'minViews')}
                                   placeholder="e.g., 1000"
                                 />
                               </div>

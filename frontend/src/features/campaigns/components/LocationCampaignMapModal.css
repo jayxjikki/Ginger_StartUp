@@ -289,27 +289,54 @@
 /* Pixel / Cyber Grid Background */
 .map-grid-layer {
   position: absolute;
-  inset: -100%;
+  inset: 0;
   background-size: 40px 40px;
   background-image: 
-    linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    linear-gradient(to right, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
   pointer-events: none;
 }
 
-/* Rotating Radar Beam Animation (Pokemon GO / Sonar style) */
+/* ── Radar System Anchored to User Beacon (Pokemon GO / Sonar style) ── */
+.user-radar-system {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Rotating Radar Beam Animation centered at (0, 0) */
 .radar-sweep-beam {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 500px;
-  height: 500px;
-  margin-top: -250px;
-  margin-left: -250px;
+  top: 0;
+  left: 0;
   border-radius: 50%;
-  background: conic-gradient(from 0deg, rgba(247, 147, 30, 0.18) 0deg, rgba(247, 147, 30, 0.0) 60deg, transparent 60deg);
+  background: conic-gradient(
+    from 0deg, 
+    rgba(247, 147, 30, 0.22) 0deg, 
+    rgba(247, 147, 30, 0.10) 30deg, 
+    rgba(247, 147, 30, 0.02) 55deg, 
+    transparent 60deg
+  );
   pointer-events: none;
   animation: radarSweep 6s linear infinite;
+  will-change: transform;
+}
+
+/* Glowing leading edge scanline */
+.radar-sweep-beam::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 2px;
+  height: 50%;
+  margin-left: -1px;
+  background: linear-gradient(180deg, rgba(254, 240, 138, 0.95) 0%, rgba(247, 147, 30, 0.5) 60%, transparent 100%);
+  box-shadow: 0 0 10px rgba(247, 147, 30, 0.9), 0 0 4px #ffffff;
 }
 
 @keyframes radarSweep {
@@ -317,37 +344,122 @@
   to { transform: rotate(360deg); }
 }
 
+/* Radar Crosshairs & Cardinal Bearing Lines */
+.radar-crosshairs {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.radar-crosshairs .crosshair {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+
+.radar-crosshairs .axis-h {
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, rgba(247, 147, 30, 0.28) 12%, rgba(247, 147, 30, 0.28) 88%, transparent 100%);
+  transform: translateY(-50%);
+}
+
+.radar-crosshairs .axis-v {
+  width: 1px;
+  background: linear-gradient(180deg, transparent 0%, rgba(247, 147, 30, 0.28) 12%, rgba(247, 147, 30, 0.28) 88%, transparent 100%);
+  transform: translateX(-50%);
+}
+
+.radar-crosshairs .axis-diag-1 {
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.05) 20%, rgba(255, 255, 255, 0.05) 80%, transparent 100%);
+  transform: translateY(-50%) rotate(45deg);
+}
+
+.radar-crosshairs .axis-diag-2 {
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.05) 20%, rgba(255, 255, 255, 0.05) 80%, transparent 100%);
+  transform: translateY(-50%) rotate(-45deg);
+}
+
+.bearing-tag {
+  position: absolute;
+  font-size: 10px;
+  font-weight: 800;
+  color: rgba(247, 147, 30, 0.85);
+  letter-spacing: 0.06em;
+  user-select: none;
+  text-shadow: 0 0 6px rgba(0, 0, 0, 0.8);
+}
+
+.bearing-tag.tag-n {
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%) scale(calc(1 / var(--zoom-level, 1)));
+}
+
+.bearing-tag.tag-s {
+  bottom: 6px;
+  left: 50%;
+  transform: translateX(-50%) scale(calc(1 / var(--zoom-level, 1)));
+}
+
+.bearing-tag.tag-w {
+  left: 6px;
+  top: 50%;
+  transform: translateY(-50%) scale(calc(1 / var(--zoom-level, 1)));
+}
+
+.bearing-tag.tag-e {
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%) scale(calc(1 / var(--zoom-level, 1)));
+}
+
 /* Concentric Distance Rings */
 .radar-concentric-circles {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
   pointer-events: none;
 }
 
 .radar-concentric-circles .circle {
   position: absolute;
+  top: 0;
+  left: 0;
   border-radius: 50%;
-  border: 1px dashed rgba(247, 147, 30, 0.15);
-  transform: translate(-50%, -50%);
+  border: 1px dashed rgba(247, 147, 30, 0.24);
+  pointer-events: none;
+  box-sizing: border-box;
 }
 
-.radar-concentric-circles .circle-1 {
-  width: 180px;
-  height: 180px;
+.radar-concentric-circles .circle.boundary-ring {
+  border: 1.5px solid rgba(247, 147, 30, 0.55);
+  box-shadow: 0 0 24px rgba(247, 147, 30, 0.14), inset 0 0 24px rgba(247, 147, 30, 0.06);
 }
 
-.radar-concentric-circles .circle-2 {
-  width: 360px;
-  height: 360px;
-  border-color: rgba(255, 255, 255, 0.06);
-}
-
-.radar-concentric-circles .circle-3 {
-  width: 540px;
-  height: 540px;
-  border-color: rgba(255, 255, 255, 0.04);
+.ring-distance-badge {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(calc(1 / var(--zoom-level, 1)));
+  background: rgba(15, 16, 19, 0.9);
+  border: 1px solid rgba(247, 147, 30, 0.4);
+  padding: 1px 7px;
+  border-radius: 4px;
+  font-size: 9.5px;
+  font-weight: 700;
+  color: #fbbf24;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
 }
 
 /* Map World Layer */
@@ -357,7 +469,7 @@
   left: 50%;
   width: 0;
   height: 0;
-  transition: transform 0.05s ease-out;
+  transform-origin: 0 0;
 }
 
 /* ── User Beacon ("You Are Here") ───────────────────────── */
