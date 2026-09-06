@@ -994,6 +994,104 @@
   gap: 12px;
 }
 
+.hybrid-tier-selector-section {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-xl, 16px);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.hybrid-tier-choice-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 640px) {
+  .hybrid-tier-choice-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+}
+
+.hybrid-tier-choice-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--bg-card, #161618);
+  border: 1.5px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  border-radius: var(--radius-xl, 14px);
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.hybrid-tier-choice-card:hover {
+  border-color: rgba(247, 147, 30, 0.4);
+  background: rgba(247, 147, 30, 0.04);
+  transform: translateY(-1px);
+}
+
+.hybrid-tier-choice-card.selected {
+  border-color: var(--ginger-500, #F7931E);
+  background: rgba(247, 147, 30, 0.08);
+  box-shadow: 0 0 16px rgba(247, 147, 30, 0.12);
+}
+
+.hybrid-choice-radio {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.hybrid-tier-choice-card.selected .hybrid-choice-radio {
+  border-color: var(--ginger-500, #F7931E);
+}
+
+.hybrid-choice-radio-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--ginger-500, #F7931E);
+}
+
+.hybrid-choice-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.hybrid-choice-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
+.hybrid-choice-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary, #ffffff);
+}
+
+.hybrid-choice-desc {
+  font-size: 12px;
+  color: var(--text-secondary, #a1a1aa);
+  margin: 0;
+  line-height: 1.35;
+}
+
 /* ── Review Summary (Step 4) ───────────────────────────── */
 .review-summary {
   display: flex;

@@ -66,6 +66,7 @@ const CreateCampaignPage: React.FC = () => {
     prizePool: '',
     verificationDays: 30,
     directDiscountTiers: [] as DirectDiscountTierItem[],
+    hybridRewardType: 'cash' as 'cash' | 'discount',
     cashTiers: [
       { minViews: '', amount: '' },
     ],
@@ -314,9 +315,11 @@ const CreateCampaignPage: React.FC = () => {
     })();
 
   // Check whether Cash Payout Tiers are used anywhere (determines if prize pool amount is compulsory)
-  const hasCashPayoutTiers = formData.cashTiers.some(
-    (t) => Boolean(t.minViews?.trim()) && Boolean(t.amount?.trim())
-  );
+  const hasCashPayoutTiers =
+    (formData.type === 'pool' || (formData.type === 'hybrid' && formData.hybridRewardType === 'cash')) &&
+    formData.cashTiers.some(
+      (t) => Boolean(t.minViews?.trim()) && Boolean(t.amount?.trim())
+    );
 
   // Direct Discount Tiers Handlers (Optional, Max 4, non-repeating terms)
   const addDirectDiscountTier = () => {
@@ -515,7 +518,7 @@ const CreateCampaignPage: React.FC = () => {
       }
 
       // 2. Check for partially filled cash tiers
-      if (formData.type === 'pool' || formData.type === 'hybrid') {
+      if (formData.type === 'pool' || (formData.type === 'hybrid' && formData.hybridRewardType === 'cash')) {
         const partialCashTier = formData.cashTiers.find(
           (t) => (t.minViews?.trim() && !t.amount?.trim()) || (!t.minViews?.trim() && t.amount?.trim())
         );
@@ -526,7 +529,7 @@ const CreateCampaignPage: React.FC = () => {
       }
 
       // 3. Check for partially filled discount tiers
-      if (formData.type === 'discount' || formData.type === 'hybrid') {
+      if (formData.type === 'discount' || (formData.type === 'hybrid' && formData.hybridRewardType === 'discount')) {
         const partialDiscountTier = formData.discountTiers.find(
           (t) => (t.minViews?.trim() && !t.amount?.trim()) || (!t.minViews?.trim() && t.amount?.trim())
         );
@@ -554,10 +557,10 @@ const CreateCampaignPage: React.FC = () => {
       // 5. Total Valid Tiers Check — ANY one tier of any campaign is compulsory!
       // A campaign cannot be posted without any tier.
       const validDirectDiscountTiers = formData.directDiscountTiers.filter((t) => Boolean(t.reward?.trim()));
-      const validCashTiers = (formData.type === 'pool' || formData.type === 'hybrid')
+      const validCashTiers = (formData.type === 'pool' || (formData.type === 'hybrid' && formData.hybridRewardType === 'cash'))
         ? formData.cashTiers.filter((t) => Boolean(t.minViews?.trim()) && Boolean(t.amount?.trim()))
         : [];
-      const validDiscountTiers = (formData.type === 'discount' || formData.type === 'hybrid')
+      const validDiscountTiers = (formData.type === 'discount' || (formData.type === 'hybrid' && formData.hybridRewardType === 'discount'))
         ? formData.discountTiers.filter((t) => Boolean(t.minViews?.trim()) && Boolean(t.amount?.trim()))
         : [];
       const validGiftTiers = (formData.type === 'hybrid')
@@ -650,29 +653,32 @@ const CreateCampaignPage: React.FC = () => {
           }
         });
       } else if (formData.type === 'hybrid') {
-        // 1st: Cash tiers (views : pay)
-        formData.cashTiers.forEach((t) => {
-          if (t.minViews?.trim() && t.amount?.trim()) {
-            allTiers.push({
-              min_views: Number(t.minViews) || 0,
-              payout_amount: Number(t.amount) || 0,
-              reward_type: 'cash' as const,
-              reward_description: null,
-            });
-          }
-        });
-        // 2nd: Discount tiers (discount : views)
-        formData.discountTiers.forEach((t) => {
-          if (t.minViews?.trim() && t.amount?.trim()) {
-            allTiers.push({
-              min_views: Number(t.minViews) || 0,
-              payout_amount: Number(t.amount) || 0,
-              reward_type: 'discount' as const,
-              reward_description: `${t.amount}% Discount`,
-            });
-          }
-        });
-        // 3rd: Gift tiers (views : gifts or condition : reward)
+        if (formData.hybridRewardType === 'cash') {
+          // Chosen: Cash tiers (views : pay)
+          formData.cashTiers.forEach((t) => {
+            if (t.minViews?.trim() && t.amount?.trim()) {
+              allTiers.push({
+                min_views: Number(t.minViews) || 0,
+                payout_amount: Number(t.amount) || 0,
+                reward_type: 'cash' as const,
+                reward_description: null,
+              });
+            }
+          });
+        } else {
+          // Chosen: Discount tiers (discount : views)
+          formData.discountTiers.forEach((t) => {
+            if (t.minViews?.trim() && t.amount?.trim()) {
+              allTiers.push({
+                min_views: Number(t.minViews) || 0,
+                payout_amount: Number(t.amount) || 0,
+                reward_type: 'discount' as const,
+                reward_description: `${t.amount}% Discount`,
+              });
+            }
+          });
+        }
+        // 2nd: Gift tiers (views : gifts or condition : reward)
         formData.giftTiers.forEach((t) => {
           if (t.type === 'text') {
             if (t.condition?.trim() && t.gift?.trim()) {
@@ -696,13 +702,16 @@ const CreateCampaignPage: React.FC = () => {
         });
       }
 
+      const isNonCashType = formData.type === 'discount' || (formData.type === 'hybrid' && formData.hybridRewardType === 'discount');
+      const finalPrizePool = isNonCashType ? 0 : (Number(formData.prizePool) || 0);
+
       await createCampaign({
         advertiser_id: user?.id || '',
         title: formData.title,
         description: formData.description,
         type: formData.type as any,
-        prize_pool: Number(formData.prizePool) || 0,
-        remaining_pool: Number(formData.prizePool) || 0,
+        prize_pool: finalPrizePool,
+        remaining_pool: finalPrizePool,
         status: 'active',
         required_platforms: formData.platforms,
         video_requirements: formData.videoRequirements,
@@ -712,7 +721,7 @@ const CreateCampaignPage: React.FC = () => {
         discount_percent:
           formData.directDiscountTiers.some((t) => t.reward?.trim())
             ? parseFloat(formData.directDiscountTiers.find((t) => t.reward?.trim())!.reward.replace(/[^0-9.]/g, '')) || 0
-            : (formData.type === 'discount' || formData.type === 'hybrid') && formData.discountTiers.length > 0
+            : (formData.type === 'discount' || (formData.type === 'hybrid' && formData.hybridRewardType === 'discount')) && formData.discountTiers.length > 0
             ? Number(formData.discountTiers[0].amount) || 0
             : 0,
         verification_days: formData.verificationDays,
@@ -721,6 +730,7 @@ const CreateCampaignPage: React.FC = () => {
         terms: {
           images: formData.images,
           direct_discount_tiers: formData.directDiscountTiers.filter((t) => t.reward?.trim()),
+          hybrid_reward_type: formData.type === 'hybrid' ? formData.hybridRewardType : undefined,
         },
         payout_tiers: allTiers as any,
       });
@@ -1430,130 +1440,175 @@ const CreateCampaignPage: React.FC = () => {
                   </div>
                 )}
 
-                {/* ── HYBRID ONLY: 3 TIER TYPES (Views:Pay, Discount:Views, Views:Gifts) ── */}
+                {/* ── HYBRID ONLY: Choose One (Cash OR Discount) + Gift Tiers ── */}
                 {formData.type === 'hybrid' && (
                   <div className="hybrid-tiers-container">
-                    {/* 1st: Views : Pay */}
-                    <div className="form-group hybrid-tier-section">
+                    {/* Option Switcher: Choose Between Cash Payout Tiers OR Discount Tiers */}
+                    <div className="form-group hybrid-tier-selector-section">
                       <div className="tiers-section-header">
-                        <label className="form-label">1. Cash Payout Tiers (Views → Pay)</label>
-                        <p className="field-hint">Pay creators cash when their videos reach view milestones.</p>
+                        <label className="form-label">1. Choose Milestone Reward Type (Select One)</label>
+                        <p className="field-hint">Choose whether creators unlock Cash Payouts or Discounts at view milestones (you can only choose one).</p>
                       </div>
 
-                      <div className="tiers-builder">
-                        {formData.cashTiers.map((tier, idx) => (
-                          <div key={idx} className="tier-card">
-                            <div className="tier-card-header">
-                              <span className="tier-badge">Cash Tier {idx + 1}</span>
-                              <button
-                                type="button"
-                                className="tier-delete-btn"
-                                onClick={() => removeCashTier(idx)}
-                                title="Remove tier"
-                                aria-label={`Remove cash tier ${idx + 1}`}
-                              >
-                                <FiTrash2 size={15} />
-                              </button>
-                            </div>
-                            <div className="tier-inputs-grid">
-                              <Input
-                                label="Min. Views"
-                                type="number"
-                                min="0"
-                                value={tier.minViews}
-                                onChange={(e) => updateCashTier(idx, 'minViews', e.target.value)}
-                                placeholder="e.g., 1000"
-                              />
-                              <div className="tier-arrow-indicator">
-                                <FiArrowRight size={18} />
-                              </div>
-                              <Input
-                                label="Payout (₹)"
-                                type="number"
-                                min="0"
-                                value={tier.amount}
-                                onChange={(e) => updateCashTier(idx, 'amount', e.target.value)}
-                                placeholder="e.g., 1000"
-                              />
-                            </div>
+                      <div className="hybrid-tier-choice-grid">
+                        <button
+                          type="button"
+                          className={`hybrid-tier-choice-card ${formData.hybridRewardType === 'cash' ? 'selected' : ''}`}
+                          onClick={() => updateField('hybridRewardType', 'cash')}
+                        >
+                          <div className="hybrid-choice-radio">
+                            {formData.hybridRewardType === 'cash' && <div className="hybrid-choice-radio-dot" />}
                           </div>
-                        ))}
+                          <div className="hybrid-choice-info">
+                            <div className="hybrid-choice-title-row">
+                              <span className="hybrid-choice-title">💵 Cash Payout Tiers</span>
+                              {formData.hybridRewardType === 'cash' && <Badge variant="warning" size="sm">Active</Badge>}
+                            </div>
+                            <p className="hybrid-choice-desc">Views → Cash payouts (₹) per view milestone</p>
+                          </div>
+                        </button>
 
                         <button
                           type="button"
-                          className={`tier-add-btn ${!isLastCashTierFilled ? 'tier-add-btn-disabled' : ''}`}
-                          onClick={addCashTier}
-                          title={!isLastCashTierFilled ? 'Fill current cash tier to unlock adding another' : undefined}
+                          className={`hybrid-tier-choice-card ${formData.hybridRewardType === 'discount' ? 'selected' : ''}`}
+                          onClick={() => updateField('hybridRewardType', 'discount')}
                         >
-                          <FiPlus size={16} />
-                          <span>{formData.cashTiers.length > 0 ? 'Add Another Cash Tier' : '+ Add Cash Payout Tier'}</span>
+                          <div className="hybrid-choice-radio">
+                            {formData.hybridRewardType === 'discount' && <div className="hybrid-choice-radio-dot" />}
+                          </div>
+                          <div className="hybrid-choice-info">
+                            <div className="hybrid-choice-title-row">
+                              <span className="hybrid-choice-title">🏷️ Discount Tiers</span>
+                              {formData.hybridRewardType === 'discount' && <Badge variant="warning" size="sm">Active</Badge>}
+                            </div>
+                            <p className="hybrid-choice-desc">Views → Progressive discounts (%) per view milestone</p>
+                          </div>
                         </button>
                       </div>
                     </div>
 
-                    {/* 2nd: Discount : Views */}
-                    <div className="form-group hybrid-tier-section">
-                      <div className="tiers-section-header">
-                        <label className="form-label">2. Discount Tiers (Discount → Views)</label>
-                        <p className="field-hint">Progressive discounts unlocked as creator videos reach view milestones.</p>
-                      </div>
+                    {/* Render the CHOSEN Milestone Tier Builder */}
+                    {formData.hybridRewardType === 'cash' ? (
+                      <div className="form-group hybrid-tier-section">
+                        <div className="tiers-section-header">
+                          <label className="form-label">Cash Payout Tiers (Views → Pay)</label>
+                          <p className="field-hint">Pay creators cash when their videos reach view milestones.</p>
+                        </div>
 
-                      <div className="tiers-builder">
-                        {formData.discountTiers.map((tier, idx) => (
-                          <div key={idx} className="tier-card">
-                            <div className="tier-card-header">
-                              <span className="tier-badge">Discount Tier {idx + 1}</span>
-                              <button
-                                type="button"
-                                className="tier-delete-btn"
-                                onClick={() => removeDiscountTier(idx)}
-                                title="Remove tier"
-                                aria-label={`Remove discount tier ${idx + 1}`}
-                              >
-                                <FiTrash2 size={15} />
-                              </button>
-                            </div>
-                            <div className="tier-inputs-grid">
-                              <Input
-                                label="Discount (%)"
-                                type="number"
-                                min="1"
-                                max="100"
-                                value={tier.amount}
-                                onChange={(e) => updateDiscountTier(idx, 'amount', e.target.value)}
-                                placeholder="e.g., 15"
-                              />
-                              <div className="tier-arrow-indicator">
-                                <FiArrowRight size={18} />
+                        <div className="tiers-builder">
+                          {formData.cashTiers.map((tier, idx) => (
+                            <div key={idx} className="tier-card">
+                              <div className="tier-card-header">
+                                <span className="tier-badge">Cash Tier {idx + 1}</span>
+                                <button
+                                  type="button"
+                                  className="tier-delete-btn"
+                                  onClick={() => removeCashTier(idx)}
+                                  title="Remove tier"
+                                  aria-label={`Remove cash tier ${idx + 1}`}
+                                >
+                                  <FiTrash2 size={15} />
+                                </button>
                               </div>
-                              <Input
-                                label="Min. Views"
-                                type="number"
-                                min="0"
-                                value={tier.minViews}
-                                onChange={(e) => updateDiscountTier(idx, 'minViews', e.target.value)}
-                                placeholder="e.g., 1000"
-                              />
+                              <div className="tier-inputs-grid">
+                                <Input
+                                  label="Min. Views"
+                                  type="number"
+                                  min="0"
+                                  value={tier.minViews}
+                                  onChange={(e) => updateCashTier(idx, 'minViews', e.target.value)}
+                                  placeholder="e.g., 1000"
+                                />
+                                <div className="tier-arrow-indicator">
+                                  <FiArrowRight size={18} />
+                                </div>
+                                <Input
+                                  label="Payout (₹)"
+                                  type="number"
+                                  min="0"
+                                  value={tier.amount}
+                                  onChange={(e) => updateCashTier(idx, 'amount', e.target.value)}
+                                  placeholder="e.g., 1000"
+                                />
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          ))}
 
-                        <button
-                          type="button"
-                          className={`tier-add-btn ${!isLastDiscountTierFilled ? 'tier-add-btn-disabled' : ''}`}
-                          onClick={addDiscountTier}
-                          title={!isLastDiscountTierFilled ? 'Fill current discount tier to unlock adding another' : undefined}
-                        >
-                          <FiPlus size={16} />
-                          <span>{formData.discountTiers.length > 0 ? 'Add Another Discount Tier' : '+ Add Discount Tier'}</span>
-                        </button>
+                          <button
+                            type="button"
+                            className={`tier-add-btn ${!isLastCashTierFilled ? 'tier-add-btn-disabled' : ''}`}
+                            onClick={addCashTier}
+                            title={!isLastCashTierFilled ? 'Fill current cash tier to unlock adding another' : undefined}
+                          >
+                            <FiPlus size={16} />
+                            <span>{formData.cashTiers.length > 0 ? 'Add Another Cash Tier' : '+ Add Cash Payout Tier'}</span>
+                          </button>
+                        </div>
                       </div>
-                    </div>
+                    ) : (
+                      <div className="form-group hybrid-tier-section">
+                        <div className="tiers-section-header">
+                          <label className="form-label">Discount Tiers (Discount → Views)</label>
+                          <p className="field-hint">Progressive discounts unlocked as creator videos reach view milestones.</p>
+                        </div>
 
-                    {/* 3rd: Views : Gifts / Custom Tasks */}
+                        <div className="tiers-builder">
+                          {formData.discountTiers.map((tier, idx) => (
+                            <div key={idx} className="tier-card">
+                              <div className="tier-card-header">
+                                <span className="tier-badge">Discount Tier {idx + 1}</span>
+                                <button
+                                  type="button"
+                                  className="tier-delete-btn"
+                                  onClick={() => removeDiscountTier(idx)}
+                                  title="Remove tier"
+                                  aria-label={`Remove discount tier ${idx + 1}`}
+                                >
+                                  <FiTrash2 size={15} />
+                                </button>
+                              </div>
+                              <div className="tier-inputs-grid">
+                                <Input
+                                  label="Discount (%)"
+                                  type="number"
+                                  min="1"
+                                  max="100"
+                                  value={tier.amount}
+                                  onChange={(e) => updateDiscountTier(idx, 'amount', e.target.value)}
+                                  placeholder="e.g., 15"
+                                />
+                                <div className="tier-arrow-indicator">
+                                  <FiArrowRight size={18} />
+                                </div>
+                                <Input
+                                  label="Min. Views"
+                                  type="number"
+                                  min="0"
+                                  value={tier.minViews}
+                                  onChange={(e) => updateDiscountTier(idx, 'minViews', e.target.value)}
+                                  placeholder="e.g., 1000"
+                                />
+                              </div>
+                            </div>
+                          ))}
+
+                          <button
+                            type="button"
+                            className={`tier-add-btn ${!isLastDiscountTierFilled ? 'tier-add-btn-disabled' : ''}`}
+                            onClick={addDiscountTier}
+                            title={!isLastDiscountTierFilled ? 'Fill current discount tier to unlock adding another' : undefined}
+                          >
+                            <FiPlus size={16} />
+                            <span>{formData.discountTiers.length > 0 ? 'Add Another Discount Tier' : '+ Add Discount Tier'}</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 2nd: Views : Gifts / Custom Tasks */}
                     <div className="form-group hybrid-tier-section">
                       <div className="tiers-section-header">
-                        <label className="form-label">3. Bonus & Gift Tiers (Views Milestone or Custom Tasks)</label>
+                        <label className="form-label">2. Bonus & Gift Tiers (Views Milestone or Custom Tasks)</label>
                         <p className="field-hint">Give physical gifts, perks, or custom rewards when views reach milestone or creators complete custom tasks (e.g., Come visit my gym → Get 15% off).</p>
                       </div>
 
@@ -1782,13 +1837,13 @@ const CreateCampaignPage: React.FC = () => {
                           <span className="review-label">Campaign Type</span>
                           <span className="review-value prize-highlight">Hybrid Rewards</span>
                         </div>
-                        {Number(formData.prizePool) > 0 && (
+                        {formData.hybridRewardType === 'cash' && Number(formData.prizePool) > 0 && (
                           <div className="review-row">
                             <span className="review-label">Prize Pool</span>
                             <span className="review-value font-semibold">₹{Number(formData.prizePool).toLocaleString()}</span>
                           </div>
                         )}
-                        {formData.cashTiers.filter((t) => t.minViews?.trim() && t.amount?.trim()).length > 0 && (
+                        {formData.hybridRewardType === 'cash' && formData.cashTiers.filter((t) => t.minViews?.trim() && t.amount?.trim()).length > 0 && (
                           <div className="review-row">
                             <span className="review-label">Cash Tiers (Views:Pay)</span>
                             <span className="review-value font-semibold">
@@ -1799,7 +1854,7 @@ const CreateCampaignPage: React.FC = () => {
                             </span>
                           </div>
                         )}
-                        {formData.discountTiers.filter((t) => t.minViews?.trim() && t.amount?.trim()).length > 0 && (
+                        {formData.hybridRewardType === 'discount' && formData.discountTiers.filter((t) => t.minViews?.trim() && t.amount?.trim()).length > 0 && (
                           <div className="review-row">
                             <span className="review-label">Discount Tiers (Discount:Views)</span>
                             <span className="review-value text-ginger font-semibold">

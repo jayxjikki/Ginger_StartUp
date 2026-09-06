@@ -51,6 +51,7 @@ export interface CampaignTerms {
   additional_notes?: string;
   images?: string[];
   direct_discount_tiers?: DirectDiscountTierItem[];
+  hybrid_reward_type?: 'cash' | 'discount';
 }
 
 /**
