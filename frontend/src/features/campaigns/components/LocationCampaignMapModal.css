@@ -280,6 +280,7 @@
   user-select: none;
   -webkit-user-select: none;
   touch-action: none;
+  overscroll-behavior: contain;
 }
 
 .map-viewport-wrapper:active {

@@ -51,6 +51,7 @@ export const LocationCampaignMapModal: React.FC<LocationCampaignMapModalProps> =
   const [panOffset, setPanOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const dragStartRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const viewportRef = useRef<HTMLDivElement>(null);
 
   // Touch gesture tracking for mobile: two-finger pinch-to-zoom and 1-finger panning
   const touchStateRef = useRef<{
@@ -301,15 +302,26 @@ export const LocationCampaignMapModal: React.FC<LocationCampaignMapModalProps> =
     setIsDragging(false);
   };
 
-  // Desktop Mouse Wheel Zoom
-  const handleWheel = (e: React.WheelEvent) => {
-    e.preventDefault();
-    const factor = e.deltaY < 0 ? 1.15 : 0.85;
-    setZoomLevel((prev) => {
-      const next = Math.min(3.0, Math.max(0.4, prev * factor));
-      return Number(next.toFixed(2));
-    });
-  };
+  // Desktop Mouse Wheel Zoom (using non-passive native listener so preventDefault works cleanly without console errors)
+  useEffect(() => {
+    if (!isOpen) return;
+    const el = viewportRef.current;
+    if (!el) return;
+
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const factor = e.deltaY < 0 ? 1.15 : 0.85;
+      setZoomLevel((prev) => {
+        const next = Math.min(3.0, Math.max(0.4, prev * factor));
+        return Number(next.toFixed(2));
+      });
+    };
+
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => {
+      el.removeEventListener('wheel', onWheel);
+    };
+  }, [isOpen]);
 
   // Mobile Touch Gestures: 1-finger pan & 2-finger pinch-to-zoom
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -559,6 +571,7 @@ export const LocationCampaignMapModal: React.FC<LocationCampaignMapModalProps> =
 
         {/* ── Interactive Radar / Pixel Map Canvas ─────────────── */}
         <div 
+          ref={viewportRef}
           className="map-viewport-wrapper"
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
@@ -568,7 +581,6 @@ export const LocationCampaignMapModal: React.FC<LocationCampaignMapModalProps> =
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
           onTouchCancel={handleTouchEnd}
-          onWheel={handleWheel}
         >
           {/* Futuristic Radar Grid Background */}
           <div 
