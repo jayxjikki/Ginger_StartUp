@@ -321,6 +321,15 @@ const CreateCampaignPage: React.FC = () => {
       (t) => Boolean(t.minViews?.trim()) && Boolean(t.amount?.trim())
     );
 
+  // Check whether Discount Tiers are used anywhere (determines if prize pool amount is compulsory)
+  const hasDiscountTiers =
+    (formData.type === 'discount' || (formData.type === 'hybrid' && formData.hybridRewardType === 'discount')) &&
+    formData.discountTiers.some(
+      (t) => Boolean(t.minViews?.trim()) && Boolean(t.amount?.trim())
+    );
+
+  const isPrizePoolCompulsory = hasCashPayoutTiers || hasDiscountTiers;
+
   // Direct Discount Tiers Handlers (Optional, Max 4, non-repeating terms)
   const addDirectDiscountTier = () => {
     if (formData.directDiscountTiers.length >= 4) {
@@ -581,11 +590,17 @@ const CreateCampaignPage: React.FC = () => {
         return false;
       }
 
-      // 6. Only compulsory to fill prize pool amount if cash payout tier is used anywhere
-      if (hasCashPayoutTiers) {
+      // 6. Only compulsory to fill prize pool amount if cash payout tier or discount tier is used anywhere
+      if (isPrizePoolCompulsory) {
         const poolVal = Number(formData.prizePool);
         if (!formData.prizePool || isNaN(poolVal) || poolVal <= 0) {
-          toast.error('Prize pool amount is compulsory when cash payout tiers are used.');
+          if (hasDiscountTiers && !hasCashPayoutTiers) {
+            toast.error('Prize pool amount is compulsory when discount tiers are used.');
+          } else if (hasCashPayoutTiers && !hasDiscountTiers) {
+            toast.error('Prize pool amount is compulsory when cash payout tiers are used.');
+          } else {
+            toast.error('Prize pool amount is compulsory when cash payout or discount tiers are used.');
+          }
           return false;
         }
       }
@@ -702,8 +717,7 @@ const CreateCampaignPage: React.FC = () => {
         });
       }
 
-      const isNonCashType = formData.type === 'discount' || (formData.type === 'hybrid' && formData.hybridRewardType === 'discount');
-      const finalPrizePool = isNonCashType ? 0 : (Number(formData.prizePool) || 0);
+      const finalPrizePool = Number(formData.prizePool) || 0;
 
       await createCampaign({
         advertiser_id: user?.id || '',
@@ -1177,17 +1191,15 @@ const CreateCampaignPage: React.FC = () => {
               </div>
 
               <div className="form-fields">
-                {(formData.type === 'pool' || formData.type === 'hybrid') && (
-                  <Input
-                    label={hasCashPayoutTiers ? 'Prize Pool Amount (₹) *' : 'Prize Pool Amount (₹) (Optional)'}
-                    type="number"
-                    min="0"
-                    value={formData.prizePool}
-                    onChange={(e) => updateField('prizePool', e.target.value)}
-                    placeholder={hasCashPayoutTiers ? 'e.g., 50000 (Compulsory for cash payouts)' : 'e.g., 50000 (Optional)'}
-                    required={hasCashPayoutTiers}
-                  />
-                )}
+                <Input
+                  label={isPrizePoolCompulsory ? 'Prize Pool Amount (₹) *' : 'Prize Pool Amount (₹) (Optional)'}
+                  type="number"
+                  min="0"
+                  value={formData.prizePool}
+                  onChange={(e) => updateField('prizePool', e.target.value)}
+                  placeholder={isPrizePoolCompulsory ? 'e.g., 50000 (Compulsory)' : 'e.g., 50000 (Optional)'}
+                  required={isPrizePoolCompulsory}
+                />
 
                 {/* Verification Period */}
                 <div className="form-group">
@@ -1817,6 +1829,12 @@ const CreateCampaignPage: React.FC = () => {
                           <span className="review-label">Campaign Type</span>
                           <span className="review-value prize-highlight">Discount Offer</span>
                         </div>
+                        {Number(formData.prizePool) > 0 && (
+                          <div className="review-row">
+                            <span className="review-label">Prize Pool</span>
+                            <span className="review-value prize-highlight">₹{Number(formData.prizePool || 0).toLocaleString()}</span>
+                          </div>
+                        )}
                         {formData.discountTiers.filter((t) => t.minViews?.trim() && t.amount?.trim()).length > 0 && (
                           <div className="review-row">
                             <span className="review-label">Discount Tiers</span>
