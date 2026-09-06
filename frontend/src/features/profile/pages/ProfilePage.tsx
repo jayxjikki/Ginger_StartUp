@@ -1128,10 +1128,24 @@ const ProfilePage: React.FC = () => {
                             }
                           }
 
+                          let isOwner = false;
                           if (targetCampId) {
+                            try {
+                              const { data: cOwner } = await supabase
+                                .from('campaigns')
+                                .select('advertiser_id')
+                                .eq('id', targetCampId)
+                                .maybeSingle();
+                              isOwner = cOwner?.advertiser_id === user?.id;
+                            } catch {}
+                          }
+
+                          if (isOwner && targetCampId) {
                             navigate(`/manage-campaigns/${targetCampId}?mode=${targetMode}`);
+                          } else if (targetCampId) {
+                            navigate(`/campaigns/${targetCampId}`);
                           } else {
-                            navigate('/manage-campaigns');
+                            navigate('/campaigns/joined');
                           }
                           return;
                         }
@@ -1213,7 +1227,7 @@ const ProfilePage: React.FC = () => {
                               ⚡ Campaign Submission
                             </span>
                             <span className="text-[11px] text-amber-300 font-medium flex items-center gap-0.5">
-                              Review Submission →
+                              {notification.actor_id === user?.id ? 'View Campaign →' : 'Review Submission →'}
                             </span>
                           </div>
                         ) : (isVoucherNotif || isCustomReward || isBillNotif) ? (

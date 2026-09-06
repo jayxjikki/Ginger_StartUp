@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import Avatar from './Avatar';
 import SharedPostCard from './SharedPostCard';
 import { useAuthStore } from '../../store/authStore';
+import { useCampaignStore } from '../../store/campaignStore';
 import { useChatStore, type Message } from '../../store/chatStore';
 import { useUgcStore } from '../../store/ugcStore';
 import { useGlobalModalStore } from '../../store/globalModalStore';
@@ -43,8 +44,15 @@ const ChatModal: React.FC<ChatModalProps> = ({
     reactToMessage,
     deleteChat
   } = useChatStore();
+  const { myCreatedCampaigns, fetchMyCreatedCampaigns } = useCampaignStore();
   
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (user?.id) {
+      fetchMyCreatedCampaigns(user.id);
+    }
+  }, [user?.id, fetchMyCreatedCampaigns]);
   
   const [content, setContent] = useState('');
   const [isSending, setIsSending] = useState(false);
@@ -354,21 +362,23 @@ const ChatModal: React.FC<ChatModalProps> = ({
                   }
                 }
 
-                // ── Detect Official System Messages (Voucher / Bill / Campaign Submission) ──
+                // ── Detect Official System Messages (Voucher / Reward / Bill / Campaign Submission) ──
                 const c = msg.content;
                 const isVoucherMsg  = c.startsWith('🎟️ Voucher Issued:');
+                const isRewardMsg   = c.startsWith('🎁 Reward Issued:');
                 const isBillMsg     = c.startsWith('🧾 Bill Received');
                 const isSubmissionMsg = 
                   c.includes('New Direct Discount Submission') ||
                   c.includes('New Review / Rating Submission') ||
                   c.includes('New Video Submission') ||
                   (c.includes('Submission') && (c.includes('Go review') || c.includes('Go approve')));
-                const isSystemMsg   = isVoucherMsg || isBillMsg || isSubmissionMsg;
+                const isSystemMsg   = isVoucherMsg || isRewardMsg || isBillMsg || isSubmissionMsg;
 
                 if (isSystemMsg) {
                   const timeStr = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
                   // Parse Voucher message:  "🎟️ Voucher Issued: Your submission on "CampaignName" was approved! Your voucher code is VCH-XXX (20% OFF)."
+                  // Parse Reward message:   "🎁 Reward Issued: "Free gift box"! Your voucher code is VCH-XXX for "CampaignName". Present this voucher code to claim your reward!"
                   // Parse Bill message:     "🧾 Bill Received from "CampaignName"! Original Bill: ₹999 | Discount: 20% (-₹200) | Final Amount to Pay: ₹799 (note)"
                   // Parse Submission message: "🏷️ New Direct Discount Submission (Visit us) from @user for "CampaignName"! Go review it now."
                   let parsedVoucherCode = '';
@@ -382,19 +392,27 @@ const ChatModal: React.FC<ChatModalProps> = ({
                   let parsedSubmissionType = '';
                   let parsedReward = '';
 
+                  if (isRewardMsg) {
+                    const rwMatch = c.match(/Reward Issued:\s*"([^"]+)"/);
+                    parsedReward = rwMatch ? rwMatch[1] : '';
+                    const campMatch = c.match(/for "([^"]+)"/) || c.match(/on "([^"]+)"/);
+                    parsedCampaign = campMatch ? campMatch[1] : '';
+                    const codeMatch = c.match(/voucher code is ([A-Z0-9\-]+)/i);
+                    if (codeMatch) parsedVoucherCode = codeMatch[1];
+                  }
+
                   if (isVoucherMsg) {
                     // extract campaign name between first pair of quotes
-                    const campMatch = c.match(/on "([^"]+)"/);
+                    const campMatch = c.match(/on "([^"]+)"/) || c.match(/for "([^"]+)"/);
                     parsedCampaign = campMatch ? campMatch[1] : '';
                     // extract voucher code and discount
-                    const codeMatch = c.match(/voucher code is ([A-Z0-9\-]+)\s*\((\d+)%/);
+                    const codeMatch = c.match(/voucher code is ([A-Z0-9\-]+)\s*\((\d+)%/i);
                     if (codeMatch) {
                       parsedVoucherCode = codeMatch[1];
                       parsedDiscountPct = codeMatch[2];
                     }
-                    // custom reward: everything after "Reward: " until ")"
                     if (!parsedVoucherCode) {
-                      const rwMatch = c.match(/code is ([A-Z0-9\-]+)/);
+                      const rwMatch = c.match(/code is ([A-Z0-9\-]+)/i);
                       if (rwMatch) parsedVoucherCode = rwMatch[1];
                     }
                   }
@@ -430,6 +448,12 @@ const ChatModal: React.FC<ChatModalProps> = ({
                     }
                   }
 
+                  // Determine if the viewer is the legitimate campaign owner (never allow submitter/participant to review)
+                  const isOwnerOfCampaign = !isMine && myCreatedCampaigns.some((cmp) => 
+                    (parsedCampaign && cmp.title?.trim().toLowerCase() === parsedCampaign.trim().toLowerCase()) ||
+                    cmp.advertiser_id === user?.id
+                  );
+
                   return (
                     <div key={msg.id} className="chat-bubble-wrap system-msg">
                       <div className="system-msg-card">
@@ -438,7 +462,7 @@ const ChatModal: React.FC<ChatModalProps> = ({
                           <div className="system-msg-header">
                             <span className="system-msg-official-badge">✦ Official</span>
                             <span className="system-msg-ginger-label">
-                              {isVoucherMsg ? '🎟️ Ginger Voucher' : isBillMsg ? '🧾 Ginger Bill' : '🏷️ Ginger Submission'}
+                              {isRewardMsg ? '🎁 Ginger Reward' : isVoucherMsg ? '🎟️ Ginger Voucher' : isBillMsg ? '🧾 Ginger Bill' : '🏷️ Ginger Submission'}
                             </span>
                           </div>
 
@@ -454,8 +478,15 @@ const ChatModal: React.FC<ChatModalProps> = ({
                               </div>
                             )}
 
-                            {isVoucherMsg && (
+                            {(isVoucherMsg || isRewardMsg) && (
                               <>
+                                {parsedReward && (
+                                  <div className="system-msg-line">
+                                    <span className="sys-emoji">🎁</span>
+                                    <span className="sys-label">Reward:</span>
+                                    <span className="sys-value accent-gold" style={{ fontWeight: 700 }}>{parsedReward}</span>
+                                  </div>
+                                )}
                                 {parsedDiscountPct && (
                                   <div className="system-msg-line">
                                     <span className="sys-emoji">🏷️</span>
@@ -464,9 +495,26 @@ const ChatModal: React.FC<ChatModalProps> = ({
                                   </div>
                                 )}
                                 {parsedVoucherCode && (
-                                  <div className="system-msg-line" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
+                                  <div className="system-msg-line" style={{ flexDirection: 'column', alignItems: 'flex-start', marginTop: '4px' }}>
                                     <span style={{ fontSize: '10px', color: 'rgba(255,215,0,0.6)', fontWeight: 600 }}>YOUR VOUCHER CODE</span>
-                                    <span className="system-msg-voucher-code">🎟️ {parsedVoucherCode}</span>
+                                    <span 
+                                      className="system-msg-voucher-code"
+                                      style={{ cursor: 'pointer' }}
+                                      onClick={() => {
+                                        navigator.clipboard.writeText(parsedVoucherCode);
+                                        toast.success('Voucher code copied! 🎟️');
+                                      }}
+                                      title="Click to copy voucher code"
+                                    >
+                                      🎟️ {parsedVoucherCode}
+                                    </span>
+                                  </div>
+                                )}
+                                {isRewardMsg && (
+                                  <div className="system-msg-line" style={{ marginTop: '6px', paddingTop: '4px', borderTop: '1px dashed rgba(255,215,0,0.15)' }}>
+                                    <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.75)', fontStyle: 'italic' }}>
+                                      Present this voucher code to claim your reward!
+                                    </span>
                                   </div>
                                 )}
                               </>
@@ -528,60 +576,74 @@ const ChatModal: React.FC<ChatModalProps> = ({
                                     <span className="sys-value accent-gold">{parsedReward}</span>
                                   </div>
                                 )}
-                                <div className="system-msg-line" style={{ flexDirection: 'column', alignItems: 'flex-start', marginTop: '6px', paddingTop: '6px', borderTop: '1px dashed rgba(255,215,0,0.2)' }}>
-                                  <span style={{ fontSize: '10px', color: '#FFD700', fontWeight: 800, letterSpacing: '0.6px', textTransform: 'uppercase' }}>
-                                    ⚡ Verified Campaign Activity
-                                  </span>
-                                  <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.8)', marginTop: '2px', lineHeight: 1.35 }}>
-                                    A new submission was received for your campaign. Check your Campaign Manager to review and issue voucher.
-                                  </span>
-                                  <button
-                                    type="button"
-                                    onClick={async () => {
-                                      onClose();
-                                      let targetCampId = '';
-                                      if (parsedCampaign) {
-                                        try {
-                                          const { data: cData } = await supabase
-                                            .from('campaigns')
-                                            .select('id')
-                                            .ilike('title', parsedCampaign)
-                                            .limit(1)
-                                            .maybeSingle();
-                                          if (cData?.id) targetCampId = cData.id;
-                                        } catch {}
-                                      }
-                                      const mode = parsedSubmissionType.includes('Review')
-                                        ? 'reviews'
-                                        : parsedSubmissionType.includes('Direct Discount')
-                                        ? 'direct_discount'
-                                        : 'all_rewards';
-                                      if (targetCampId) {
-                                        navigate(`/manage-campaigns/${targetCampId}?mode=${mode}`);
-                                      } else {
-                                        navigate('/manage-campaigns');
-                                      }
-                                    }}
-                                    style={{
-                                      marginTop: '8px',
-                                      width: '100%',
-                                      padding: '7px 12px',
-                                      background: 'linear-gradient(135deg, rgba(255,215,0,0.2) 0%, rgba(217,119,6,0.15) 100%)',
-                                      border: '1px solid rgba(255,215,0,0.4)',
-                                      borderRadius: '8px',
-                                      color: '#FFD700',
-                                      fontSize: '12px',
-                                      fontWeight: 700,
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'center',
-                                      gap: '6px',
-                                      cursor: 'pointer',
-                                    }}
-                                  >
-                                    <span>⚡ Review Submission in Campaign Manager →</span>
-                                  </button>
-                                </div>
+
+                                {isOwnerOfCampaign ? (
+                                  <div className="system-msg-line" style={{ flexDirection: 'column', alignItems: 'flex-start', marginTop: '6px', paddingTop: '6px', borderTop: '1px dashed rgba(255,215,0,0.2)' }}>
+                                    <span style={{ fontSize: '10px', color: '#FFD700', fontWeight: 800, letterSpacing: '0.6px', textTransform: 'uppercase' }}>
+                                      ⚡ Verified Campaign Activity
+                                    </span>
+                                    <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.8)', marginTop: '2px', lineHeight: 1.35 }}>
+                                      A new submission was received for your campaign. Check your Campaign Manager to review and issue voucher.
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={async () => {
+                                        onClose();
+                                        let targetCampId = '';
+                                        if (parsedCampaign) {
+                                          try {
+                                            const { data: cData } = await supabase
+                                              .from('campaigns')
+                                              .select('id, advertiser_id')
+                                              .ilike('title', parsedCampaign)
+                                              .limit(1)
+                                              .maybeSingle();
+                                            if (cData?.id && cData.advertiser_id === user?.id) {
+                                              targetCampId = cData.id;
+                                            }
+                                          } catch {}
+                                        }
+                                        const mode = parsedSubmissionType.includes('Review')
+                                          ? 'reviews'
+                                          : parsedSubmissionType.includes('Direct Discount')
+                                          ? 'direct_discount'
+                                          : 'all_rewards';
+                                        if (targetCampId) {
+                                          navigate(`/manage-campaigns/${targetCampId}?mode=${mode}`);
+                                        } else {
+                                          navigate('/manage-campaigns');
+                                        }
+                                      }}
+                                      style={{
+                                        marginTop: '8px',
+                                        width: '100%',
+                                        padding: '7px 12px',
+                                        background: 'linear-gradient(135deg, rgba(255,215,0,0.2) 0%, rgba(217,119,6,0.15) 100%)',
+                                        border: '1px solid rgba(255,215,0,0.4)',
+                                        borderRadius: '8px',
+                                        color: '#FFD700',
+                                        fontSize: '12px',
+                                        fontWeight: 700,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '6px',
+                                        cursor: 'pointer',
+                                      }}
+                                    >
+                                      <span>⚡ Review Submission in Campaign Manager →</span>
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div className="system-msg-line" style={{ flexDirection: 'column', alignItems: 'flex-start', marginTop: '6px', paddingTop: '6px', borderTop: '1px dashed rgba(255,215,0,0.2)' }}>
+                                    <span style={{ fontSize: '10px', color: '#10b981', fontWeight: 800, letterSpacing: '0.6px', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                      <span>⏳</span> Submission Sent for Verification
+                                    </span>
+                                    <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.75)', marginTop: '2px', lineHeight: 1.35 }}>
+                                      Your submission has been sent to the campaign owner. You will receive your official reward voucher here once verified.
+                                    </span>
+                                  </div>
+                                )}
                               </>
                             )}
                           </div>

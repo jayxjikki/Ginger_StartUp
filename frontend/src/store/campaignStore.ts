@@ -433,6 +433,18 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
 
   approveSubmissionByAdvertiser: async (submissionId: string) => {
     try {
+      const currentUserId = (await supabase.auth.getUser()).data.user?.id;
+      const { data: subCheck } = await supabase
+        .from('submissions')
+        .select('id, campaign:campaigns(advertiser_id)')
+        .eq('id', submissionId)
+        .maybeSingle();
+
+      const ownerId = (subCheck?.campaign as any)?.advertiser_id;
+      if (currentUserId && ownerId && currentUserId !== ownerId) {
+        throw new Error('Access denied: Only the campaign owner can approve submissions.');
+      }
+
       const { error } = await supabase
         .from('submissions')
         .update({ status: 'verified' })
@@ -526,6 +538,13 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
         sub = subData;
       }
 
+      // Security: verify current user is the campaign advertiser
+      const currentUserId = (await supabase.auth.getUser()).data.user?.id;
+      const ownerId = (sub.campaign as any)?.advertiser_id;
+      if (currentUserId && ownerId && currentUserId !== ownerId) {
+        throw new Error('Access denied: Only the campaign owner can approve submissions.');
+      }
+
       // 2. Determine mode and reward details
       const isNum = typeof options === 'number';
       const mode = !isNum && options?.mode ? options.mode : 'discount';
@@ -595,7 +614,6 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
 
       // 5. Send notification to Creator (user)
       const campaignTitle = (sub.campaign as any)?.title || 'Campaign';
-      const ownerId = (sub.campaign as any)?.advertiser_id;
 
       if (sub.creator_id) {
         const creatorMsg = isCustomMessage

@@ -110,6 +110,17 @@ const ManageCampaignDetailPage: React.FC = () => {
 
       if (campErr) throw campErr;
 
+      if (!campaignRes) {
+        setSingleCampaign(null);
+        return;
+      }
+
+      // Security: if current user is not the campaign owner, do NOT fetch or expose submissions
+      if (user?.id && campaignRes.advertiser_id && campaignRes.advertiser_id !== user.id) {
+        setSingleCampaign(campaignRes);
+        return;
+      }
+
       const { data: subRes, error: subErr } = await supabase
         .from('submissions')
         .select('*')
@@ -149,7 +160,7 @@ const ManageCampaignDetailPage: React.FC = () => {
     } finally {
       setIsFetchingDirect(false);
     }
-  }, [id]);
+  }, [id, user?.id]);
 
   useEffect(() => {
     fetchCampaignData();
@@ -467,6 +478,42 @@ const ManageCampaignDetailPage: React.FC = () => {
         <button className="btn btn-primary" onClick={() => navigate('/manage-campaigns')}>
           Go Back
         </button>
+      </div>
+    );
+  }
+
+  // Security: Block any participating creator or non-owner from accessing Campaign Manager
+  if (user?.id && campaign.advertiser_id && user.id !== campaign.advertiser_id) {
+    return (
+      <div className="manage-campaigns-page flex flex-col justify-center items-center h-screen gap-4 px-6 text-center">
+        <div 
+          style={{
+            width: '64px',
+            height: '64px',
+            borderRadius: '50%',
+            background: 'rgba(239, 68, 68, 0.12)',
+            border: '1px solid rgba(239, 68, 68, 0.3)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#ef4444',
+            marginBottom: '8px',
+          }}
+        >
+          <FiFlag size={32} />
+        </div>
+        <h2 className="text-white text-xl font-bold">Access Restricted</h2>
+        <p className="text-gray-400 text-sm max-w-sm" style={{ lineHeight: 1.5 }}>
+          You do not have permission to manage this campaign. Only the campaign advertiser can review submissions and issue rewards.
+        </p>
+        <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
+          <button className="btn btn-outline" onClick={() => navigate(-1)}>
+            Go Back
+          </button>
+          <button className="btn btn-primary" onClick={() => navigate(`/campaigns/${id}`)}>
+            View Campaign
+          </button>
+        </div>
       </div>
     );
   }
