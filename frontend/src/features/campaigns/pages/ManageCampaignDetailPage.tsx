@@ -6,6 +6,7 @@ import {
   FiFlag,
   FiRotateCcw,
   FiVideo,
+  FiImage,
   FiCheck,
   FiPlay,
   FiExternalLink,
@@ -22,7 +23,7 @@ import { useGlobalModalStore } from '../../../store/globalModalStore';
 import { supabase } from '../../../lib/supabase';
 import Badge from '../../../components/ui/Badge';
 import Avatar from '../../../components/ui/Avatar';
-import { formatCurrency, formatCount } from '../../../utils/formatters';
+import { formatCurrency, formatCount, formatHandle } from '../../../utils/formatters';
 import { getSocialIcon } from '../../../utils/socialHelpers';
 import { getVideoThumbnail } from '../../../utils/videoHelpers';
 import SubmissionVideoModal from '../components/SubmissionVideoModal';
@@ -34,7 +35,7 @@ import VoucherVerifierModal from '../../../components/ui/VoucherVerifierModal';
 import SendBillModal from '../components/SendBillModal';
 import ApproveVoucherModal from '../components/ApproveVoucherModal';
 import CampaignCountdownTimer from '../../../components/ui/CampaignCountdownTimer';
-import { isDirectDiscountSubmission, normalizeSubmission, isReviewSubmission, getFallbackUniqueVoucherCode, getDirectDiscountBadgeText } from '../../../utils/submissionHelpers';
+import { isDirectDiscountSubmission, normalizeSubmission, isReviewSubmission, getFallbackUniqueVoucherCode, getDirectDiscountBadgeText, isImageSubmission } from '../../../utils/submissionHelpers';
 import toast from 'react-hot-toast';
 import './ManageCampaignsPage.css';
 
@@ -833,185 +834,196 @@ const ManageCampaignDetailPage: React.FC = () => {
                     exit={{ opacity: 0, scale: 0.95 }}
                     transition={{ delay: idx * 0.04 }}
                   >
-                    {/* Video Thumbnail Box with Play Overlay / Review Card */}
-                    <div
-                      className={`submission-thumb-box ${isReview ? 'review-proof-box' : ''}`}
-                      onClick={() => {
-                        if (isReview) {
-                          if (sub.video_url) {
-                            window.open(sub.video_url, '_blank', 'noopener,noreferrer');
-                          }
-                        } else {
-                          setSelectedSubmissionId(sub.id);
-                        }
-                      }}
-                      title={isReview ? 'Click to open verified review link' : 'Click to watch video or view media'}
-                    >
-                      {isReview ? (
-                        <div className="submission-thumb-fallback review-proof-thumb">
-                          <div className="review-star-circle">
-                            <span className="text-3xl">⭐</span>
-                          </div>
-                          <span className="review-target-tag">
-                            REVIEW / RATE US
-                          </span>
-                          <span className="review-click-hint flex items-center gap-1.5 text-xs text-amber-300 font-bold mt-1">
-                            <span>Open Review Page</span>
-                            <FiExternalLink size={12} />
-                          </span>
-                        </div>
-                      ) : thumbnail ? (
-                        <img
-                          src={thumbnail}
-                          alt="Video submission thumbnail"
-                          className="submission-thumb-img"
-                          loading="lazy"
-                          onError={(e) => {
-                            const current = e.currentTarget.src;
-                            if (current.includes('hqdefault.jpg')) {
-                              e.currentTarget.src = current.replace('hqdefault.jpg', 'mqdefault.jpg');
+                    {/* Video / Image Thumbnail Box with Play/View Overlay / Review Card */}
+                    {(() => {
+                      const isImage = isImageSubmission(sub);
+                      return (
+                        <div
+                          className={`submission-thumb-box ${isReview ? 'review-proof-box' : ''}`}
+                          onClick={() => {
+                            if (isReview) {
+                              if (sub.video_url) {
+                                window.open(sub.video_url, '_blank', 'noopener,noreferrer');
+                              }
                             } else {
-                              e.currentTarget.style.display = 'none';
+                              setSelectedSubmissionId(sub.id);
                             }
                           }}
-                        />
-                      ) : (
-                        <div className="submission-thumb-fallback">
-                          {platformIcon ? (
+                          title={isReview ? 'Click to open verified review link' : isImage ? 'Click to open image' : 'Click to watch video'}
+                        >
+                          {isReview ? (
+                            <div className="submission-thumb-fallback review-proof-thumb">
+                              <div className="review-star-circle">
+                                <span className="text-3xl">⭐</span>
+                              </div>
+                              <span className="review-target-tag">
+                                REVIEW / RATE US
+                              </span>
+                              <span className="review-click-hint flex items-center gap-1.5 text-xs text-amber-300 font-bold mt-1">
+                                <span>Open Review Page</span>
+                                <FiExternalLink size={12} />
+                              </span>
+                            </div>
+                          ) : thumbnail ? (
                             <img
-                              src={platformIcon}
-                              alt={platform}
-                              className="platform-icon-fallback"
-                              style={{ width: 36, height: 36, objectFit: 'contain' }}
+                              src={thumbnail}
+                              alt={isImage ? 'Image submission proof' : 'Video submission thumbnail'}
+                              className="submission-thumb-img"
+                              loading="lazy"
+                              onError={(e) => {
+                                const current = e.currentTarget.src;
+                                if (current.includes('hqdefault.jpg')) {
+                                  e.currentTarget.src = current.replace('hqdefault.jpg', 'mqdefault.jpg');
+                                } else {
+                                  e.currentTarget.style.display = 'none';
+                                }
+                              }}
                             />
                           ) : (
-                            <FiVideo size={32} className="text-accent" />
-                          )}
-                          <span className="fallback-tag-text">
-                            {platform.toUpperCase()}
-                          </span>
-                        </div>
-                      )}
-
-                      {/* Play Button Overlay (only for non-reviews) */}
-                      {!isReview && (
-                        <div className="submission-play-overlay">
-                          <div className="play-icon-badge">
-                            <FiPlay size={20} className="text-white ml-0.5" />
-                          </div>
-                          <span className="play-text-pill">Watch Video / View Media</span>
-                        </div>
-                      )}
-
-                      {/* Creator Profile & Platform on Top Left of Thumbnail */}
-                      <div className="submission-thumb-creator-pill" onClick={(e) => e.stopPropagation()}>
-                        <Avatar
-                          src={sub.creator?.avatar_url}
-                          name={sub.creator?.full_name || 'Creator'}
-                          size="xs"
-                        />
-                        <span className="creator-thumb-name" title={sub.creator?.full_name || sub.creator?.username}>
-                          @{sub.creator?.username || sub.creator?.full_name || 'creator'}
-                        </span>
-                        {platformIcon && !isReview && (
-                          <img
-                            src={platformIcon}
-                            alt={platform}
-                            className="creator-thumb-platform-icon"
-                          />
-                        )}
-                      </div>
-
-                      {/* Status Badge + Three-dot menu at top right of video thumbnail */}
-                      <div className="submission-thumb-top-right" onClick={(e) => e.stopPropagation()}>
-                        <div className="submission-status-badge-wrap">
-                          {getStatusBadge(
-                            sub.status,
-                            isDirectDisc ||
-                              submissionMode === 'direct_discount' ||
-                              submissionMode === 'reviews' ||
-                              campaign?.type === 'discount'
-                          )}
-                        </div>
-
-                        <div className="submission-menu-container">
-                          <button
-                            type="button"
-                            className="submission-menu-btn"
-                            aria-label="More options"
-                            title="More options"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setActiveMenuId((prev) => (prev === sub.id ? null : sub.id));
-                            }}
-                          >
-                            <FiMoreVertical size={16} />
-                          </button>
-
-                          {activeMenuId === sub.id && (
-                            <div className="submission-dropdown-menu" onClick={(e) => e.stopPropagation()}>
-                              <button
-                                type="button"
-                                className="submission-dropdown-item"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  navigator.clipboard.writeText(sub.video_url || '');
-                                  toast.success('Link copied to clipboard!');
-                                  setActiveMenuId(null);
-                                }}
-                              >
-                                <FiCopy size={14} />
-                                <span>Copy Link</span>
-                              </button>
-
-                              <a
-                                href={sub.video_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="submission-dropdown-item"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setActiveMenuId(null);
-                                }}
-                              >
-                                <FiExternalLink size={14} />
-                                <span>Open in New Tab</span>
-                              </a>
-
-                              {sub.status === 'pending' && campaign.status === 'active' && (
-                                <button
-                                  type="button"
-                                  className="submission-dropdown-item text-danger"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setActiveMenuId(null);
-                                    handleFlagSubmission(sub.id);
-                                  }}
-                                >
-                                  <FiFlag size={14} />
-                                  <span>Flag Submission</span>
-                                </button>
+                            <div className="submission-thumb-fallback">
+                              {platformIcon ? (
+                                <img
+                                  src={platformIcon}
+                                  alt={platform}
+                                  className="platform-icon-fallback"
+                                  style={{ width: 36, height: 36, objectFit: 'contain' }}
+                                />
+                              ) : isImage ? (
+                                <FiImage size={32} className="text-accent" />
+                              ) : (
+                                <FiVideo size={32} className="text-accent" />
                               )}
-
-                              {sub.status === 'flagged' && campaign.status === 'active' && (
-                                <button
-                                  type="button"
-                                  className="submission-dropdown-item text-warning"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setActiveMenuId(null);
-                                    handleUnflagSubmission(sub.id);
-                                  }}
-                                >
-                                  <FiRotateCcw size={14} />
-                                  <span>Unflag Submission</span>
-                                </button>
-                              )}
+                              <span className="fallback-tag-text">
+                                {isImage ? 'IMAGE' : platform.toUpperCase()}
+                              </span>
                             </div>
                           )}
+
+                          {/* Play / View Overlay (only for non-reviews) */}
+                          {!isReview && (
+                            <div className="submission-play-overlay">
+                              <div className="play-icon-badge">
+                                {isImage ? (
+                                  <FiEye size={20} className="text-white" />
+                                ) : (
+                                  <FiPlay size={20} className="text-white ml-0.5" />
+                                )}
+                              </div>
+                              <span className="play-text-pill">{isImage ? 'Open Image' : 'Watch Video'}</span>
+                            </div>
+                          )}
+
+                          {/* Creator Profile & Platform on Top Left of Thumbnail */}
+                          <div className="submission-thumb-creator-pill" onClick={(e) => e.stopPropagation()}>
+                            <Avatar
+                              src={sub.creator?.avatar_url}
+                              name={sub.creator?.full_name || 'Creator'}
+                              size="xs"
+                            />
+                            <span className="creator-thumb-name" title={sub.creator?.full_name || sub.creator?.username}>
+                              {formatHandle(sub.creator?.username || sub.creator?.full_name)}
+                            </span>
+                            {platformIcon && !isReview && (
+                              <img
+                                src={platformIcon}
+                                alt={platform}
+                                className="creator-thumb-platform-icon"
+                              />
+                            )}
+                          </div>
+
+                          {/* Status Badge + Three-dot menu at top right of video thumbnail */}
+                          <div className="submission-thumb-top-right" onClick={(e) => e.stopPropagation()}>
+                            <div className="submission-status-badge-wrap">
+                              {getStatusBadge(
+                                sub.status,
+                                isDirectDisc ||
+                                  submissionMode === 'direct_discount' ||
+                                  submissionMode === 'reviews' ||
+                                  campaign?.type === 'discount'
+                              )}
+                            </div>
+
+                            <div className="submission-menu-container">
+                              <button
+                                type="button"
+                                className="submission-menu-btn"
+                                aria-label="More options"
+                                title="More options"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setActiveMenuId((prev) => (prev === sub.id ? null : sub.id));
+                                }}
+                              >
+                                <FiMoreVertical size={16} />
+                              </button>
+
+                              {activeMenuId === sub.id && (
+                                <div className="submission-dropdown-menu" onClick={(e) => e.stopPropagation()}>
+                                  <button
+                                    type="button"
+                                    className="submission-dropdown-item"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      navigator.clipboard.writeText(sub.video_url || '');
+                                      toast.success('Link copied to clipboard!');
+                                      setActiveMenuId(null);
+                                    }}
+                                  >
+                                    <FiCopy size={14} />
+                                    <span>Copy Link</span>
+                                  </button>
+
+                                  <a
+                                    href={sub.video_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="submission-dropdown-item"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setActiveMenuId(null);
+                                    }}
+                                  >
+                                    <FiExternalLink size={14} />
+                                    <span>Open in New Tab</span>
+                                  </a>
+
+                                  {sub.status === 'pending' && campaign.status === 'active' && (
+                                    <button
+                                      type="button"
+                                      className="submission-dropdown-item text-danger"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setActiveMenuId(null);
+                                        handleFlagSubmission(sub.id);
+                                      }}
+                                    >
+                                      <FiFlag size={14} />
+                                      <span>Flag Submission</span>
+                                    </button>
+                                  )}
+
+                                  {sub.status === 'flagged' && campaign.status === 'active' && (
+                                    <button
+                                      type="button"
+                                      className="submission-dropdown-item text-warning"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setActiveMenuId(null);
+                                        handleUnflagSubmission(sub.id);
+                                      }}
+                                    >
+                                      <FiRotateCcw size={14} />
+                                      <span>Unflag Submission</span>
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    </div>
+                      );
+                    })()}
 
                     {/* Submission Content Info */}
                     <div className="submission-body">
@@ -1086,17 +1098,10 @@ const ManageCampaignDetailPage: React.FC = () => {
                                 <FiCopy size={13} />
                               </button>
                             </div>
-                            <div className="voucher-actions-wrapper">
-                              {/* If custom message reward, do NOT show Send Bill button */}
-                              {sub.voucher_details?.is_custom_reward || sub.voucher_details?.reward_type === 'custom_message' ? (
-                                <div className="voucher-custom-reward-tag">
-                                  <span className="text-xs text-amber-300 font-bold flex items-center gap-1.5 bg-amber-400/10 border border-amber-400/30 px-2.5 py-1 rounded-lg">
-                                    <span>🎁</span>
-                                    <span>{sub.voucher_details?.custom_message || 'Custom Reward'}</span>
-                                  </span>
-                                </div>
-                              ) : (
-                                /* Shining Red Send Bill Button for Direct Discount & Reviews (becomes View Bill once billed) */
+
+                            {/* If not a custom gift message, show Send Bill / View Bill button */}
+                            {!(sub.voucher_details?.is_custom_reward || sub.voucher_details?.reward_type === 'custom_message') && (
+                              <div className="voucher-actions-wrapper">
                                 <button
                                   type="button"
                                   className="btn-send-bill-shining"
@@ -1116,9 +1121,21 @@ const ManageCampaignDetailPage: React.FC = () => {
                                     {sub.voucher_details?.bill_amount ? 'View Bill' : 'Send Bill'}
                                   </span>
                                 </button>
-                              )}
-                            </div>
+                              </div>
+                            )}
                           </div>
+
+                          {/* Custom Gift / Perk Message on its own dedicated row to prevent any horizontal overlap */}
+                          {(sub.voucher_details?.is_custom_reward || sub.voucher_details?.reward_type === 'custom_message') && (
+                            <div className="voucher-custom-reward-row">
+                              <div className="voucher-custom-reward-badge">
+                                <span className="reward-badge-icon">🎁</span>
+                                <span className="reward-badge-text">
+                                  {sub.voucher_details?.custom_message || 'Free gift box with your purchase'}
+                                </span>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       )}
 

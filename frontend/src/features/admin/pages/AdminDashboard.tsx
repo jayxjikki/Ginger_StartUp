@@ -16,7 +16,7 @@ import toast from 'react-hot-toast';
 import { useAdminStore } from '../../../store/adminStore';
 import { useAuthStore } from '../../../store/authStore';
 import { useGlobalModalStore } from '../../../store/globalModalStore';
-import { formatCurrency, formatDate, formatCount } from '../../../utils/formatters';
+import { formatCurrency, formatDate, formatCount, formatHandle } from '../../../utils/formatters';
 import { getVideoThumbnail } from '../../../utils/videoHelpers';
 import { getSocialIcon } from '../../../utils/socialHelpers';
 import SubmissionVideoModal from '../../campaigns/components/SubmissionVideoModal';
@@ -410,7 +410,7 @@ const AdminDashboard: React.FC = () => {
                 <Avatar src={u.avatar_url} name={u.full_name || 'U'} size="md" />
                 <div className="admin-card-user-info">
                   <span className="admin-card-name">{u.full_name}</span>
-                  <span className="admin-card-handle">@{u.username}</span>
+                  <span className="admin-card-handle">{formatHandle(u.username)}</span>
                 </div>
               </div>
               <Badge variant={u.is_banned ? 'error' : 'success'}>
@@ -552,7 +552,7 @@ const AdminDashboard: React.FC = () => {
                       <Avatar src={u.avatar_url} name={u.full_name || 'U'} size="md" />
                       <div className="user-cell-info">
                         <span className="user-cell-name">{u.full_name}</span>
-                        <span className="user-cell-handle">@{u.username}</span>
+                        <span className="user-cell-handle">{formatHandle(u.username)}</span>
                       </div>
                     </td>
                     <td>
@@ -665,7 +665,7 @@ const AdminDashboard: React.FC = () => {
                   />
                   <div className="admin-card-user-info">
                     <span className="admin-card-name">{s.creator?.full_name || 'Creator'}</span>
-                    <span className="admin-card-handle">@{s.creator?.username || 'user'}</span>
+                    <span className="admin-card-handle">{formatHandle(s.creator?.username || s.creator?.full_name || 'user')}</span>
                   </div>
                 </div>
 
@@ -1177,7 +1177,7 @@ const AdminDashboard: React.FC = () => {
                           />
                           <div className="user-cell-info">
                             <span className="user-cell-name">{s.creator?.full_name || 'Creator'}</span>
-                            <span className="user-cell-handle">@{s.creator?.username || 'user'}</span>
+                            <span className="user-cell-handle">{formatHandle(s.creator?.username || s.creator?.full_name || 'user')}</span>
                           </div>
                         </td>
 

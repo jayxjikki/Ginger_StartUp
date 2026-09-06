@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FiX, FiCheckCircle } from 'react-icons/fi';
 import type { Submission, Campaign } from '../../../types/campaign.types';
 import Avatar from '../../../components/ui/Avatar';
+import { formatHandle } from '../../../utils/formatters';
 import './SendBillModal.css';
 
 interface SendBillModalProps {
@@ -178,7 +179,7 @@ export const SendBillModal: React.FC<SendBillModalProps> = ({
                     {submission.creator?.full_name || 'Creator'}
                   </span>
                   <span className="customer-handle">
-                    @{submission.creator?.username || 'customer'}
+                    {formatHandle(submission.creator?.username || submission.creator?.full_name || 'customer')}
                   </span>
                 </div>
               </div>

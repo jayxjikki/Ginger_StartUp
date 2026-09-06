@@ -301,3 +301,19 @@ export const getDirectDiscountBadgeText = (sub: any, campaign?: any): string => 
   const icon = getDirectDiscountIcon(label);
   return `${icon} ${label}`;
 };
+
+/**
+ * Detects if a submission proof is an image (photo upload) rather than a video
+ */
+export const isImageSubmission = (sub: any): boolean => {
+  if (!sub) return false;
+  if (sub.voucher_details?.submitted_media_type === 'image') return true;
+  if (sub.platform === 'image' || sub.platform === 'photo') return true;
+  const url = (sub.video_url || sub.voucher_details?.submitted_media_url || '').toLowerCase();
+  if (!url) return false;
+  if (/\.(jpg|jpeg|png|webp|gif|svg|avif|bmp)(\?.*)?$/i.test(url)) return true;
+  if (url.includes('cloudinary.com') && url.includes('/image/upload/')) return true;
+  if (url.startsWith('data:image/')) return true;
+  return false;
+};
+

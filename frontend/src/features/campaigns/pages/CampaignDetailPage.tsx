@@ -24,7 +24,7 @@ import Button from '../../../components/ui/Button';
 import Badge from '../../../components/ui/Badge';
 import Avatar from '../../../components/ui/Avatar';
 import Input from '../../../components/ui/Input';
-import { formatCurrency, formatCount, formatTimeLeft } from '../../../utils/formatters';
+import { formatCurrency, formatCount, formatTimeLeft, formatHandle } from '../../../utils/formatters';
 import { getCampaignImages, parseTierReward, getCampaignDirectDiscountTiers } from '../../../types/campaign.types';
 import { uploadToCloudinary } from '../../../lib/cloudinary';
 import { CampaignImageSlideshow } from '../../../components/ui/CampaignImageSlideshow';
@@ -652,7 +652,7 @@ const CampaignDetailPage: React.FC = () => {
           />
           <div>
             <p className="text-sm font-semibold">{campaign.advertiser?.full_name}</p>
-            <p className="text-xs text-tertiary">@{campaign.advertiser?.username}</p>
+            <p className="text-xs text-tertiary">{formatHandle(campaign.advertiser?.username)}</p>
           </div>
         </motion.div>
 

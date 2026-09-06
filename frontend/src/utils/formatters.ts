@@ -95,3 +95,13 @@ export function truncateText(text: string, maxLength: number): string {
   if (text.length <= maxLength) return text;
   return text.slice(0, maxLength).trimEnd() + '...';
 }
+
+/**
+ * Format a user handle ensuring exactly one leading '@' and no duplicates (e.g. '@@user' -> '@user')
+ */
+export function formatHandle(usernameOrName?: string | null): string {
+  if (!usernameOrName || typeof usernameOrName !== 'string') return '@creator';
+  const clean = usernameOrName.trim().replace(/^@+/, '');
+  return clean ? `@${clean}` : '@creator';
+}
+

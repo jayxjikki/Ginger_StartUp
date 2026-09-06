@@ -4,7 +4,8 @@ import { FiX, FiExternalLink, FiCheck, FiFlag, FiRotateCcw, FiTrash2 } from 'rea
 import Avatar from '../../../components/ui/Avatar';
 import { getSocialIcon } from '../../../utils/socialHelpers';
 import { getEmbedInfo, getVideoThumbnail } from '../../../utils/videoHelpers';
-import { isDirectDiscountSubmission } from '../../../utils/submissionHelpers';
+import { formatHandle } from '../../../utils/formatters';
+import { isDirectDiscountSubmission, isImageSubmission } from '../../../utils/submissionHelpers';
 
 interface SubmissionVideoModalProps {
   submission: any | null;
@@ -47,7 +48,12 @@ const SubmissionVideoModal: React.FC<SubmissionVideoModalProps> = ({
 
   if (!submission) return null;
 
-  const embedInfo = getEmbedInfo(submission.video_url);
+  const isImage = isImageSubmission(submission);
+  const rawEmbedInfo = getEmbedInfo(submission.video_url || submission.voucher_details?.submitted_media_url);
+  const embedInfo = isImage && rawEmbedInfo.type !== 'image'
+    ? { type: 'image' as const, embedUrl: submission.video_url || submission.voucher_details?.submitted_media_url || '' }
+    : rawEmbedInfo;
+
   const platform = submission.platform || 'video';
   const platformIcon = getSocialIcon(platform);
 
@@ -76,7 +82,7 @@ const SubmissionVideoModal: React.FC<SubmissionVideoModalProps> = ({
                     <h3 className="modal-creator-name">
                       {submission.creator?.full_name || 'Creator'}
                     </h3>
-                    {platformIcon && (
+                    {platformIcon && !isImage && (
                       <img
                         src={platformIcon}
                         alt={platform}
@@ -86,7 +92,7 @@ const SubmissionVideoModal: React.FC<SubmissionVideoModalProps> = ({
                     )}
                   </div>
                   <p className="modal-creator-handle">
-                    @{submission.creator?.username || 'creator'} • {platform.toUpperCase()}
+                    {formatHandle(submission.creator?.username || submission.creator?.full_name)} • {isImage ? 'IMAGE PROOF' : platform.toUpperCase()}
                   </p>
                 </div>
               </div>
@@ -257,7 +263,7 @@ const SubmissionVideoModal: React.FC<SubmissionVideoModalProps> = ({
                           onClick={() => onFlag(submission.id)}
                         >
                           <FiFlag size={16} />
-                          <span>Flag Video</span>
+                          <span>{isImage ? 'Flag Proof' : 'Flag Video'}</span>
                         </button>
                       )}
 
@@ -275,7 +281,7 @@ const SubmissionVideoModal: React.FC<SubmissionVideoModalProps> = ({
                           onClick={() => onUnflag(submission.id)}
                         >
                           <FiRotateCcw size={16} />
-                          <span>Unflag Video (Restore to Pending)</span>
+                          <span>{isImage ? 'Unflag Proof' : 'Unflag Video (Restore to Pending)'}</span>
                         </button>
                       )}
                   </>

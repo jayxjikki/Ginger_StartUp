@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FiCheckCircle, FiXCircle, FiSearch, FiCopy, FiCheck } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { verifyVoucherCode, markVoucherAsRedeemed, type VoucherVerificationResult } from '../../utils/voucherHelpers';
-import { formatDate } from '../../utils/formatters';
+import { formatDate, formatHandle } from '../../utils/formatters';
 import Avatar from './Avatar';
 import Badge from './Badge';
 import DiscountCalculator from './DiscountCalculator';
@@ -192,7 +192,7 @@ export const VoucherVerifierModal: React.FC<VoucherVerifierModalProps> = ({
                           {result.submission.creator?.full_name || 'Customer'}
                         </span>
                         <span className="text-secondary">
-                          @{result.submission.creator?.username || 'user'}
+                          {formatHandle(result.submission.creator?.username || result.submission.creator?.full_name || 'user')}
                         </span>
                       </div>
                     </div>

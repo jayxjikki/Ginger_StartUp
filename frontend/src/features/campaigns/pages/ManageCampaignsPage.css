@@ -1804,7 +1804,38 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 8px;
+}
+
+.voucher-custom-reward-row {
+  margin-top: 4px;
+  width: 100%;
+}
+
+.voucher-custom-reward-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  padding: 6px 12px;
+  border-radius: 8px;
+  color: #fbbf24;
+  font-size: 12px;
+  font-weight: 700;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.voucher-custom-reward-badge .reward-badge-icon {
+  font-size: 15px;
+  flex-shrink: 0;
+}
+
+.voucher-custom-reward-badge .reward-badge-text {
+  word-break: break-word;
+  line-height: 1.35;
 }
 
 .voucher-code-wrapper {
