@@ -42,11 +42,13 @@ export const MapCampaignCard: React.FC<MapCampaignCardProps> = ({
             {campaign.type === 'pool' && 'monetization_on'}
             {campaign.type === 'discount' && 'sell'}
             {campaign.type === 'hybrid' && 'bolt'}
+            {campaign.type === 'video_ad' && 'play_circle'}
           </span>
           <span className="type-label">
             {campaign.type === 'pool' && 'PRIZE POOL'}
             {campaign.type === 'discount' && 'DISCOUNT OFFER'}
             {campaign.type === 'hybrid' && 'HYBRID REWARDS'}
+            {campaign.type === 'video_ad' && 'VIDEO AD'}
           </span>
         </div>
 
@@ -88,7 +90,7 @@ export const MapCampaignCard: React.FC<MapCampaignCardProps> = ({
 
         {/* Dynamic Rewards Layout by Campaign Type */}
         <div className="card-reward-box">
-          {campaign.type === 'pool' && (
+          {(campaign.type === 'pool' || campaign.type === 'video_ad') && (
             <div className="reward-pool-content">
               <span className="reward-label">Total Prize Pool</span>
               <div className="reward-value-gold">

@@ -393,6 +393,18 @@
   border: 1px solid rgba(88, 28, 135, 0.5);
 }
 
+.tag-badge.amber {
+  background-color: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.45);
+}
+
+.tag-badge.emerald {
+  background-color: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.45);
+}
+
 .tag-expired {
   font-family: 'Geist', sans-serif;
   font-size: 11px;

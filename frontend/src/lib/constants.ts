@@ -26,6 +26,7 @@ export const CAMPAIGN_TYPES = [
   { id: 'pool', label: 'Prize Pool', description: 'Set a prize pool that creators earn from based on views' },
   { id: 'discount', label: 'Discount Offer', description: 'Offer discounts to people who create promotional content' },
   { id: 'hybrid', label: 'Hybrid', description: 'Combine prize pool with discount offers' },
+  { id: 'video_ad', label: 'Video Upload Advertisement', description: 'Upload video advertisements for creators to promote and share' },
 ] as const;
 
 export const REWARD_TYPES = [

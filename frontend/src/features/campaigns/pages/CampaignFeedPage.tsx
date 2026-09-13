@@ -10,7 +10,7 @@ import { useUgcStore } from '../../../store/ugcStore';
 import { useChatStore } from '../../../store/chatStore';
 import { useNotificationStore } from '../../../store/notificationStore';
 import { formatCurrency, formatCount, formatTimeLeft } from '../../../utils/formatters';
-import { getCampaignImages, parseTierReward } from '../../../types/campaign.types';
+import { getCampaignImages, getCampaignVideos, getCampaignVideoThumbnails, parseTierReward } from '../../../types/campaign.types';
 import { CampaignImageSlideshow } from '../../../components/ui/CampaignImageSlideshow';
 import LocationCampaignMapModal from '../components/LocationCampaignMapModal';
 import './CampaignFeedPage.css';
@@ -152,6 +152,7 @@ const HomeMenuPage: React.FC = () => {
       case 'pool': return 'blue';
       case 'discount': return 'emerald';
       case 'hybrid': return 'purple';
+      case 'video_ad': return 'amber';
       default: return 'blue';
     }
   };
@@ -161,6 +162,7 @@ const HomeMenuPage: React.FC = () => {
       case 'pool': return 'monetization_on';
       case 'discount': return 'sell';
       case 'hybrid': return 'bolt';
+      case 'video_ad': return 'play_circle';
       default: return 'monetization_on';
     }
   };
@@ -170,6 +172,7 @@ const HomeMenuPage: React.FC = () => {
       case 'pool': return 'Prize Pool';
       case 'discount': return 'Discount';
       case 'hybrid': return 'Hybrid';
+      case 'video_ad': return 'Video Ad';
       default: return type;
     }
   };
@@ -374,6 +377,11 @@ const HomeMenuPage: React.FC = () => {
             return visibleCampaigns.map((campaign) => {
               const themeColor = getCampaignTypeColor(campaign.type);
               const images = getCampaignImages(campaign);
+              const videos = getCampaignVideos(campaign);
+              const videoThumbnails = getCampaignVideoThumbnails(campaign);
+              const cardImages = images.length > 0 
+                ? images 
+                : (videoThumbnails.length > 0 ? videoThumbnails : []);
               
               return (
                 <article 
@@ -382,14 +390,36 @@ const HomeMenuPage: React.FC = () => {
                   onClick={() => navigate(`/campaigns/${campaign.id}`)}
                   style={{ cursor: 'pointer' }}
                 >
-                  {images.length > 0 && (
-                    <div className="campaign-images">
+                  {cardImages.length > 0 && (
+                    <div className="campaign-images" style={{ position: 'relative' }}>
                       <CampaignImageSlideshow
-                        images={images}
+                        images={cardImages}
                         alt={campaign.title}
                         className="campaign-img"
-                        showBadge={images.length > 1}
+                        showBadge={cardImages.length > 1}
                       />
+                      {videos.length > 0 && (
+                        <div style={{
+                          position: 'absolute',
+                          bottom: 10,
+                          right: 10,
+                          background: 'rgba(0,0,0,0.75)',
+                          backdropFilter: 'blur(4px)',
+                          borderRadius: '9999px',
+                          padding: '3px 8px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          color: '#FFD700',
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          border: '1px solid rgba(255, 215, 0, 0.4)',
+                          zIndex: 2,
+                        }}>
+                          <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>play_circle</span>
+                          <span>{videos.length} {videos.length === 1 ? 'Video' : 'Videos'}</span>
+                        </div>
+                      )}
                     </div>
                   )}
                   

@@ -20,8 +20,9 @@ import { useAuthStore } from '../../../store/authStore';
 import { useCampaignStore } from '../../../store/campaignStore';
 import { CAMPAIGN_TYPES, VERIFICATION_PERIODS, SOCIAL_PLATFORMS } from '../../../lib/constants';
 import { getSocialIcon } from '../../../utils/socialHelpers';
-import { uploadToCloudinary } from '../../../lib/cloudinary';
+import { uploadToCloudinary, uploadVideoToCloudinary, generateVideoThumbnail, getVideoThumbnailUrl } from '../../../lib/cloudinary';
 import { CampaignImageSlideshow } from '../../../components/ui/CampaignImageSlideshow';
+import { CampaignVideoSlideshow } from '../../../components/ui/CampaignVideoSlideshow';
 import { INDIAN_STATES_AND_CITIES } from '../../../lib/indianLocations';
 import { DIRECT_DISCOUNT_TERMS, type DirectDiscountTierItem } from '../../../types/campaign.types';
 import CampaignCheckoutModal from '../components/CampaignCheckoutModal';
@@ -46,6 +47,11 @@ const CreateCampaignPage: React.FC = () => {
   // Multi-image upload state
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
+
+  // Video upload state (for Video Upload Advertisement)
+  const [isUploadingVideo, setIsUploadingVideo] = useState(false);
+  const [previewVideoUrl, setPreviewVideoUrl] = useState<string | null>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
     type: 'pool' as string,
@@ -78,6 +84,8 @@ const CreateCampaignPage: React.FC = () => {
     ],
     images: [] as string[],
     image_url: '',
+    videos: [] as string[],
+    videoThumbnails: [] as string[],
   });
 
   const updateField = (field: string, value: any) => {
@@ -157,6 +165,76 @@ const CreateCampaignPage: React.FC = () => {
       };
     });
     toast.success('Cover image set!');
+  };
+
+  // ── Video Handlers (Max 2 videos, 25MB each for Video Upload Advertisement) ──
+  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    const fileList = Array.from(e.target.files);
+    const remainingSlots = 2 - formData.videos.length;
+    if (remainingSlots <= 0) {
+      toast.error('Maximum 2 videos allowed');
+      return;
+    }
+
+    const filesToUpload = fileList.slice(0, remainingSlots);
+    setIsUploadingVideo(true);
+
+    try {
+      // Validate all files first (format and strict 25MB limit)
+      for (const file of filesToUpload) {
+        const isVideo = file.type.startsWith('video/') || /\.(mp4|mov|webm|avi|mkv)$/i.test(file.name);
+        if (!isVideo) {
+          throw new Error(`"${file.name}" is not a valid video file`);
+        }
+        if (file.size > 25 * 1024 * 1024) {
+          throw new Error(`"${file.name}" exceeds 25MB limit (Max 25MB allowed)`);
+        }
+      }
+
+      // Generate instant client thumbnail frames
+      const localThumbs = await Promise.all(
+        filesToUpload.map((f) => generateVideoThumbnail(f))
+      );
+
+      // Upload videos with 25MB limit
+      const uploadedUrls = await Promise.all(
+        filesToUpload.map((f) => uploadVideoToCloudinary(f, user?.id))
+      );
+
+      setFormData((prev) => {
+        const nextVideos = [...prev.videos, ...uploadedUrls].slice(0, 2);
+        const nextThumbs = [...prev.videoThumbnails, ...localThumbs].slice(0, 2);
+        return {
+          ...prev,
+          videos: nextVideos,
+          videoThumbnails: nextThumbs,
+        };
+      });
+
+      toast.success(
+        uploadedUrls.length === 1
+          ? 'Video advertisement uploaded! 🎥'
+          : `${uploadedUrls.length} video advertisements uploaded! 🎥`
+      );
+    } catch (err: any) {
+      console.error('Video upload failed:', err);
+      toast.error(err.message || 'Video upload failed. Please try again.');
+    } finally {
+      setIsUploadingVideo(false);
+      if (videoInputRef.current) {
+        videoInputRef.current.value = '';
+      }
+    }
+  };
+
+  const removeVideo = (idx: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      videos: prev.videos.filter((_, i) => i !== idx),
+      videoThumbnails: prev.videoThumbnails.filter((_, i) => i !== idx),
+    }));
+    toast.success('Video removed');
   };
 
   // ── Location Handlers ──
@@ -787,6 +865,10 @@ const CreateCampaignPage: React.FC = () => {
         toast.error('At least 1 campaign picture is compulsory. Please upload an image.');
         return false;
       }
+      if (formData.type === 'video_ad' && formData.videos.length === 0) {
+        toast.error('Please upload at least 1 video for your Video Upload Advertisement (Max 2).');
+        return false;
+      }
       if (!formData.videoRequirements?.trim()) {
         toast.error('Video requirements are compulsory. Please detail guidelines for creators.');
         return false;
@@ -813,7 +895,7 @@ const CreateCampaignPage: React.FC = () => {
       }
 
       // 2. Cash Tiers Validation (increasing views and payout + complete check)
-      const isCashActive = formData.type === 'pool' || (formData.type === 'hybrid' && formData.hybridRewardType === 'cash');
+      const isCashActive = formData.type === 'pool' || formData.type === 'video_ad' || (formData.type === 'hybrid' && formData.hybridRewardType === 'cash');
       if (isCashActive) {
         for (let i = 0; i < formData.cashTiers.length; i++) {
           const t = formData.cashTiers[i];
@@ -1028,7 +1110,7 @@ const CreateCampaignPage: React.FC = () => {
         }
       });
 
-      if (formData.type === 'pool') {
+      if (formData.type === 'pool' || formData.type === 'video_ad') {
         formData.cashTiers.forEach((t) => {
           if (t.minViews?.trim() && t.amount?.trim()) {
             allTiers.push({
@@ -1124,8 +1206,14 @@ const CreateCampaignPage: React.FC = () => {
         verification_days: formData.verificationDays,
         image_url: formData.images[0] || '',
         images: formData.images,
+        videos: formData.videos,
+        video_thumbnails: formData.videoThumbnails,
         terms: {
           images: formData.images,
+          videos: formData.videos,
+          video_thumbnails: formData.videoThumbnails,
+          is_video_ad: formData.type === 'video_ad',
+          type: formData.type as any,
           direct_discount_tiers: formData.directDiscountTiers.filter((t) => t.reward?.trim()),
           hybrid_reward_type: formData.type === 'hybrid' ? formData.hybridRewardType : undefined,
         },
@@ -1222,17 +1310,23 @@ const CreateCampaignPage: React.FC = () => {
               <div className="campaign-type-grid">
                 {CAMPAIGN_TYPES.map((type) => {
                   const isSelected = formData.type === type.id;
+                  const isGolden = type.id === 'video_ad';
                   return (
                     <div
                       key={type.id}
-                      className={`campaign-type-card ${isSelected ? 'selected' : ''}`}
+                      className={`campaign-type-card ${isGolden ? 'golden-card' : ''} ${isSelected ? 'selected' : ''}`}
                       onClick={() => handleTypeSelect(type.id)}
                     >
                       <div className="campaign-type-info">
-                        <h4 className="campaign-type-title">{type.label}</h4>
+                        <div className="campaign-type-title-row">
+                          <h4 className="campaign-type-title">{type.label}</h4>
+                          {isGolden && (
+                            <span className="golden-type-badge">✨ Video Ad</span>
+                          )}
+                        </div>
                         <p className="campaign-type-desc">{type.description}</p>
                       </div>
-                      <div className={`campaign-type-radio ${isSelected ? 'checked' : ''}`}>
+                      <div className={`campaign-type-radio ${isGolden ? 'golden-radio' : ''} ${isSelected ? 'checked' : ''}`}>
                         {isSelected && <div className="campaign-type-radio-dot" />}
                       </div>
                     </div>
@@ -1369,6 +1463,134 @@ const CreateCampaignPage: React.FC = () => {
                     </div>
                   )}
                 </div>
+
+                {/* ── Video Upload Advertisement (Only for 4th Campaign Type) ── */}
+                {formData.type === 'video_ad' && (
+                  <div className="form-group campaign-videos-uploader-group">
+                    <div className="section-title-row">
+                      <div className="video-section-title-badge">
+                        <span className="gold-sparkle">✨</span>
+                        <label className="form-label gold-label">
+                          Campaign Videos ({formData.videos.length}/2) *
+                        </label>
+                      </div>
+                      <span className="field-hint-inline">
+                        Upload up to 2 videos (Max 25MB each).
+                      </span>
+                    </div>
+
+                    <p className="field-hint" style={{ marginTop: 2, marginBottom: 12 }}>
+                      Upload 1 or 2 video advertisements for creators. When clicked from clipping page, videos appear as thumbnails with play & download controls.
+                    </p>
+
+                    {/* Hidden video file input */}
+                    <input
+                      type="file"
+                      ref={videoInputRef}
+                      onChange={handleVideoUpload}
+                      accept="video/*"
+                      multiple
+                      style={{ display: 'none' }}
+                    />
+
+                    {/* Video Upload Slots Grid */}
+                    <div className="campaign-videos-grid">
+                      {formData.videos.map((vidUrl, idx) => {
+                        const thumb = formData.videoThumbnails[idx] || getVideoThumbnailUrl(vidUrl);
+                        return (
+                          <div key={idx} className="campaign-video-slot uploaded">
+                            {thumb ? (
+                              <img src={thumb} alt={`Video ${idx + 1}`} className="video-slot-thumb" />
+                            ) : (
+                              <div className="video-slot-thumb-placeholder">
+                                <span className="material-symbols-outlined" style={{ fontSize: '32px', color: '#F59E0B' }}>
+                                  movie
+                                </span>
+                              </div>
+                            )}
+
+                            {/* Play preview overlay */}
+                            <div 
+                              className="video-slot-play-overlay"
+                              onClick={() => setPreviewVideoUrl(vidUrl)}
+                              title="Click to preview video"
+                            >
+                              <div className="video-slot-play-circle">
+                                <span className="material-symbols-outlined" style={{ fontSize: '24px' }}>play_arrow</span>
+                              </div>
+                            </div>
+
+                            <div className="video-slot-badge">
+                              Video {idx + 1}
+                            </div>
+
+                            <div className="slot-actions">
+                              <button
+                                type="button"
+                                className="slot-action-btn delete-btn"
+                                onClick={() => removeVideo(idx)}
+                                title="Remove Video"
+                                aria-label={`Remove video ${idx + 1}`}
+                              >
+                                <FiTrash2 size={13} />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      {formData.videos.length < 2 && (
+                        <button
+                          type="button"
+                          className="campaign-video-add-btn"
+                          onClick={() => videoInputRef.current?.click()}
+                          disabled={isUploadingVideo}
+                        >
+                          {isUploadingVideo ? (
+                            <div className="upload-loading-content">
+                              <span className="material-symbols-outlined spin-icon">progress_activity</span>
+                              <span>Uploading Video...</span>
+                              <span className="upload-add-sub">Max 25MB</span>
+                            </div>
+                          ) : (
+                            <div className="upload-empty-content">
+                              <span className="material-symbols-outlined" style={{ fontSize: '28px', color: '#F59E0B' }}>
+                                video_call
+                              </span>
+                              <span className="upload-add-title">
+                                + Add Video ({formData.videos.length + 1}/2)
+                              </span>
+                              <span className="upload-add-sub">
+                                Max 25MB • MP4, MOV, WebM
+                              </span>
+                            </div>
+                          )}
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Live Video Slideshow Preview */}
+                    {formData.videos.length > 0 && (
+                      <div className="campaign-slideshow-preview-card gold-border">
+                        <div className="slideshow-preview-header">
+                          <span className="slideshow-preview-tag gold-tag">LIVE PREVIEW</span>
+                          <span className="slideshow-preview-title">
+                            {formData.videos.length === 1
+                              ? 'Single Video (Thumbnail + Play Button + Download)'
+                              : 'Video Slideshow (Thumbnails with Play Icon on Each + Download)'}
+                          </span>
+                        </div>
+                        <div className="slideshow-preview-frame">
+                          <CampaignVideoSlideshow
+                            videos={formData.videos}
+                            thumbnails={formData.videoThumbnails}
+                            title={formData.title || 'Video Ad'}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <Input
                   label="Slogan / Tagline"
@@ -2141,6 +2363,17 @@ const CreateCampaignPage: React.FC = () => {
 
               <div className="review-summary">
                 <Card variant="glass" padding="lg">
+                  {/* Campaign Video(s) Slideshow Banner (for Video Ad Campaigns) */}
+                  {formData.videos.length > 0 && (
+                    <div className="review-slideshow-banner" style={{ marginBottom: formData.images.length > 0 ? 16 : 0 }}>
+                      <CampaignVideoSlideshow
+                        videos={formData.videos}
+                        thumbnails={formData.videoThumbnails}
+                        title={formData.title || 'Campaign preview'}
+                      />
+                    </div>
+                  )}
+
                   {/* Campaign Image(s) Slideshow Banner */}
                   {formData.images.length > 0 && (
                     <div className="review-slideshow-banner">
@@ -2171,6 +2404,17 @@ const CreateCampaignPage: React.FC = () => {
                           : `📍 ${formData.location || 'Not specified'}`}
                       </span>
                     </div>
+
+                    {formData.videos.length > 0 && (
+                      <div className="review-row">
+                        <span className="review-label">Campaign Videos</span>
+                        <span className="review-value">
+                          {formData.videos.length > 1
+                            ? '2 Videos (Thumbnail Slideshow with Play & Download)'
+                            : '1 Video (Thumbnail with Play & Download)'}
+                        </span>
+                      </div>
+                    )}
 
                     <div className="review-row">
                       <span className="review-label">Campaign Pictures</span>
@@ -2378,6 +2622,34 @@ const CreateCampaignPage: React.FC = () => {
         onSuccess={executeLaunch}
         campaignCost={Number(formData.prizePool) || 0}
       />
+
+      {/* Video Preview Modal */}
+      {previewVideoUrl && (
+        <div 
+          className="video-preview-modal-overlay"
+          onClick={() => setPreviewVideoUrl(null)}
+        >
+          <div 
+            className="video-preview-modal-content"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="video-preview-modal-close"
+              onClick={() => setPreviewVideoUrl(null)}
+              aria-label="Close preview"
+            >
+              ✕
+            </button>
+            <video
+              src={previewVideoUrl}
+              controls
+              autoPlay
+              className="modal-preview-video"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

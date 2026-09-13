@@ -149,7 +149,18 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
 
       if (campaignsRes.error) throw campaignsRes.error;
 
-      const campaignsData = (campaignsRes.data || []) as unknown as Campaign[];
+      const campaignsData = ((campaignsRes.data || []) as unknown as Campaign[]).map((c: any) => {
+        if (c.terms?.type === 'video_ad' || c.terms?.is_video_ad) {
+          c.type = 'video_ad';
+        }
+        if (!c.videos && c.terms?.videos) {
+          c.videos = c.terms.videos;
+        }
+        if (!c.video_thumbnails && c.terms?.video_thumbnails) {
+          c.video_thumbnails = c.terms.video_thumbnails;
+        }
+        return c;
+      });
       const slideshowsData = (!slideshowsRes.error && slideshowsRes.data ? slideshowsRes.data : []) as unknown as SlideshowItem[];
 
       set({ 
@@ -176,13 +187,25 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
       const { payout_tiers, ...campaignData } = campaign;
       let insertPayload: any = { ...campaignData };
 
-      // Ensure terms preserves the images array
+      // Ensure terms preserves images and videos arrays
+      const termsObj = {
+        ...(typeof insertPayload.terms === 'object' && insertPayload.terms !== null ? insertPayload.terms : {}),
+      };
+
       if (insertPayload.images && Array.isArray(insertPayload.images) && insertPayload.images.length > 0) {
-        insertPayload.terms = {
-          ...(typeof insertPayload.terms === 'object' && insertPayload.terms !== null ? insertPayload.terms : {}),
-          images: insertPayload.images,
-        };
+        termsObj.images = insertPayload.images;
       }
+      if (insertPayload.videos && Array.isArray(insertPayload.videos) && insertPayload.videos.length > 0) {
+        termsObj.videos = insertPayload.videos;
+      }
+      if (insertPayload.video_thumbnails && Array.isArray(insertPayload.video_thumbnails) && insertPayload.video_thumbnails.length > 0) {
+        termsObj.video_thumbnails = insertPayload.video_thumbnails;
+      }
+      if (insertPayload.type === 'video_ad') {
+        termsObj.is_video_ad = true;
+        termsObj.type = 'video_ad';
+      }
+      insertPayload.terms = termsObj;
 
       let { data, error } = await supabase
         .from('campaigns')
@@ -190,14 +213,44 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
         .select(`*, advertiser:profiles(*)`)
         .single();
         
-      // If remote database doesn't have images column, fallback without top-level images
+      // Fallback 1: If remote database doesn't have images or videos columns (error 42703)
       if (
         error &&
         (error.message?.toLowerCase().includes('images') ||
+         error.message?.toLowerCase().includes('videos') ||
          error.details?.toLowerCase().includes('images') ||
+         error.details?.toLowerCase().includes('videos') ||
          error.code === '42703')
       ) {
         delete insertPayload.images;
+        delete insertPayload.videos;
+        delete insertPayload.video_thumbnails;
+        const retryRes = await supabase
+          .from('campaigns')
+          .insert([insertPayload])
+          .select(`*, advertiser:profiles(*)`)
+          .single();
+        data = retryRes.data;
+        error = retryRes.error;
+      }
+
+      // Fallback 2: If remote database enforces CHECK (type IN ('pool', 'discount', 'hybrid')) (error 23514)
+      if (
+        error &&
+        insertPayload.type === 'video_ad' &&
+        (error.message?.toLowerCase().includes('type') ||
+         error.message?.toLowerCase().includes('check') ||
+         error.code === '23514')
+      ) {
+        insertPayload.terms = {
+          ...(insertPayload.terms || {}),
+          type: 'video_ad',
+          is_video_ad: true,
+        };
+        insertPayload.type = 'pool'; // fallback valid DB type, preserved via terms.type
+        delete insertPayload.images;
+        delete insertPayload.videos;
+        delete insertPayload.video_thumbnails;
         const retryRes = await supabase
           .from('campaigns')
           .insert([insertPayload])
@@ -214,6 +267,15 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
       const newCampaign = data as unknown as Campaign;
       if (!newCampaign.images && campaign.images) {
         newCampaign.images = campaign.images;
+      }
+      if (!newCampaign.videos && campaign.videos) {
+        newCampaign.videos = campaign.videos;
+      }
+      if (!newCampaign.video_thumbnails && campaign.video_thumbnails) {
+        newCampaign.video_thumbnails = campaign.video_thumbnails;
+      }
+      if (campaign.type === 'video_ad' || newCampaign.terms?.type === 'video_ad') {
+        newCampaign.type = 'video_ad';
       }
       
       // Insert payout tiers if they exist

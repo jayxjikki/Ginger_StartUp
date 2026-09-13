@@ -707,6 +707,7 @@ export const LocationCampaignMapModal: React.FC<LocationCampaignMapModalProps> =
                       {pin.campaign.type === 'pool' && 'monetization_on'}
                       {pin.campaign.type === 'discount' && 'sell'}
                       {pin.campaign.type === 'hybrid' && 'bolt'}
+                      {pin.campaign.type === 'video_ad' && 'play_circle'}
                     </span>
                   </div>
 

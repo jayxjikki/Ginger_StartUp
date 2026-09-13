@@ -26,6 +26,8 @@ export interface Campaign {
   created_at: string;
   image_url?: string;
   images?: string[];
+  videos?: string[];
+  video_thumbnails?: string[];
   // Joined fields
   advertiser?: {
     full_name: string;
@@ -38,7 +40,7 @@ export interface Campaign {
   submissions?: Submission[];
 }
 
-export type CampaignType = 'pool' | 'discount' | 'hybrid';
+export type CampaignType = 'pool' | 'discount' | 'hybrid' | 'video_ad';
 export type CampaignStatus = 'active' | 'paused' | 'completed' | 'expired' | 'draft';
 
 export interface CampaignTerms {
@@ -50,6 +52,10 @@ export interface CampaignTerms {
   content_restrictions?: string;
   additional_notes?: string;
   images?: string[];
+  videos?: string[];
+  video_thumbnails?: string[];
+  is_video_ad?: boolean;
+  type?: CampaignType;
   direct_discount_tiers?: DirectDiscountTierItem[];
   hybrid_reward_type?: 'cash' | 'discount';
 }
@@ -124,6 +130,122 @@ export function getCampaignImages(campaign: {
   addImage(campaign.image);
 
   return result;
+}
+
+/**
+ * Safely extracts an array of video URLs from a Campaign
+ */
+export function getCampaignVideos(campaign: {
+  videos?: string[] | null;
+  terms?: any;
+  [key: string]: any;
+} | null | undefined): string[] {
+  if (!campaign) return [];
+  const result: string[] = [];
+
+  const addVideo = (vid: any) => {
+    if (!vid) return;
+    if (typeof vid === 'string') {
+      const trimmed = vid.trim();
+      if (!trimmed) return;
+      if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+        try {
+          const parsed = JSON.parse(trimmed);
+          if (Array.isArray(parsed)) {
+            parsed.forEach(addVideo);
+            return;
+          }
+        } catch {}
+      }
+      if (trimmed.includes(',')) {
+        trimmed.split(',').forEach((part) => addVideo(part.trim()));
+        return;
+      }
+      if (!result.includes(trimmed)) {
+        result.push(trimmed);
+      }
+    } else if (Array.isArray(vid)) {
+      vid.forEach(addVideo);
+    }
+  };
+
+  if (Array.isArray(campaign.videos) && campaign.videos.length > 0) {
+    campaign.videos.forEach(addVideo);
+  }
+
+  let termsObj = campaign.terms;
+  if (typeof termsObj === 'string') {
+    try {
+      termsObj = JSON.parse(termsObj);
+    } catch {}
+  }
+  if (termsObj && typeof termsObj === 'object') {
+    if (Array.isArray(termsObj.videos)) {
+      termsObj.videos.forEach(addVideo);
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Safely extracts an array of video thumbnail URLs from a Campaign
+ */
+export function getCampaignVideoThumbnails(campaign: {
+  video_thumbnails?: string[] | null;
+  terms?: any;
+  [key: string]: any;
+} | null | undefined): string[] {
+  if (!campaign) return [];
+  const result: string[] = [];
+
+  const addThumb = (thumb: any) => {
+    if (!thumb) return;
+    if (typeof thumb === 'string') {
+      const trimmed = thumb.trim();
+      if (trimmed && !result.includes(trimmed)) {
+        result.push(trimmed);
+      }
+    } else if (Array.isArray(thumb)) {
+      thumb.forEach(addThumb);
+    }
+  };
+
+  if (Array.isArray(campaign.video_thumbnails)) {
+    campaign.video_thumbnails.forEach(addThumb);
+  }
+
+  let termsObj = campaign.terms;
+  if (typeof termsObj === 'string') {
+    try {
+      termsObj = JSON.parse(termsObj);
+    } catch {}
+  }
+  if (termsObj && typeof termsObj === 'object') {
+    if (Array.isArray(termsObj.video_thumbnails)) {
+      termsObj.video_thumbnails.forEach(addThumb);
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Checks if a campaign is a Video Upload Advertisement
+ */
+export function isVideoAdCampaign(campaign: {
+  type?: string;
+  terms?: any;
+  videos?: any;
+  [key: string]: any;
+} | null | undefined): boolean {
+  if (!campaign) return false;
+  return (
+    campaign.type === 'video_ad' ||
+    campaign.terms?.type === 'video_ad' ||
+    Boolean(campaign.terms?.is_video_ad) ||
+    getCampaignVideos(campaign).length > 0
+  );
 }
 
 export interface PayoutTier {

@@ -7,7 +7,7 @@ import './Badge.css';
 
 interface BadgeProps {
   children: React.ReactNode;
-  variant?: 'default' | 'ginger' | 'success' | 'warning' | 'error' | 'accent';
+  variant?: 'default' | 'ginger' | 'success' | 'warning' | 'error' | 'accent' | 'gold';
   size?: 'sm' | 'md';
   dot?: boolean;
   className?: string;

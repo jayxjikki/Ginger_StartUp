@@ -4,6 +4,7 @@ import { useAuthStore } from '../../../store/authStore';
 import TransitionLoader from '../../../components/ui/TransitionLoader';
 import TermsModal from '../components/TermsModal';
 import { motion, AnimatePresence } from 'framer-motion';
+import toast from 'react-hot-toast';
 import './LoginPage.css';
 import gingerback1Bg from '../../../assets/gingerback1.jpeg';
 
@@ -34,17 +35,30 @@ const LoginPage: React.FC = () => {
     }
   }, [user, isInitialized, navigate, location.state]);
 
-  const handleTermsCheckboxClick = () => {
-    if (isTermsAccepted) {
-      setIsTermsAccepted(false);
-    } else {
-      setIsTermsModalOpen(true);
+  const handleTermsCheckboxToggle = (e?: React.MouseEvent | React.KeyboardEvent) => {
+    if (e) {
+      e.stopPropagation();
     }
+    setIsTermsAccepted((prev) => !prev);
+  };
+
+  const handleOpenTermsModal = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsTermsModalOpen(true);
   };
 
   const handleAcceptTerms = () => {
     setIsTermsAccepted(true);
     setIsTermsModalOpen(false);
+  };
+
+  const handleAuthLinkClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (isTermsAccepted) {
+      signInWithGoogle();
+    } else {
+      toast.error('Please accept the Terms & Conditions first');
+    }
   };
 
   useEffect(() => {
@@ -103,7 +117,15 @@ const LoginPage: React.FC = () => {
             <span>{isLoading ? 'Connecting...' : 'Continue with Google'}</span>
           </button>
           
-          <button className="ghost-button" disabled={!isTermsAccepted}>
+          <button 
+            className="ghost-button" 
+            disabled={!isTermsAccepted}
+            onClick={() => {
+              if (isTermsAccepted) {
+                toast('Phone sign-in is coming soon! Please continue with Google.', { icon: '📱' });
+              }
+            }}
+          >
             <span className="material-symbols-outlined">phone_iphone</span>
             <span>Continue with Phone Number</span>
           </button>
@@ -122,19 +144,48 @@ const LoginPage: React.FC = () => {
           <div className="login-terms-wrapper">
             <div 
               className={`login-terms-checkbox ${isTermsAccepted ? 'accepted' : ''}`}
-              onClick={handleTermsCheckboxClick}
+              onClick={handleTermsCheckboxToggle}
+              role="checkbox"
+              aria-checked={isTermsAccepted}
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === ' ' || e.key === 'Enter') {
+                  e.preventDefault();
+                  handleTermsCheckboxToggle(e);
+                }
+              }}
             >
               <span className="material-symbols-outlined">check</span>
             </div>
-            <div className="login-terms-label" onClick={handleTermsCheckboxClick}>
-              I have read and agree to the <span>Terms & Conditions</span>
+            <div className="login-terms-label">
+              <span className="login-terms-text" onClick={handleTermsCheckboxToggle}>
+                I have read and agree to the{' '}
+              </span>
+              <span 
+                className="login-terms-link"
+                onClick={handleOpenTermsModal}
+              >
+                Terms & Conditions
+              </span>
             </div>
           </div>
 
           <div className="login-links">
-            <a href="#" className="login-link-primary">Log In</a>
+            <a 
+              href="#" 
+              className="login-link-primary"
+              onClick={handleAuthLinkClick}
+            >
+              Log In
+            </a>
             <span style={{ color: 'rgba(255, 255, 255, 0.4)' }}>•</span>
-            <a href="#" className="login-link-secondary">Sign Up</a>
+            <a 
+              href="#" 
+              className="login-link-secondary"
+              onClick={handleAuthLinkClick}
+            >
+              Sign Up
+            </a>
           </div>
 
           <p>

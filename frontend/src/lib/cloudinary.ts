@@ -5,6 +5,7 @@
 import { supabase } from './supabase';
 
 export const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
+export const MAX_VIDEO_SIZE_BYTES = 25 * 1024 * 1024; // 25MB
 
 /**
  * Generates a clean URL for viewing PDFs across mobile and desktop.
@@ -24,7 +25,7 @@ export const getPdfViewerUrl = (url: string): string => {
 };
 
 /**
- * Generates a clean download URL for PDFs.
+ * Generates a clean download URL for PDFs and videos.
  */
 export const getPdfDownloadUrl = (url: string): string => {
   if (!url) return '';
@@ -42,6 +43,74 @@ export const getPdfDownloadUrl = (url: string): string => {
  */
 export const formatPdfUrl = (url: string): string => {
   return getPdfViewerUrl(url);
+};
+
+/**
+ * Derives an instant image thumbnail URL for any video URL.
+ * Works with Cloudinary video URLs (appending /so_0,f_jpg/ or replacing extension with .jpg)
+ * and falls back gracefully to custom thumbnail or empty string.
+ */
+export const getVideoThumbnailUrl = (videoUrl: string, customThumbnail?: string): string => {
+  if (customThumbnail && customThumbnail.trim()) {
+    return customThumbnail.trim();
+  }
+  if (!videoUrl) return '';
+  
+  if (videoUrl.includes('cloudinary.com') && videoUrl.includes('/video/upload/')) {
+    return videoUrl
+      .replace('/video/upload/', '/video/upload/so_0,f_jpg,q_auto/')
+      .replace(/\.(mp4|webm|mov|avi|mkv)$/i, '.jpg');
+  }
+  
+  return '';
+};
+
+/**
+ * Extracts a high-res JPG thumbnail data URL from a local video File using canvas.
+ */
+export const generateVideoThumbnail = (file: File): Promise<string> => {
+  return new Promise((resolve) => {
+    try {
+      const video = document.createElement('video');
+      video.preload = 'metadata';
+      video.muted = true;
+      video.playsInline = true;
+      const objectUrl = URL.createObjectURL(file);
+      video.src = objectUrl;
+
+      video.onloadeddata = () => {
+        // Seek to 0.5s or midpoint if very short
+        video.currentTime = Math.min(0.5, Math.max(0, (video.duration || 1) / 2));
+      };
+
+      video.onseeked = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = video.videoWidth || 640;
+          canvas.height = video.videoHeight || 360;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+            URL.revokeObjectURL(objectUrl);
+            resolve(dataUrl);
+            return;
+          }
+        } catch {
+          // Fall through
+        }
+        URL.revokeObjectURL(objectUrl);
+        resolve('');
+      };
+
+      video.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        resolve('');
+      };
+    } catch {
+      resolve('');
+    }
+  });
 };
 
 /**
@@ -63,20 +132,30 @@ export const triggerFileDownload = async (url: string, defaultFilename: string) 
     setTimeout(() => window.URL.revokeObjectURL(blobUrl), 2000);
     return true;
   } catch (err) {
-    console.warn('Direct blob download failed, falling back to window.open:', err);
-    window.open(url, '_blank', 'noopener,noreferrer');
+    console.warn('Direct blob download failed, falling back to anchor trigger:', err);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = defaultFilename;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
     return false;
   }
 };
 
 /**
- * Uploads a file (Image or PDF document).
- * For PDFs: tries Supabase Storage first for 100% native unblocked PDF delivery, falls back to Cloudinary.
+ * Uploads a file (Image, PDF, or Video).
  */
-export const uploadToCloudinary = async (file: File, userId?: string): Promise<string> => {
-  // Strict 10MB size limit check
-  if (file.size > MAX_FILE_SIZE_BYTES) {
-    throw new Error('File size exceeds the 10MB limit.');
+export const uploadToCloudinary = async (
+  file: File, 
+  userId?: string, 
+  customMaxSizeBytes: number = MAX_FILE_SIZE_BYTES
+): Promise<string> => {
+  if (file.size > customMaxSizeBytes) {
+    const limitMb = Math.round(customMaxSizeBytes / (1024 * 1024));
+    throw new Error(`File size exceeds the ${limitMb}MB limit.`);
   }
 
   const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
@@ -153,4 +232,15 @@ export const uploadToCloudinary = async (file: File, userId?: string): Promise<s
   }
 
   throw lastError || new Error('Upload failed. Please try again.');
+};
+
+/**
+ * Uploads a video file with a strict 25MB maximum limit.
+ */
+export const uploadVideoToCloudinary = async (file: File, userId?: string): Promise<string> => {
+  if (file.size > MAX_VIDEO_SIZE_BYTES) {
+    throw new Error('Video exceeds 25MB limit (Max 25MB allowed).');
+  }
+
+  return uploadToCloudinary(file, userId, MAX_VIDEO_SIZE_BYTES);
 };

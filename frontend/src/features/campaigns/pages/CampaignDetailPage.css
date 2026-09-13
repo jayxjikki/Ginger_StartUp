@@ -74,6 +74,16 @@
   border-radius: inherit;
 }
 
+.detail-banner-wrapper.video-banner-wrapper {
+  aspect-ratio: 16 / 9;
+  max-height: 420px;
+  border-color: rgba(255, 215, 0, 0.35);
+  box-shadow: 
+    0 14px 40px -8px rgba(0, 0, 0, 0.85),
+    0 0 25px rgba(255, 215, 0, 0.12),
+    inset 0 1px 0 rgba(255, 215, 0, 0.2);
+}
+
 /* Fallback when no images uploaded */
 .detail-banner-placeholder {
   background: 

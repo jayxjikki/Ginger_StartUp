@@ -59,6 +59,13 @@
   border: 1px solid rgba(139, 92, 246, 0.2);
 }
 
+.badge-gold {
+  background: rgba(255, 215, 0, 0.15);
+  color: #FFD700;
+  border: 1px solid rgba(255, 215, 0, 0.45);
+  box-shadow: 0 0 10px rgba(255, 215, 0, 0.15);
+}
+
 /* ── Dot ───────────────────────────────────────────────── */
 .badge-dot {
   width: 6px;

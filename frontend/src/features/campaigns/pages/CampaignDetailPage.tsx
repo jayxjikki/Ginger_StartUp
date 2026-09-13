@@ -25,9 +25,10 @@ import Badge from '../../../components/ui/Badge';
 import Avatar from '../../../components/ui/Avatar';
 import Input from '../../../components/ui/Input';
 import { formatCurrency, formatCount, formatTimeLeft, formatHandle } from '../../../utils/formatters';
-import { getCampaignImages, parseTierReward, getCampaignDirectDiscountTiers } from '../../../types/campaign.types';
+import { getCampaignImages, getCampaignVideos, getCampaignVideoThumbnails, isVideoAdCampaign, parseTierReward, getCampaignDirectDiscountTiers } from '../../../types/campaign.types';
 import { uploadToCloudinary } from '../../../lib/cloudinary';
 import { CampaignImageSlideshow } from '../../../components/ui/CampaignImageSlideshow';
+import { CampaignVideoSlideshow } from '../../../components/ui/CampaignVideoSlideshow';
 import { isDirectDiscountSubmission, normalizeSubmission, encodeVideoId, isReviewSubmission, getSubmissionReviewUrl, openReviewPage, getFallbackUniqueVoucherCode, getDirectDiscountBadgeText } from '../../../utils/submissionHelpers';
 
 import CampaignShareModal from '../../../components/ui/CampaignShareModal';
@@ -626,9 +627,10 @@ const CampaignDetailPage: React.FC = () => {
 
         {/* Campaign Type & Timer */}
         <motion.div className="detail-header" variants={fadeUp}>
-          <Badge variant="ginger" size="md">
+          <Badge variant={isVideoAdCampaign(campaign) ? 'gold' : 'ginger'} size="md">
             {campaign.type === 'pool' ? '💰 Prize Pool' :
-             campaign.type === 'discount' ? '🏷️ Discount' : '⚡ Hybrid'}
+             campaign.type === 'discount' ? '🏷️ Discount' :
+             isVideoAdCampaign(campaign) ? '🎬 Video Upload Advertisement' : '⚡ Hybrid'}
           </Badge>
           {campaign.end_date && (
             <span className="detail-time-left">
@@ -656,31 +658,70 @@ const CampaignDetailPage: React.FC = () => {
           </div>
         </motion.div>
 
-        {/* Campaign Images (Single or Auto Slideshow) */}
-        {getCampaignImages(campaign).length > 0 ? (
-          <motion.div variants={fadeUp} className="detail-banner-wrapper">
-            <CampaignImageSlideshow 
-              images={getCampaignImages(campaign)} 
-              alt={campaign.title} 
-              className="detail-banner-slideshow" 
-              showBadge={getCampaignImages(campaign).length > 1}
-              showNavArrows={getCampaignImages(campaign).length > 1}
-              showIndicators={getCampaignImages(campaign).length > 1}
-              intervalMs={3500}
-            />
-          </motion.div>
-        ) : (
-          <motion.div variants={fadeUp} className="detail-banner-wrapper detail-banner-placeholder">
-            <div className="detail-placeholder-inner">
-              <span className="detail-placeholder-tag">
-                {campaign.type === 'pool' ? '💰 PRIZE POOL' :
-                 campaign.type === 'discount' ? '🏷️ DISCOUNT' : '⚡ HYBRID'}
-              </span>
-              <h3 className="detail-placeholder-title">{campaign.title}</h3>
-              {campaign.slogan && <p className="detail-placeholder-slogan">"{campaign.slogan}"</p>}
-            </div>
-          </motion.div>
-        )}
+        {/* Campaign Media: Videos Slideshow (Video Ad) and/or Image Slideshow */}
+        {(() => {
+          const campaignVideos = getCampaignVideos(campaign);
+          const campaignVideoThumbs = getCampaignVideoThumbnails(campaign);
+          const campaignImages = getCampaignImages(campaign);
+
+          if (campaignVideos.length > 0) {
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <motion.div variants={fadeUp} className="detail-banner-wrapper video-banner-wrapper">
+                  <CampaignVideoSlideshow
+                    videos={campaignVideos}
+                    thumbnails={campaignVideoThumbs}
+                    title={campaign.title}
+                  />
+                </motion.div>
+
+                {campaignImages.length > 0 && (
+                  <motion.div variants={fadeUp} className="detail-banner-wrapper">
+                    <CampaignImageSlideshow 
+                      images={campaignImages} 
+                      alt={campaign.title} 
+                      className="detail-banner-slideshow" 
+                      showBadge={campaignImages.length > 1}
+                      showNavArrows={campaignImages.length > 1}
+                      showIndicators={campaignImages.length > 1}
+                      intervalMs={3500}
+                    />
+                  </motion.div>
+                )}
+              </div>
+            );
+          }
+
+          if (campaignImages.length > 0) {
+            return (
+              <motion.div variants={fadeUp} className="detail-banner-wrapper">
+                <CampaignImageSlideshow 
+                  images={campaignImages} 
+                  alt={campaign.title} 
+                  className="detail-banner-slideshow" 
+                  showBadge={campaignImages.length > 1}
+                  showNavArrows={campaignImages.length > 1}
+                  showIndicators={campaignImages.length > 1}
+                  intervalMs={3500}
+                />
+              </motion.div>
+            );
+          }
+
+          return (
+            <motion.div variants={fadeUp} className="detail-banner-wrapper detail-banner-placeholder">
+              <div className="detail-placeholder-inner">
+                <span className="detail-placeholder-tag">
+                  {campaign.type === 'pool' ? '💰 PRIZE POOL' :
+                   campaign.type === 'discount' ? '🏷️ DISCOUNT' :
+                   isVideoAdCampaign(campaign) ? '🎬 VIDEO AD' : '⚡ HYBRID'}
+                </span>
+                <h3 className="detail-placeholder-title">{campaign.title}</h3>
+                {campaign.slogan && <p className="detail-placeholder-slogan">"{campaign.slogan}"</p>}
+              </div>
+            </motion.div>
+          );
+        })()}
 
         {/* Prize Pool Card */}
         {campaign.prize_pool > 0 && (
