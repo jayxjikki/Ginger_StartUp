@@ -236,21 +236,6 @@
   margin: 0;
 }
 
-.golden-type-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  padding: 2px 8px;
-  border-radius: var(--radius-full, 9999px);
-  background: rgba(255, 215, 0, 0.15);
-  border: 1px solid rgba(255, 215, 0, 0.4);
-  color: #FFD700;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-}
-
 .campaign-type-radio.golden-radio.checked {
   border-color: #FFD700;
 }
@@ -1449,24 +1434,15 @@
 /* ── Venue Type Toggle (Physical vs Online) ───────────── */
 /* ── Video Upload Advertisement Styles ─────────────────── */
 .campaign-videos-uploader-group {
-  border-top: 1px solid rgba(255, 215, 0, 0.2);
-  padding-top: 16px;
-  margin-top: 6px;
-}
-
-.video-section-title-badge {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.gold-sparkle {
-  font-size: 16px;
+  margin-top: 4px;
 }
 
 .gold-label {
   color: #FFD700 !important;
-  font-weight: 700 !important;
+  font-weight: 600 !important;
+  font-size: 14px !important;
+  display: block;
+  margin-bottom: 8px;
 }
 
 .campaign-videos-grid {

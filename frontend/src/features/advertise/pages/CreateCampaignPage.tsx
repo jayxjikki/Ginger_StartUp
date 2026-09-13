@@ -861,13 +861,16 @@ const CreateCampaignPage: React.FC = () => {
         toast.error('Campaign title is compulsory. Please enter a title.');
         return false;
       }
-      if (formData.images.length === 0) {
-        toast.error('At least 1 campaign picture is compulsory. Please upload an image.');
-        return false;
-      }
-      if (formData.type === 'video_ad' && formData.videos.length === 0) {
-        toast.error('Please upload at least 1 video for your Video Upload Advertisement (Max 2).');
-        return false;
+      if (formData.type === 'video_ad') {
+        if (formData.videos.length === 0) {
+          toast.error('Please upload at least 1 video for your Video Upload Advertisement (Max 2).');
+          return false;
+        }
+      } else {
+        if (formData.images.length === 0) {
+          toast.error('At least 1 campaign picture is compulsory. Please upload an image.');
+          return false;
+        }
       }
       if (!formData.videoRequirements?.trim()) {
         toast.error('Video requirements are compulsory. Please detail guidelines for creators.');
@@ -1204,7 +1207,7 @@ const CreateCampaignPage: React.FC = () => {
             ? Number(formData.discountTiers[0].amount) || 0
             : 0,
         verification_days: formData.verificationDays,
-        image_url: formData.images[0] || '',
+        image_url: formData.images[0] || formData.videoThumbnails[0] || '',
         images: formData.images,
         videos: formData.videos,
         video_thumbnails: formData.videoThumbnails,
@@ -1318,12 +1321,7 @@ const CreateCampaignPage: React.FC = () => {
                       onClick={() => handleTypeSelect(type.id)}
                     >
                       <div className="campaign-type-info">
-                        <div className="campaign-type-title-row">
-                          <h4 className="campaign-type-title">{type.label}</h4>
-                          {isGolden && (
-                            <span className="golden-type-badge">✨ Video Ad</span>
-                          )}
-                        </div>
+                        <h4 className="campaign-type-title">{type.label}</h4>
                         <p className="campaign-type-desc">{type.description}</p>
                       </div>
                       <div className={`campaign-type-radio ${isGolden ? 'golden-radio' : ''} ${isSelected ? 'checked' : ''}`}>
@@ -1366,8 +1364,9 @@ const CreateCampaignPage: React.FC = () => {
                   placeholder="Describe your brand and the theme of the campaign..."
                 />
 
-                {/* ── 1st & 2nd: Campaign Images (Up to 3 pictures & Automatic Slideshow, no "Cloudinary") ── */}
-                <div className="form-group campaign-images-uploader-group">
+                {/* ── 1st & 2nd: Campaign Images (Up to 3 pictures & Automatic Slideshow) ── */}
+                {formData.type !== 'video_ad' && (
+                  <div className="form-group campaign-images-uploader-group">
                   <div className="section-title-row">
                     <label className="form-label">Campaign Images ({formData.images.length}/3) *</label>
                     <span className="field-hint-inline">
@@ -1463,25 +1462,14 @@ const CreateCampaignPage: React.FC = () => {
                     </div>
                   )}
                 </div>
+                )}
 
                 {/* ── Video Upload Advertisement (Only for 4th Campaign Type) ── */}
                 {formData.type === 'video_ad' && (
                   <div className="form-group campaign-videos-uploader-group">
-                    <div className="section-title-row">
-                      <div className="video-section-title-badge">
-                        <span className="gold-sparkle">✨</span>
-                        <label className="form-label gold-label">
-                          Campaign Videos ({formData.videos.length}/2) *
-                        </label>
-                      </div>
-                      <span className="field-hint-inline">
-                        Upload up to 2 videos (Max 25MB each).
-                      </span>
-                    </div>
-
-                    <p className="field-hint" style={{ marginTop: 2, marginBottom: 12 }}>
-                      Upload 1 or 2 video advertisements for creators. When clicked from clipping page, videos appear as thumbnails with play & download controls.
-                    </p>
+                    <label className="form-label gold-label">
+                      Campaign Videos ({formData.videos.length}/2) *
+                    </label>
 
                     {/* Hidden video file input */}
                     <input
@@ -2416,16 +2404,18 @@ const CreateCampaignPage: React.FC = () => {
                       </div>
                     )}
 
-                    <div className="review-row">
-                      <span className="review-label">Campaign Pictures</span>
-                      <span className="review-value">
-                        {formData.images.length > 1
-                          ? `${formData.images.length} Pictures (Automatic Slideshow)`
-                          : formData.images.length === 1
-                          ? '1 Picture'
-                          : 'None'}
-                      </span>
-                    </div>
+                    {formData.type !== 'video_ad' && (
+                      <div className="review-row">
+                        <span className="review-label">Campaign Pictures</span>
+                        <span className="review-value">
+                          {formData.images.length > 1
+                            ? `${formData.images.length} Pictures (Automatic Slideshow)`
+                            : formData.images.length === 1
+                            ? '1 Picture'
+                            : 'None'}
+                        </span>
+                      </div>
+                    )}
 
                     {/* ── Direct Discount Tiers (1st in Review) ── */}
                     {formData.directDiscountTiers.some((t) => t.reward?.trim()) && (
