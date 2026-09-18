@@ -3,13 +3,13 @@
 // Campaign creation wizard for business owners
 // ═══════════════════════════════════════════════════════════
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   FiArrowLeft, FiArrowRight, FiPlus, FiTrash2,
   FiDollarSign, FiTarget, FiFileText, FiCheck, FiEye,
-  FiUploadCloud, FiMapPin, FiGlobe
+  FiUploadCloud, FiMapPin, FiGlobe, FiRotateCcw
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import Button from '../../../components/ui/Button';
@@ -28,6 +28,45 @@ import { DIRECT_DISCOUNT_TERMS, type DirectDiscountTierItem } from '../../../typ
 import CampaignCheckoutModal from '../components/CampaignCheckoutModal';
 import './CreateCampaignPage.css';
 
+const DRAFT_STORAGE_KEY = 'ginger_campaign_draft_v1';
+
+const INITIAL_FORM_DATA = {
+  type: 'pool' as string,
+  title: '',
+  description: '',
+  slogan: '',
+  // Location: Physical vs Online / None
+  isOnlineVenue: false,
+  locationState: 'Karnataka',
+  locationCity: 'Bengaluru',
+  locationCustomCity: '',
+  locationExact: '',
+  location: 'Bengaluru, Karnataka',
+  videoRequirements: '',
+  keywords: [] as string[],
+  keywordInput: '',
+  platforms: ['youtube', 'instagram'] as string[],
+  prizePool: '',
+  verificationDays: 30,
+  directDiscountTiers: [] as DirectDiscountTierItem[],
+  hybridRewardType: 'cash' as 'cash' | 'discount',
+  cashTiers: [
+    { minViews: '', amount: '' },
+  ],
+  discountTiers: [
+    { minViews: '', amount: '' },
+  ],
+  giftTiers: [
+    { type: 'views' as 'views' | 'text', minViews: '', condition: '', gift: '' },
+  ],
+  images: [] as string[],
+  image_url: '',
+  videos: [] as string[],
+  videoThumbnails: [] as string[],
+};
+
+type CampaignFormData = typeof INITIAL_FORM_DATA;
+
 const steps = [
   { id: 1, label: 'Type', icon: <FiTarget size={16} /> },
   { id: 2, label: 'Details', icon: <FiFileText size={16} /> },
@@ -37,10 +76,13 @@ const steps = [
 
 const CreateCampaignPage: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuthStore();
   const { createCampaign } = useCampaignStore();
   
-  const [currentStep, setCurrentStep] = useState(1);
+  const stepParam = parseInt(searchParams.get('step') || '1', 10);
+  const initialStep = !isNaN(stepParam) && stepParam >= 1 && stepParam <= 4 ? stepParam : 1;
+  const [currentStep, setCurrentStep] = useState(initialStep);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
 
@@ -53,40 +95,37 @@ const CreateCampaignPage: React.FC = () => {
   const [previewVideoUrl, setPreviewVideoUrl] = useState<string | null>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
 
-  const [formData, setFormData] = useState({
-    type: 'pool' as string,
-    title: '',
-    description: '',
-    slogan: '',
-    // Location: Physical vs Online / None
-    isOnlineVenue: false,
-    locationState: 'Karnataka',
-    locationCity: 'Bengaluru',
-    locationCustomCity: '',
-    locationExact: '',
-    location: 'Bengaluru, Karnataka',
-    videoRequirements: '',
-    keywords: [] as string[],
-    keywordInput: '',
-    platforms: ['youtube', 'instagram'] as string[],
-    prizePool: '',
-    verificationDays: 30,
-    directDiscountTiers: [] as DirectDiscountTierItem[],
-    hybridRewardType: 'cash' as 'cash' | 'discount',
-    cashTiers: [
-      { minViews: '', amount: '' },
-    ],
-    discountTiers: [
-      { minViews: '', amount: '' },
-    ],
-    giftTiers: [
-      { type: 'views' as 'views' | 'text', minViews: '', condition: '', gift: '' },
-    ],
-    images: [] as string[],
-    image_url: '',
-    videos: [] as string[],
-    videoThumbnails: [] as string[],
+  const [formData, setFormData] = useState<CampaignFormData>(() => {
+    try {
+      const saved = localStorage.getItem(DRAFT_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return { ...INITIAL_FORM_DATA, ...parsed } as CampaignFormData;
+      }
+    } catch (e) {
+      console.warn('Could not load campaign draft from storage', e);
+    }
+    return INITIAL_FORM_DATA;
   });
+
+  // Keep currentStep synchronized with URL (browser back/forward buttons, etc.)
+  useEffect(() => {
+    const rawStep = searchParams.get('step');
+    const parsedStep = parseInt(rawStep || '1', 10);
+    const validStep = !isNaN(parsedStep) && parsedStep >= 1 && parsedStep <= 4 ? parsedStep : 1;
+    if (validStep !== currentStep) {
+      setCurrentStep(validStep);
+    }
+  }, [searchParams]);
+
+  // Auto-save form draft to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(formData));
+    } catch (e) {
+      console.warn('Could not save campaign draft', e);
+    }
+  }, [formData]);
 
   const updateField = (field: string, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -1078,10 +1117,71 @@ const CreateCampaignPage: React.FC = () => {
     return true;
   };
 
+  const goToStep = (targetStep: number) => {
+    setCurrentStep(targetStep);
+    if (targetStep === 1) {
+      setSearchParams({});
+    } else {
+      setSearchParams({ step: String(targetStep) });
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const handleNextStep = () => {
     if (!validateStep(currentStep)) return;
-    setCurrentStep((s) => s + 1);
+    goToStep(currentStep + 1);
   };
+
+  const handleBack = () => {
+    if (currentStep > 1) {
+      // If previous entry was in this wizard, navigate(-1) pops history naturally
+      if (searchParams.get('step') && Number(searchParams.get('step')) > 1) {
+        navigate(-1);
+      } else {
+        goToStep(currentStep - 1);
+      }
+    } else {
+      // On Step 1: User wants to exit the campaign creator
+      if (window.history.state && window.history.state.idx > 0) {
+        navigate(-1);
+      } else {
+        navigate('/marketplace');
+      }
+    }
+  };
+
+  const handleStepClick = (targetStep: number) => {
+    if (targetStep === currentStep) return;
+    if (targetStep < currentStep) {
+      // Going backward is always allowed without blocking
+      goToStep(targetStep);
+    } else {
+      // Going forward requires validation of intermediate steps
+      for (let s = currentStep; s < targetStep; s++) {
+        if (!validateStep(s)) return;
+      }
+      goToStep(targetStep);
+    }
+  };
+
+  const handleResetDraft = () => {
+    try {
+      localStorage.removeItem(DRAFT_STORAGE_KEY);
+    } catch (e) {}
+    setFormData(INITIAL_FORM_DATA);
+    goToStep(1);
+    toast.success('Form cleared. Starting fresh!');
+  };
+
+  const hasDraftContent = Boolean(
+    formData.title ||
+    formData.description ||
+    formData.slogan ||
+    formData.images.length > 0 ||
+    formData.videos.length > 0 ||
+    formData.prizePool ||
+    formData.directDiscountTiers.length > 0
+  );
 
   const handleLaunch = () => {
     if (!validateStep(2) || !validateStep(3)) return;
@@ -1223,6 +1323,9 @@ const CreateCampaignPage: React.FC = () => {
         payout_tiers: allTiers as any,
       });
       toast.success('Campaign published successfully! 🚀');
+      try {
+        localStorage.removeItem(DRAFT_STORAGE_KEY);
+      } catch (e) {}
       navigate('/campaigns');
     } catch (err: any) {
       console.error('Failed to create campaign:', err);
@@ -1237,11 +1340,30 @@ const CreateCampaignPage: React.FC = () => {
       <div className="create-campaign">
         {/* Top Bar */}
         <div className="create-topbar">
-          <button className="topbar-back-btn" onClick={() => navigate(-1)} aria-label="Go back">
+          <button
+            className="topbar-back-btn"
+            onClick={handleBack}
+            aria-label={currentStep > 1 ? 'Go to previous step' : 'Go back'}
+            type="button"
+          >
             <FiArrowLeft size={20} />
           </button>
           <h2 className="create-topbar-title">Create Campaign</h2>
-          <div style={{ width: 40 }} />
+          <div className="topbar-action-wrap">
+            {hasDraftContent ? (
+              <button
+                type="button"
+                className="topbar-reset-btn"
+                onClick={handleResetDraft}
+                title="Clear form and start fresh"
+                aria-label="Clear form and start fresh"
+              >
+                <FiRotateCcw size={16} />
+              </button>
+            ) : (
+              <div style={{ width: 40 }} />
+            )}
+          </div>
         </div>
 
         {/* Progress Stepper */}
@@ -1256,10 +1378,15 @@ const CreateCampaignPage: React.FC = () => {
           {steps.map((step) => {
             const isCompleted = currentStep > step.id;
             const isCurrent = currentStep === step.id;
+            const canClick = step.id < currentStep;
             return (
               <div
                 key={step.id}
-                className={`step-item ${isCompleted ? 'completed' : ''} ${isCurrent ? 'current' : ''}`}
+                className={`step-item ${isCompleted ? 'completed' : ''} ${isCurrent ? 'current' : ''} ${canClick ? 'clickable' : ''}`}
+                onClick={() => canClick && handleStepClick(step.id)}
+                role={canClick ? 'button' : undefined}
+                tabIndex={canClick ? 0 : undefined}
+                title={canClick ? `Go back to ${step.label}` : undefined}
               >
                 <div className="step-dot">
                   <AnimatePresence mode="wait" initial={false}>
@@ -2571,7 +2698,7 @@ const CreateCampaignPage: React.FC = () => {
             <Button
               variant="secondary"
               size="md"
-              onClick={() => setCurrentStep((s) => s - 1)}
+              onClick={handleBack}
               icon={<FiArrowLeft />}
               type="button"
             >

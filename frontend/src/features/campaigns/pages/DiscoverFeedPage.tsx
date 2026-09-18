@@ -13,6 +13,8 @@ import { formatCount } from '../../../utils/formatters';
 import { getPdfViewerUrl, triggerFileDownload } from '../../../lib/cloudinary';
 import { INDIAN_STATES_AND_CITIES } from '../../../lib/indianLocations';
 import { CATEGORIES_DATA } from '../../../lib/categoriesData';
+import FeaturedCreatorsCarousel from '../components/FeaturedCreatorsCarousel';
+import { DUMMY_CREATORS } from '../data/dummyData';
 import './DiscoverFeedPage.css';
 
 const DiscoverFeedPage: React.FC = () => {
@@ -115,9 +117,78 @@ const DiscoverFeedPage: React.FC = () => {
           };
         });
 
-        setCreators(mappedCreators);
+        // Map rich dummy creators across all 13 categories
+        const mappedDummyCreators = DUMMY_CREATORS.map((d) => ({
+          id: d.id,
+          fullName: d.fullName,
+          handle: d.handle,
+          category: d.category,
+          followers: d.followers * 1000,
+          followersStr: d.followersStr,
+          coverUrl: d.coverUrl,
+          perPost: d.perPost * 1000,
+          location: d.location,
+          avatarUrl: d.avatarUrl,
+          platforms: d.platforms,
+          socialLinks: d.platforms.map((pl, i) => ({
+            id: `dummy-sl-${d.id}-${i}`,
+            profile_id: d.id,
+            platform: pl,
+            url: `https://${pl}.com/${d.handle.replace('@', '')}`
+          })),
+          pinnedSocials: [],
+          telegramUsername: d.platforms.includes('telegram') ? d.handle.replace('@', '') : undefined,
+          telegramMembers: d.platforms.includes('telegram') ? 14500 : 0,
+          hasMediaKit: true,
+          mediaKitItems: [
+            {
+              id: `dummy-mk-${d.id}`,
+              profile_id: d.id,
+              title: `${d.fullName} Media Kit`,
+              description: `Brand partnership portfolio and performance analytics for ${d.fullName}.`,
+              image_url: d.coverUrl,
+              created_at: new Date().toISOString()
+            }
+          ],
+          verifiedChannels: [],
+          isVerified: d.isVerified,
+          featuredTitle: d.featuredTitle,
+          tagline: d.tagline
+        }));
+
+        // Merge: real database profiles first, then diverse dummy accounts
+        const existingIds = new Set(mappedCreators.map((c: any) => c.id));
+        const combinedCreators = [
+          ...mappedCreators,
+          ...mappedDummyCreators.filter((d) => !existingIds.has(d.id))
+        ];
+
+        setCreators(combinedCreators);
       } catch (err) {
         console.error('Error fetching discover creators:', err);
+        const fallbackDummy = DUMMY_CREATORS.map((d) => ({
+          id: d.id,
+          fullName: d.fullName,
+          handle: d.handle,
+          category: d.category,
+          followers: d.followers * 1000,
+          followersStr: d.followersStr,
+          coverUrl: d.coverUrl,
+          perPost: d.perPost * 1000,
+          location: d.location,
+          avatarUrl: d.avatarUrl,
+          platforms: d.platforms,
+          socialLinks: [],
+          pinnedSocials: [],
+          telegramMembers: 0,
+          hasMediaKit: true,
+          mediaKitItems: [],
+          verifiedChannels: [],
+          isVerified: d.isVerified,
+          featuredTitle: d.featuredTitle,
+          tagline: d.tagline
+        }));
+        setCreators(fallbackDummy);
       } finally {
         setIsLoading(false);
       }
@@ -184,6 +255,19 @@ const DiscoverFeedPage: React.FC = () => {
       return true;
     });
   }, [creators, activeCategory, activeSubcategory, searchQuery, activeFilters]);
+
+  // Curate creators for the 3D animated carousel:
+  // If activeCategory is 'All', pick top creators across all niches.
+  // If a category is selected, prioritize creators matching that category (falling back to top creators if < 3).
+  const featuredCarouselCreators = useMemo(() => {
+    if (activeCategory !== 'All') {
+      const categoryMatches = filteredCreators.filter((c) => Boolean(c.coverUrl || c.avatarUrl));
+      if (categoryMatches.length >= 3) {
+        return categoryMatches;
+      }
+    }
+    return [...creators].sort((a, b) => (b.followers || 0) - (a.followers || 0));
+  }, [activeCategory, filteredCreators, creators]);
 
   // Reset filters when the category tab changes, or when 'reset-feed-filters' event fires
   React.useEffect(() => {
@@ -312,6 +396,27 @@ const DiscoverFeedPage: React.FC = () => {
             </div>
           );
         })()}
+
+        {/* Featured Creators 3D Animated Showcase Carousel */}
+        {!isLoading && featuredCarouselCreators.length > 0 && (
+          <FeaturedCreatorsCarousel 
+            creators={featuredCarouselCreators}
+            title={activeCategory === 'All' ? 'Featured Creators' : `Top in ${activeCategory}`}
+            subtitle={activeCategory === 'All' ? 'Top verified influencers and trending talent' : `Highlighted creators in ${activeCategory.toLowerCase()}`}
+          />
+        )}
+
+        {/* All / Filtered Creators Header */}
+        {!isLoading && filteredCreators.length > 0 && (
+          <div className="creator-list-header">
+            <h2 className="creator-list-title">
+              {activeCategory === 'All' ? 'All Creators' : `${activeCategory} Creators`}
+            </h2>
+            <span className="creator-list-count">
+              {filteredCreators.length} {filteredCreators.length === 1 ? 'creator' : 'creators'}
+            </span>
+          </div>
+        )}
 
         {/* Creator Cards List */}
         <div className="creator-list">

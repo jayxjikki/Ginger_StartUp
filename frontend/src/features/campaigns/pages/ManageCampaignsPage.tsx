@@ -70,7 +70,7 @@ const ManageCampaignsPage: React.FC = () => {
                 <h3 className="empty-title">No Campaigns Yet</h3>
                 <p className="empty-text">Launch your first campaign and start collaborating with amazing creators across the globe.</p>
                 
-                <button className="fancy-btn primary-glow mt-8 w-full max-w-[280px]" onClick={() => navigate('/advertise/create')}>
+                <button className="fancy-btn primary-glow mt-8 w-full max-w-[280px]" onClick={() => navigate('/advertise')}>
                   <span className="material-symbols-outlined mr-2">add_circle</span>
                   Create Campaign
                 </button>

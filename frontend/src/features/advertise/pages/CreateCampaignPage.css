@@ -47,6 +47,35 @@
   transform: translateX(-2px);
 }
 
+.topbar-action-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  width: 40px;
+  height: 40px;
+}
+
+.topbar-reset-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-tertiary, #71717a);
+  cursor: pointer;
+  transition: all var(--duration-fast, 150ms) ease;
+}
+
+.topbar-reset-btn:hover {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.35);
+  color: #ef4444;
+  transform: rotate(-30deg);
+}
+
 .create-topbar-title {
   font-family: var(--font-display, inherit);
   font-size: 20px;
@@ -146,6 +175,20 @@
 
 .step-item.completed .step-label {
   color: var(--text-secondary, #a1a1aa);
+}
+
+.step-item.clickable {
+  cursor: pointer;
+}
+
+.step-item.clickable:hover .step-dot {
+  transform: scale(1.08);
+  border-color: var(--ginger-400, #ff8433);
+  box-shadow: 0 0 0 4px #0c0c0e, 0 0 14px rgba(247, 147, 30, 0.35);
+}
+
+.step-item.clickable:hover .step-label {
+  color: var(--ginger-400, #ff8433);
 }
 
 /* ── Step Heading Group ────────────────────────────────── */

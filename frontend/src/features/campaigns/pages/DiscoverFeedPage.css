@@ -228,6 +228,34 @@
   gap: 4px;
 }
 
+.creator-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+  margin-bottom: 16px;
+  padding: 0 4px;
+}
+
+.creator-list-title {
+  font-family: var(--font-display, 'Hanken Grotesk', sans-serif);
+  font-size: 18px;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.creator-list-count {
+  font-size: 12px;
+  font-weight: 600;
+  color: #a1a1aa;
+  background: rgba(255, 255, 255, 0.06);
+  padding: 3px 10px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
 .creator-list {
   display: flex;
   flex-direction: column;

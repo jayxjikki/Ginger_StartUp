@@ -286,6 +286,10 @@ const AppRoutes: React.FC = () => {
             }
           />
           <Route
+            path="/advertise/create"
+            element={<Navigate to="/advertise" replace />}
+          />
+          <Route
             path="/wallet"
             element={
               <ProtectedRoute>

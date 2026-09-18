@@ -8,6 +8,7 @@ import { persist, devtools } from 'zustand/middleware';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from './authStore';
 import type { Profile } from '../types/user.types';
+import { getDummyCreatorById } from '../features/campaigns/data/dummyData';
 
 interface Achievement {
   id: string;
@@ -125,33 +126,69 @@ export const useProfileStore = create<ProfileState>()(
                 return;
               }
 
+              const dummy = getDummyCreatorById(userId);
+              const fullName = dummy?.fullName || 'Featured Creator';
+              const username = dummy?.handle || `@creator_${userId.replace('dummy-', '')}`;
+              const avatarUrl = dummy?.avatarUrl || 'https://via.placeholder.com/150/333/fff?text=?';
+              const bio = dummy?.bio || 'Content creator & digital storyteller.';
+              const location = dummy?.location || 'India';
+              const followers = (dummy?.followers || 500) * 1000;
+              const primaryCategory = (dummy?.category || '').split(',')[0].trim() || 'Influencer';
+
               const dummyProfile = {
                 id: userId,
-                full_name: userId === 'dummy-jikki' ? 'Jikki Thakur' : 'Meera Travels',
-                username: userId === 'dummy-jikki' ? '@jikkithakur' : '@meeratravels',
-                avatar_url: userId === 'dummy-jikki' 
-                  ? 'https://lh3.googleusercontent.com/aida/AP1WRLsAciJvVI6nGE8Riv5pl5AiCdsgUyuCBIztyf8yJ1nMsVzN_tKamimn4oVc377SuO03Y0BLG3vBSg6L9Gb661VbZxjTCOmgqtLkycpkas-Y4kNRelTvegSPmDOwuXDoRbG_T9NDOpD85w4fS1MEQXqfzIMok67ViFzp1sO1_5M7JgPmQnt8hPSXXoZIoKnrd1CqosMcNxDB8nQ1sCkiHfR8QRnCR7F_sliBrGJirtLIostx8BD9Qdq5Oh0' 
-                  : 'https://via.placeholder.com/150/333/fff?text=MT',
-                bio: userId === 'dummy-jikki' ? 'Tech professional & passionate world traveler.' : 'Travel vlogger | Exploring the world one city at a time.',
+                full_name: fullName,
+                username: username,
+                avatar_url: avatarUrl,
+                bio: bio,
+                location: location,
+                category: primaryCategory,
+                follower_count: followers,
+                is_verified: dummy?.isVerified ?? true,
                 created_at: new Date().toISOString()
               } as unknown as Profile;
-              
+
+              const dummyPosts = dummy?.samplePosts && dummy.samplePosts.length > 0
+                ? dummy.samplePosts
+                : [
+                    { id: '1', title: 'Creative Showcase', content: 'Sharing behind-the-scenes from recent campaigns and collaborations.', image_url: dummy?.coverUrl || 'https://images.unsplash.com/photo-1542204165-65bf26472b9b?q=80&w=1000&auto=format&fit=crop', created_at: new Date().toISOString() }
+                  ];
+
+              const dummyAchievements = [
+                { id: 'ach-1', profile_id: userId, title: 'Top 1% Creator', description: 'Awarded for exceptional engagement rate and viral campaign reach.', date_earned: new Date().toISOString(), icon_url: 'https://images.unsplash.com/photo-1567427017947-545c5f8d16ad?auto=format&fit=crop&q=80&w=200' },
+                { id: 'ach-2', profile_id: userId, title: 'Verified Influencer', description: 'Identity and verified metrics certified by Ginger Creator Protocol.', date_earned: new Date().toISOString(), icon_url: 'https://images.unsplash.com/photo-1533227268428-f9ed0900fb3b?auto=format&fit=crop&q=80&w=200' }
+              ];
+
+              const dummySocialLinks = (dummy?.platforms || ['instagram', 'youtube']).map((platform, idx) => ({
+                id: `sl-${idx}`,
+                profile_id: userId,
+                platform: platform,
+                url: `https://${platform}.com/${username.replace('@', '')}`,
+                follower_count: Math.round(followers / (idx + 1))
+              }));
+
               set({
                 profile: dummyProfile,
-                achievements: [],
-                posts: [
-                  { id: '1', title: 'Sample Post', content: 'Dummy post content', image_url: 'https://images.unsplash.com/photo-1542204165-65bf26472b9b?q=80&w=1000&auto=format&fit=crop', created_at: new Date().toISOString() }
-                ],
-                socialLinks: [],
+                achievements: dummyAchievements as any,
+                posts: dummyPosts,
+                socialLinks: dummySocialLinks as any,
                 messages: [],
-                mediaKitItems: [],
+                mediaKitItems: [
+                  {
+                    id: `mk-${userId}`,
+                    title: 'Official Media Kit',
+                    description: `Audience demographics, engagement metrics, and rate cards for ${fullName}.`,
+                    image_url: dummy?.coverUrl || 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=800',
+                    created_at: new Date().toISOString()
+                  }
+                ],
                 verifiedChannels: [],
                 stats: {
-                  totalEarnings: 12000,
-                  activeCampaigns: 5,
-                  completedCampaigns: 50,
-                  totalViews: 1200000,
-                  telegramMembers: 15400
+                  totalEarnings: (dummy?.perPost || 15) * 1000 * 12,
+                  activeCampaigns: 4,
+                  completedCampaigns: parseInt(dummy?.campaigns || '45', 10) || 45,
+                  totalViews: followers * 3,
+                  telegramMembers: dummy?.platforms.includes('telegram') ? 14500 : 0
                 },
                 isLoading: false
               });
