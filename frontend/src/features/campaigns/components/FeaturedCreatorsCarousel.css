@@ -98,7 +98,9 @@
   justify-content: space-between;
   transform-style: preserve-3d;
   backface-visibility: hidden;
-  will-change: transform, opacity, filter;
+  -webkit-backface-visibility: hidden;
+  contain: layout paint;
+  will-change: transform, opacity;
   transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
@@ -135,13 +137,23 @@
     rgba(12, 12, 14, 0.5) 60%,
     rgba(10, 10, 12, 0.96) 100%
   );
-  backdrop-filter: blur(0.5px);
+}
+
+/* Smooth Darken Overlay for non-active 3D cards (Replaces GPU-heavy filter:brightness) */
+.card-darken-overlay {
+  position: absolute;
+  inset: 0;
+  background: #000000;
+  z-index: 2;
+  pointer-events: none;
+  transition: opacity 0.38s cubic-bezier(0.25, 1, 0.5, 1);
+  border-radius: inherit;
 }
 
 /* ── Top Section (Editorial Magazine Vibe) ───────────────── */
 .card-top-editorial {
   position: relative;
-  z-index: 2;
+  z-index: 4;
   padding: 18px 18px 0 18px;
 }
 
@@ -161,8 +173,7 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: #ffffff;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(12px);
+  background: rgba(10, 10, 12, 0.75);
   border: 1px solid rgba(255, 255, 255, 0.15);
   padding: 4px 10px;
   border-radius: 9999px;
@@ -265,9 +276,8 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(22, 22, 26, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 6px;
   padding: 3px 8px;
   font-size: 11px;
@@ -326,8 +336,7 @@
   width: 42px;
   height: 42px;
   border-radius: 50%;
-  background: rgba(18, 18, 22, 0.7);
-  backdrop-filter: blur(12px);
+  background: rgba(18, 18, 22, 0.88);
   border: 1px solid rgba(255, 255, 255, 0.15);
   color: #ffffff;
   display: flex;
@@ -385,6 +394,7 @@
 /* ── Responsive Styling ─────────────────────────────────── */
 @media (max-width: 768px) {
   .carousel-3d-stage {
+    perspective: 900px;
     height: 380px;
   }
 
@@ -396,6 +406,11 @@
     width: 235px;
     height: 340px;
     border-radius: 20px;
+    box-shadow: 0 10px 24px -6px rgba(0, 0, 0, 0.85);
+  }
+
+  .carousel-card-3d.is-active {
+    box-shadow: 0 14px 32px -8px rgba(0, 0, 0, 0.95), 0 0 16px rgba(255, 107, 53, 0.22);
   }
 
   .card-top-editorial {

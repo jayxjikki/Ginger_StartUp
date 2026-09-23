@@ -37,6 +37,14 @@ const FeaturedCreatorsCarousel: React.FC<FeaturedCreatorsCarouselProps> = ({
   const [isHovered, setIsHovered] = useState(false);
   const [isInteracting, setIsInteracting] = useState(false);
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  const [touchStartY, setTouchStartY] = useState<number | null>(null);
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth <= 640);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth <= 640);
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Use up to 10 top creators
   const featuredList = useMemo(() => {
@@ -65,7 +73,7 @@ const FeaturedCreatorsCarousel: React.FC<FeaturedCreatorsCarouselProps> = ({
 
     const interval = setInterval(() => {
       handleNext();
-    }, 3500);
+    }, 4000);
 
     return () => clearInterval(interval);
   }, [isHovered, isInteracting, count, handleNext]);
@@ -74,14 +82,18 @@ const FeaturedCreatorsCarousel: React.FC<FeaturedCreatorsCarouselProps> = ({
   const handleTouchStart = (e: React.TouchEvent) => {
     setIsInteracting(true);
     setTouchStartX(e.touches[0].clientX);
+    setTouchStartY(e.touches[0].clientY);
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
     if (touchStartX === null) return;
     const touchEndX = e.changedTouches[0].clientX;
+    const touchEndY = e.changedTouches[0].clientY;
     const deltaX = touchEndX - touchStartX;
+    const deltaY = touchEndY - (touchStartY || touchEndY);
 
-    if (Math.abs(deltaX) > 45) {
+    // Responsive swipe detection (effortless 28px threshold with horizontal dominance check)
+    if (Math.abs(deltaX) > 28 && Math.abs(deltaX) > Math.abs(deltaY)) {
       if (deltaX < 0) {
         handleNext();
       } else {
@@ -89,6 +101,7 @@ const FeaturedCreatorsCarousel: React.FC<FeaturedCreatorsCarouselProps> = ({
       }
     }
     setTouchStartX(null);
+    setTouchStartY(null);
     const resumeTimer = setTimeout(() => setIsInteracting(false), 2500);
     return () => clearTimeout(resumeTimer);
   };
@@ -112,67 +125,67 @@ const FeaturedCreatorsCarousel: React.FC<FeaturedCreatorsCarouselProps> = ({
     if (offset === 0) {
       return {
         x: '0%',
-        scale: 1.05,
+        scale: isMobile ? 1.02 : 1.05,
         rotateY: 0,
         opacity: 1,
+        dimOpacity: 0,
         zIndex: 10,
-        filter: 'brightness(1)',
         pointerEvents: 'auto' as const,
         isVisible: true
       };
     } else if (offset === -1) {
       return {
-        x: '-62%',
-        scale: 0.86,
-        rotateY: 22,
-        opacity: 0.65,
+        x: isMobile ? '-58%' : '-62%',
+        scale: isMobile ? 0.88 : 0.86,
+        rotateY: isMobile ? 10 : 18,
+        opacity: isMobile ? 0.6 : 0.7,
+        dimOpacity: 0.35,
         zIndex: 5,
-        filter: 'brightness(0.72)',
         pointerEvents: 'auto' as const,
         isVisible: true
       };
     } else if (offset === 1) {
       return {
-        x: '62%',
-        scale: 0.86,
-        rotateY: -22,
-        opacity: 0.65,
+        x: isMobile ? '58%' : '62%',
+        scale: isMobile ? 0.88 : 0.86,
+        rotateY: isMobile ? -10 : -18,
+        opacity: isMobile ? 0.6 : 0.7,
+        dimOpacity: 0.35,
         zIndex: 5,
-        filter: 'brightness(0.72)',
         pointerEvents: 'auto' as const,
         isVisible: true
       };
     } else if (offset === -2) {
       return {
-        x: '-110%',
-        scale: 0.72,
-        rotateY: 34,
-        opacity: 0.28,
+        x: isMobile ? '-98%' : '-108%',
+        scale: 0.74,
+        rotateY: isMobile ? 16 : 26,
+        opacity: 0.25,
+        dimOpacity: 0.65,
         zIndex: 2,
-        filter: 'brightness(0.45)',
         pointerEvents: 'none' as const,
         isVisible: true
       };
     } else if (offset === 2) {
       return {
-        x: '110%',
-        scale: 0.72,
-        rotateY: -34,
-        opacity: 0.28,
+        x: isMobile ? '98%' : '108%',
+        scale: 0.74,
+        rotateY: isMobile ? -16 : -26,
+        opacity: 0.25,
+        dimOpacity: 0.65,
         zIndex: 2,
-        filter: 'brightness(0.45)',
         pointerEvents: 'none' as const,
         isVisible: true
       };
     }
 
     return {
-      x: offset > 0 ? '160%' : '-160%',
+      x: offset > 0 ? '150%' : '-150%',
       scale: 0.6,
-      rotateY: offset > 0 ? -40 : 40,
+      rotateY: offset > 0 ? -30 : 30,
       opacity: 0,
+      dimOpacity: 0.9,
       zIndex: 0,
-      filter: 'brightness(0.3)',
       pointerEvents: 'none' as const,
       isVisible: false
     };
@@ -247,11 +260,10 @@ const FeaturedCreatorsCarousel: React.FC<FeaturedCreatorsCarouselProps> = ({
                   rotateY: pos.rotateY,
                   opacity: pos.opacity,
                   zIndex: pos.zIndex,
-                  filter: pos.filter,
                 }}
                 transition={{
-                  duration: 0.6,
-                  ease: [0.22, 1, 0.36, 1], // ultra-smooth ease-out
+                  duration: pos.isVisible ? 0.38 : 0, // Instant transition for wrapping invisible cards so they never sweep across the screen
+                  ease: [0.25, 1, 0.5, 1], // Snappy and butter-smooth ease
                 }}
                 style={{
                   pointerEvents: pos.pointerEvents,
@@ -275,6 +287,7 @@ const FeaturedCreatorsCarousel: React.FC<FeaturedCreatorsCarouselProps> = ({
                   }}
                 >
                   <div className="card-gradient-overlay" />
+                  <div className="card-darken-overlay" style={{ opacity: pos.dimOpacity }} />
                 </div>
 
                 {/* Editorial Top Section (Inspired by reference videos) */}
