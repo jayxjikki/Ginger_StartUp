@@ -782,54 +782,67 @@ const CampaignDetailPage: React.FC = () => {
                 });
               }
 
-              const sortedTiers = rawTiers.sort((a: any, b: any) => {
-                const isDirectA = parseTierReward(a).isDirectDiscount;
-                const isDirectB = parseTierReward(b).isDirectDiscount;
-                if (isDirectA && !isDirectB) return -1;
-                if (!isDirectA && isDirectB) return 1;
-                return 0;
-              });
+              const directDiscountTiers: any[] = [];
+              const regularTiers: any[] = [];
 
-              return sortedTiers.map((tier: any, idx: number) => {
+              rawTiers.forEach((tier: any) => {
                 const parsed = parseTierReward(tier);
                 if (parsed.isDirectDiscount) {
-                  return (
+                  directDiscountTiers.push({ tier, parsed });
+                } else {
+                  regularTiers.push({ tier, parsed });
+                }
+              });
+
+              return (
+                <>
+                  {/* Direct Discount Tiers in ONE single consolidated card */}
+                  {directDiscountTiers.length > 0 && (
                     <motion.div
-                      key={tier.id || idx}
                       className="payout-tier gold-detail-tier"
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.2 + idx * 0.08, type: 'spring' as const, stiffness: 300, damping: 30 }}
+                      transition={{ delay: 0.2, type: 'spring' as const, stiffness: 300, damping: 30 }}
                     >
                       <div className="gold-detail-header-tag">
-                        <span>✨ DIRECT DISCOUNT TIER</span>
+                        <span>{directDiscountTiers.length > 1 ? '✨ DIRECT DISCOUNT TIERS' : '✨ DIRECT DISCOUNT TIER'}</span>
+                        {directDiscountTiers.length > 1 && (
+                          <span className="gold-detail-count-badge">
+                            {directDiscountTiers.length} Perks
+                          </span>
+                        )}
                       </div>
-                      <div className="gold-detail-content">
-                        <div className="tier-views">
-                          <div className="tier-dot gold-detail-dot" />
-                          <span className="gold-detail-term">
-                            {parsed.conditionText}
-                          </span>
-                        </div>
-                        <div className="tier-arrow gold-detail-arrow">→</div>
-                        <div className="tier-reward">
-                          <span className="tier-amount gold-detail-amount">
-                            🏷️ {parsed.rewardText}
-                          </span>
-                        </div>
+                      <div className="gold-detail-items-list">
+                        {directDiscountTiers.map(({ tier, parsed }, idx) => (
+                          <div key={tier.id || idx} className="gold-detail-item-row">
+                            <div className="tier-views">
+                              <div className="tier-dot gold-detail-dot" />
+                              <span className="gold-detail-term">
+                                {parsed.conditionText}
+                              </span>
+                            </div>
+                            <div className="tier-arrow gold-detail-arrow">→</div>
+                            <div className="tier-reward">
+                              <span className="tier-amount gold-detail-amount">
+                                🏷️ {parsed.rewardText}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </motion.div>
-                  );
-                }
+                  )}
 
-                return (
-                  <motion.div
-                    key={tier.id || idx}
-                    className="payout-tier"
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.3 + idx * 0.08, type: 'spring' as const, stiffness: 300, damping: 30 }}
-                  >
+                  {/* Regular Tiers */}
+                  {regularTiers.map(({ tier, parsed }, idx) => {
+                    return (
+                      <motion.div
+                        key={tier.id || idx}
+                        className="payout-tier"
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.25 + idx * 0.08, type: 'spring' as const, stiffness: 300, damping: 30 }}
+                      >
                     <div className="tier-views">
                       <div className="tier-dot" />
                       <span>
@@ -861,8 +874,10 @@ const CampaignDetailPage: React.FC = () => {
                     </div>
                   </motion.div>
                 );
-              });
-            })()}
+              })}
+            </>
+          );
+        })()}
           </div>
         </motion.div>
 

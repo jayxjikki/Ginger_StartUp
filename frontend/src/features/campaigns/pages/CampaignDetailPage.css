@@ -305,9 +305,12 @@
 .gold-detail-header-tag {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin-bottom: 2px;
 }
 
-.gold-detail-header-tag span {
+.gold-detail-header-tag span:first-child {
   font-size: 10px;
   font-weight: 800;
   text-transform: uppercase;
@@ -317,6 +320,37 @@
   padding: 2px 7px;
   border-radius: 4px;
   box-shadow: 0 1px 4px rgba(245, 158, 11, 0.4);
+}
+
+.gold-detail-count-badge {
+  font-size: 10px;
+  font-weight: 700;
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  padding: 1px 7px;
+  border-radius: 9999px;
+  letter-spacing: 0.02em;
+}
+
+.gold-detail-items-list {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  gap: 2px;
+}
+
+.gold-detail-item-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: var(--space-3);
+  padding: 6px 0;
+}
+
+.gold-detail-item-row:not(:last-child) {
+  border-bottom: 1px dashed rgba(255, 215, 0, 0.2);
 }
 
 .gold-detail-content {

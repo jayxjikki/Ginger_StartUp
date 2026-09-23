@@ -4,6 +4,7 @@
 // ═══════════════════════════════════════════════════════════
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import ReactDOM from 'react-dom';
 import type { Campaign } from '../../../types/campaign.types';
 import { 
   type Coordinates, 
@@ -49,9 +50,18 @@ export const LocationCampaignMapModal: React.FC<LocationCampaignMapModalProps> =
   // Map interactive state
   const [zoomLevel, setZoomLevel] = useState<number>(1); // 0.4x to 3.0x
   const [panOffset, setPanOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState(false);
   const dragStartRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const viewportRef = useRef<HTMLDivElement>(null);
+
+  // Hardware-accelerated interaction refs for buttery 60/120fps direct DOM transforms
+  const panRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const zoomRef = useRef<number>(1);
+  const isDraggingRef = useRef<boolean>(false);
+  const rafIdRef = useRef<number | null>(null);
+
+  const worldLayerRef = useRef<HTMLDivElement>(null);
+  const gridLayerRef = useRef<HTMLDivElement>(null);
+  const hudZoomRef = useRef<HTMLDivElement>(null);
 
   // Touch gesture tracking for mobile: two-finger pinch-to-zoom and 1-finger panning
   const touchStateRef = useRef<{
@@ -284,25 +294,202 @@ export const LocationCampaignMapModal: React.FC<LocationCampaignMapModalProps> =
     return finalizedList.sort((a, b) => a.distanceKm - b.distanceKm);
   }, [campaigns, userLocation, activeRadiusKm, activeTypeFilter]);
 
-  // Handle Pan Events (Mouse)
+  // Direct DOM hardware-accelerated transform without React re-render overhead
+  const applyTransform = (x: number, y: number, zoom: number) => {
+    if (worldLayerRef.current) {
+      worldLayerRef.current.style.transform = `translate3d(${x}px, ${y}px, 0) scale(${zoom})`;
+      worldLayerRef.current.style.setProperty('--zoom-level', String(zoom));
+    }
+    if (gridLayerRef.current) {
+      const cellSize = 40 * zoom;
+      const gx = ((x % cellSize) + cellSize) % cellSize;
+      const gy = ((y % cellSize) + cellSize) % cellSize;
+      gridLayerRef.current.style.transform = `translate3d(${gx}px, ${gy}px, 0)`;
+    }
+    if (hudZoomRef.current) {
+      hudZoomRef.current.textContent = `${Math.round(zoom * 100)}%`;
+    }
+  };
+
+  // Sync state changes (recenter, city change, zoom buttons) to refs & DOM
+  useEffect(() => {
+    panRef.current = panOffset;
+    zoomRef.current = zoomLevel;
+    applyTransform(panOffset.x, panOffset.y, zoomLevel);
+  }, [panOffset, zoomLevel]);
+
+  // Non-passive Native Touch Listeners for butter-smooth 60/120fps mobile pan & pinch
+  useEffect(() => {
+    if (!isOpen) return;
+    const el = viewportRef.current;
+    if (!el) return;
+
+    const onTouchStart = (e: TouchEvent) => {
+      if (worldLayerRef.current) {
+        worldLayerRef.current.style.transition = 'none';
+      }
+      isDraggingRef.current = true;
+
+      if (e.touches.length === 1) {
+        const t = e.touches[0];
+        touchStateRef.current = {
+          mode: 'pan',
+          startX: t.clientX,
+          startY: t.clientY,
+          startPanX: panRef.current.x,
+          startPanY: panRef.current.y,
+          startDistance: 0,
+          startZoom: zoomRef.current,
+        };
+      } else if (e.touches.length >= 2) {
+        const t1 = e.touches[0];
+        const t2 = e.touches[1];
+        const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+        touchStateRef.current = {
+          mode: 'pinch',
+          startX: (t1.clientX + t2.clientX) / 2,
+          startY: (t1.clientY + t2.clientY) / 2,
+          startPanX: panRef.current.x,
+          startPanY: panRef.current.y,
+          startDistance: dist,
+          startZoom: zoomRef.current,
+        };
+      }
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      // Prevent browser default page scroll or pull-to-refresh
+      if (e.cancelable) {
+        e.preventDefault();
+      }
+
+      if (touchStateRef.current.mode === 'pan' && e.touches.length === 1) {
+        const t = e.touches[0];
+        const dx = t.clientX - touchStateRef.current.startX;
+        const dy = t.clientY - touchStateRef.current.startY;
+        panRef.current = {
+          x: touchStateRef.current.startPanX + dx,
+          y: touchStateRef.current.startPanY + dy,
+        };
+      } else if (e.touches.length >= 2) {
+        const t1 = e.touches[0];
+        const t2 = e.touches[1];
+        const currentDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+
+        if (touchStateRef.current.mode !== 'pinch') {
+          touchStateRef.current = {
+            mode: 'pinch',
+            startX: (t1.clientX + t2.clientX) / 2,
+            startY: (t1.clientY + t2.clientY) / 2,
+            startPanX: panRef.current.x,
+            startPanY: panRef.current.y,
+            startDistance: currentDist,
+            startZoom: zoomRef.current,
+          };
+          return;
+        }
+
+        if (touchStateRef.current.startDistance > 0) {
+          const scale = currentDist / touchStateRef.current.startDistance;
+          const nextZoom = Math.min(3.0, Math.max(0.4, touchStateRef.current.startZoom * scale));
+          zoomRef.current = Number(nextZoom.toFixed(2));
+        }
+
+        const midX = (t1.clientX + t2.clientX) / 2;
+        const midY = (t1.clientY + t2.clientY) / 2;
+        const dx = midX - touchStateRef.current.startX;
+        const dy = midY - touchStateRef.current.startY;
+        panRef.current = {
+          x: touchStateRef.current.startPanX + dx,
+          y: touchStateRef.current.startPanY + dy,
+        };
+      }
+
+      // Hardware transform via requestAnimationFrame (0 React re-renders while moving)
+      if (!rafIdRef.current) {
+        rafIdRef.current = requestAnimationFrame(() => {
+          applyTransform(panRef.current.x, panRef.current.y, zoomRef.current);
+          rafIdRef.current = null;
+        });
+      }
+    };
+
+    const onTouchEnd = (e: TouchEvent) => {
+      if (e.touches.length === 1) {
+        const t = e.touches[0];
+        touchStateRef.current = {
+          mode: 'pan',
+          startX: t.clientX,
+          startY: t.clientY,
+          startPanX: panRef.current.x,
+          startPanY: panRef.current.y,
+          startDistance: 0,
+          startZoom: zoomRef.current,
+        };
+      } else if (e.touches.length === 0) {
+        touchStateRef.current.mode = 'none';
+        isDraggingRef.current = false;
+
+        if (rafIdRef.current) {
+          cancelAnimationFrame(rafIdRef.current);
+          rafIdRef.current = null;
+        }
+        applyTransform(panRef.current.x, panRef.current.y, zoomRef.current);
+
+        // Sync final values to React state upon touch release
+        setPanOffset({ ...panRef.current });
+        setZoomLevel(zoomRef.current);
+      }
+    };
+
+    el.addEventListener('touchstart', onTouchStart, { passive: false });
+    el.addEventListener('touchmove', onTouchMove, { passive: false });
+    el.addEventListener('touchend', onTouchEnd, { passive: false });
+    el.addEventListener('touchcancel', onTouchEnd, { passive: false });
+
+    return () => {
+      el.removeEventListener('touchstart', onTouchStart);
+      el.removeEventListener('touchmove', onTouchMove);
+      el.removeEventListener('touchend', onTouchEnd);
+      el.removeEventListener('touchcancel', onTouchEnd);
+    };
+  }, [isOpen]);
+
+  // Handle Pan Events (Mouse) with RAF
   const handleMouseDown = (e: React.MouseEvent) => {
-    setIsDragging(true);
-    dragStartRef.current = { x: e.clientX - panOffset.x, y: e.clientY - panOffset.y };
+    if (worldLayerRef.current) {
+      worldLayerRef.current.style.transition = 'none';
+    }
+    isDraggingRef.current = true;
+    dragStartRef.current = { x: e.clientX - panRef.current.x, y: e.clientY - panRef.current.y };
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging) return;
-    setPanOffset({
+    if (!isDraggingRef.current) return;
+    panRef.current = {
       x: e.clientX - dragStartRef.current.x,
       y: e.clientY - dragStartRef.current.y,
-    });
+    };
+    if (!rafIdRef.current) {
+      rafIdRef.current = requestAnimationFrame(() => {
+        applyTransform(panRef.current.x, panRef.current.y, zoomRef.current);
+        rafIdRef.current = null;
+      });
+    }
   };
 
   const handleMouseUp = () => {
-    setIsDragging(false);
+    if (!isDraggingRef.current) return;
+    isDraggingRef.current = false;
+    if (rafIdRef.current) {
+      cancelAnimationFrame(rafIdRef.current);
+      rafIdRef.current = null;
+    }
+    applyTransform(panRef.current.x, panRef.current.y, zoomRef.current);
+    setPanOffset({ ...panRef.current });
   };
 
-  // Desktop Mouse Wheel Zoom (using non-passive native listener so preventDefault works cleanly without console errors)
+  // Desktop Mouse Wheel Zoom
   useEffect(() => {
     if (!isOpen) return;
     const el = viewportRef.current;
@@ -311,10 +498,11 @@ export const LocationCampaignMapModal: React.FC<LocationCampaignMapModalProps> =
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
       const factor = e.deltaY < 0 ? 1.15 : 0.85;
-      setZoomLevel((prev) => {
-        const next = Math.min(3.0, Math.max(0.4, prev * factor));
-        return Number(next.toFixed(2));
-      });
+      const next = Math.min(3.0, Math.max(0.4, zoomRef.current * factor));
+      const rounded = Number(next.toFixed(2));
+      zoomRef.current = rounded;
+      applyTransform(panRef.current.x, panRef.current.y, rounded);
+      setZoomLevel(rounded);
     };
 
     el.addEventListener('wheel', onWheel, { passive: false });
@@ -323,112 +511,36 @@ export const LocationCampaignMapModal: React.FC<LocationCampaignMapModalProps> =
     };
   }, [isOpen]);
 
-  // Mobile Touch Gestures: 1-finger pan & 2-finger pinch-to-zoom
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if (e.touches.length === 1) {
-      const t = e.touches[0];
-      touchStateRef.current = {
-        mode: 'pan',
-        startX: t.clientX,
-        startY: t.clientY,
-        startPanX: panOffset.x,
-        startPanY: panOffset.y,
-        startDistance: 0,
-        startZoom: zoomLevel,
-      };
-    } else if (e.touches.length >= 2) {
-      const t1 = e.touches[0];
-      const t2 = e.touches[1];
-      const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
-      touchStateRef.current = {
-        mode: 'pinch',
-        startX: (t1.clientX + t2.clientX) / 2,
-        startY: (t1.clientY + t2.clientY) / 2,
-        startPanX: panOffset.x,
-        startPanY: panOffset.y,
-        startDistance: dist,
-        startZoom: zoomLevel,
-      };
-    }
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (touchStateRef.current.mode === 'pan' && e.touches.length === 1) {
-      if (!isDragging) setIsDragging(true);
-      const t = e.touches[0];
-      const dx = t.clientX - touchStateRef.current.startX;
-      const dy = t.clientY - touchStateRef.current.startY;
-      setPanOffset({
-        x: touchStateRef.current.startPanX + dx,
-        y: touchStateRef.current.startPanY + dy,
-      });
-    } else if (e.touches.length >= 2) {
-      if (!isDragging) setIsDragging(true);
-      const t1 = e.touches[0];
-      const t2 = e.touches[1];
-      const currentDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
-
-      if (touchStateRef.current.mode !== 'pinch') {
-        touchStateRef.current = {
-          mode: 'pinch',
-          startX: (t1.clientX + t2.clientX) / 2,
-          startY: (t1.clientY + t2.clientY) / 2,
-          startPanX: panOffset.x,
-          startPanY: panOffset.y,
-          startDistance: currentDist,
-          startZoom: zoomLevel,
-        };
-        return;
-      }
-
-      // Pinch zoom calculation
-      if (touchStateRef.current.startDistance > 0) {
-        const scale = currentDist / touchStateRef.current.startDistance;
-        const newZoom = Math.min(3.0, Math.max(0.4, touchStateRef.current.startZoom * scale));
-        setZoomLevel(Number(newZoom.toFixed(2)));
-      }
-
-      // Simultaneous two-finger pan
-      const midX = (t1.clientX + t2.clientX) / 2;
-      const midY = (t1.clientY + t2.clientY) / 2;
-      const dx = midX - touchStateRef.current.startX;
-      const dy = midY - touchStateRef.current.startY;
-      setPanOffset({
-        x: touchStateRef.current.startPanX + dx,
-        y: touchStateRef.current.startPanY + dy,
-      });
-    }
-  };
-
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    if (e.touches.length === 1) {
-      const t = e.touches[0];
-      touchStateRef.current = {
-        mode: 'pan',
-        startX: t.clientX,
-        startY: t.clientY,
-        startPanX: panOffset.x,
-        startPanY: panOffset.y,
-        startDistance: 0,
-        startZoom: zoomLevel,
-      };
-    } else if (e.touches.length === 0) {
-      touchStateRef.current.mode = 'none';
-      setIsDragging(false);
-    }
-  };
-
-  // Recenter map
+  // Recenter map smoothly
   const handleRecenter = () => {
+    if (worldLayerRef.current) {
+      worldLayerRef.current.style.transition = 'transform 0.35s cubic-bezier(0.16, 1, 0.3, 1)';
+    }
+    panRef.current = { x: 0, y: 0 };
+    zoomRef.current = 1;
+    applyTransform(0, 0, 1);
     setPanOffset({ x: 0, y: 0 });
     setZoomLevel(1);
     setSelectedPin(null);
+  };
+
+  // Zoom button handler with smooth animation
+  const handleZoomChange = (delta: number) => {
+    if (worldLayerRef.current) {
+      worldLayerRef.current.style.transition = 'transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)';
+    }
+    const next = Math.min(3.0, Math.max(0.4, Number((zoomRef.current + delta).toFixed(2))));
+    zoomRef.current = next;
+    applyTransform(panRef.current.x, panRef.current.y, next);
+    setZoomLevel(next);
   };
 
   // Dynamic radar dimensions (22px per km matches campaign pin distance projection)
   const SCALE_PX_PER_KM = 22;
   const radarRadius = activeRadiusKm * SCALE_PX_PER_KM;
   const radarDiameter = radarRadius * 2;
+  // Capped rotating sweep beam diameter to prevent mobile GPU tile memory exhaustion (>2000px causes memory drops on mobile)
+  const visualBeamDiameter = Math.min(radarDiameter, 640);
 
   const radarRings = useMemo(() => {
     return [
@@ -461,7 +573,7 @@ export const LocationCampaignMapModal: React.FC<LocationCampaignMapModalProps> =
 
   if (!isOpen) return null;
 
-  return (
+  return ReactDOM.createPortal(
     <div className="location-map-modal-backdrop" onClick={onClose}>
       <div className="location-map-container" onClick={(e) => e.stopPropagation()}>
         
@@ -577,40 +689,36 @@ export const LocationCampaignMapModal: React.FC<LocationCampaignMapModalProps> =
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
-          onTouchCancel={handleTouchEnd}
         >
           {/* Futuristic Radar Grid Background */}
           <div 
+            ref={gridLayerRef}
             className="map-grid-layer" 
             style={{
-              backgroundPosition: `${panOffset.x}px ${panOffset.y}px`,
               backgroundSize: `${40 * zoomLevel}px ${40 * zoomLevel}px`,
             }}
           />
 
           {/* Draggable & Scalable World Layer */}
           <div 
+            ref={worldLayerRef}
             className="map-world-layer"
             style={{
-              transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoomLevel})`,
+              transform: `translate3d(${panOffset.x}px, ${panOffset.y}px, 0) scale(${zoomLevel})`,
               transformOrigin: '0 0',
-              transition: isDragging ? 'none' : 'transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
               ['--zoom-level' as any]: zoomLevel,
             }}
           >
             {/* ── Radar System Fixed to User Location Center (0, 0) ── */}
             <div className="user-radar-system">
-              {/* Rotating Radar Sweep Beam */}
+              {/* Rotating Radar Sweep Beam (Capped to safe GPU dimensions) */}
               <div 
                 className="radar-sweep-beam" 
                 style={{
-                  width: `${radarDiameter}px`,
-                  height: `${radarDiameter}px`,
-                  marginTop: `-${radarDiameter / 2}px`,
-                  marginLeft: `-${radarDiameter / 2}px`,
+                  width: `${visualBeamDiameter}px`,
+                  height: `${visualBeamDiameter}px`,
+                  marginTop: `-${visualBeamDiameter / 2}px`,
+                  marginLeft: `-${visualBeamDiameter / 2}px`,
                 }}
               />
 
@@ -723,13 +831,13 @@ export const LocationCampaignMapModal: React.FC<LocationCampaignMapModalProps> =
 
           {/* Map Overlay Floating HUD / Controls */}
           <div className="map-hud-controls">
-            <div className="hud-zoom-indicator" title="Current Zoom">
+            <div ref={hudZoomRef} className="hud-zoom-indicator" title="Current Zoom">
               {Math.round(zoomLevel * 100)}%
             </div>
-            <button className="hud-btn" onClick={() => setZoomLevel((z) => Math.min(3.0, Number((z + 0.25).toFixed(2))))} title="Zoom In">
+            <button className="hud-btn" onClick={() => handleZoomChange(0.25)} title="Zoom In">
               <span className="material-symbols-outlined">add</span>
             </button>
-            <button className="hud-btn" onClick={() => setZoomLevel((z) => Math.max(0.4, Number((z - 0.25).toFixed(2))))} title="Zoom Out">
+            <button className="hud-btn" onClick={() => handleZoomChange(-0.25)} title="Zoom Out">
               <span className="material-symbols-outlined">remove</span>
             </button>
             <button className="hud-btn recenter" onClick={handleRecenter} title="Recenter to You">
@@ -781,7 +889,8 @@ export const LocationCampaignMapModal: React.FC<LocationCampaignMapModalProps> =
           recipientAvatar={activeChatRecipient.avatar}
         />
       )}
-    </div>
+    </div>,
+    document.body
   );
 };
 export default LocationCampaignMapModal;
